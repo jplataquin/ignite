@@ -1,0 +1,54 @@
+// Custom Crimson Incident Palette CSS Variables
+:root {
+    --fd-header-bg: #111827;
+    --fd-canvas-bg: #F9FAFB;
+    --fd-card-bg: #FFFFFF;
+    --fd-text-body: #1F2937;
+    --fd-text-muted: #475569;
+    --fd-primary: #E11D48;
+    
+    // Status colors
+    --fd-status-critical: #E11D48;
+    --fd-status-open: #F59E0B;
+    --fd-status-progress: #0284C7;
+    --fd-status-resolved: #10B981;
+    --fd-status-lapsed: #9333EA;
+}
+
+// Override Bootstrap variables
+$primary: #E11D48;
+$body-bg: #F9FAFB;
+$body-color: #1F2937;
+$text-muted: #475569;
+
+// Import Bootstrap
+@import "bootstrap/scss/bootstrap";
+
+// Custom styles for Ignite
+body {
+    background-color: var(--fd-canvas-bg);
+    color: var(--fd-text-body);
+}
+
+.fd-header {
+    background-color: var(--fd-header-bg);
+}
+
+.fd-card {
+    background-color: var(--fd-card-bg);
+    border: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+// Touch Targets (minimum 44x44px)
+.btn, .nav-link, .dropdown-item {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+}
+
+.badge-critical { background-color: var(--fd-status-critical); color: white; }
+.badge-open { background-color: var(--fd-status-open); color: white; }
+.badge-progress { background-color: var(--fd-status-progress); color: white; }
+.badge-resolved { background-color: var(--fd-status-resolved); color: white; }
+.badge-lapsed { background-color: var(--fd-status-lapsed); color: white; }
