@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\TicketTypeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
@@ -30,8 +31,12 @@ Route::middleware('auth')->group(function () {
 
     // Admin-only Routes
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
+        // User Management
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
+
+        // Ticket Type Management
+        Route::resource('ticket-types', TicketTypeController::class)->except(['show']);
     });
 });
