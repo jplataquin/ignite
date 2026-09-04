@@ -93,16 +93,10 @@
                 </div>
 
                 <!-- Submit Button -->
-                <div class="d-grid gap-2 mb-3">
+                <div class="d-grid gap-2">
                     <button type="submit" class="btn btn-primary btn-lg fs-6">
                         Sign In
                     </button>
-                </div>
-
-                <!-- Registration Link -->
-                <div class="text-center">
-                    <span class="text-muted small">Don't have an account?</span>
-                    <a href="{{ route('register') }}" class="text-danger small fw-semibold text-decoration-none">Register here</a>
                 </div>
             </form>
         </div>

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -36,6 +35,12 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
+            
+            // Redirect based on whether they need to reset their password
+            if (Auth::user()->must_reset_password) {
+                return redirect()->route('password.reset.temp');
+            }
+
             return redirect()->intended('/');
         }
 
@@ -45,37 +50,36 @@ class AuthController extends Controller
     }
 
     /**
-     * Show the registration form.
+     * Show the temporary password reset form.
      */
-    public function showRegister()
+    public function showResetTemp()
     {
-        if (Auth::check()) {
+        if (!Auth::check() || !Auth::user()->must_reset_password) {
             return redirect('/');
         }
-        return view('auth.register');
+
+        return view('auth.reset-temp');
     }
 
     /**
-     * Handle registration request.
+     * Handle the temporary password reset.
      */
-    public function register(Request $request)
+    public function resetTemp(Request $request)
     {
+        if (!Auth::check() || !Auth::user()->must_reset_password) {
+            return redirect('/');
+        }
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'user_type' => 'regular',
-        ]);
+        $user = Auth::user();
+        $user->password = Hash::make($validated['password']);
+        $user->must_reset_password = false;
+        $user->save();
 
-        Auth::login($user);
-
-        return redirect('/');
+        return redirect('/')->with('success', 'Your password has been reset successfully.');
     }
 
     /**

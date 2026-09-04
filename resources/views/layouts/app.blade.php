@@ -46,7 +46,7 @@
                 <div class="offcanvas-body d-flex flex-column pt-lg-3">
                     <ul class="nav flex-column mb-auto">
                         <li class="nav-item">
-                            <a class="nav-link text-dark active" href="#">
+                            <a class="nav-link text-dark {{ Request::routeIs('dashboard') ? 'active fw-bold' : '' }}" href="{{ route('dashboard') }}">
                                 Dashboard
                             </a>
                         </li>
@@ -55,6 +55,13 @@
                                 Tickets
                             </a>
                         </li>
+                        @if(Auth::user() && Auth::user()->user_type === 'admin')
+                            <li class="nav-item">
+                                <a class="nav-link text-dark {{ Request::routeIs('admin.users.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.users.index') }}">
+                                    Users
+                                </a>
+                            </li>
+                        @endif
                     </ul>
                     
                     <!-- User Profile & Logout -->
