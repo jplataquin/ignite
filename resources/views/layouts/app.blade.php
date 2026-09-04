@@ -51,7 +51,7 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" href="#">
+                            <a class="nav-link text-dark {{ Request::routeIs('tickets.*') ? 'active fw-bold' : '' }}" href="{{ route('tickets.index') }}">
                                 Tickets
                             </a>
                         </li>

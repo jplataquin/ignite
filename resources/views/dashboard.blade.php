@@ -21,8 +21,8 @@
                 <h6 class="text-muted mb-0 fw-semibold">Open Tickets</h6>
                 <span class="badge badge-open rounded-pill">Open</span>
             </div>
-            <h2 class="mt-3 mb-0 fw-bold">42</h2>
-            <small class="text-success"><i class="bi bi-arrow-up-short"></i> +5% from yesterday</small>
+            <h2 class="mt-3 mb-0 fw-bold">{{ $openTicketsCount }}</h2>
+            <small class="text-muted">Currently active</small>
         </div>
     </div>
     <div class="col">
@@ -31,7 +31,7 @@
                 <h6 class="text-muted mb-0 fw-semibold">Unassigned Queue</h6>
                 <span class="badge badge-progress rounded-pill">Queue</span>
             </div>
-            <h2 class="mt-3 mb-0 fw-bold">12</h2>
+            <h2 class="mt-3 mb-0 fw-bold">{{ $unassignedTicketsCount }}</h2>
             <small class="text-muted">Requires action</small>
         </div>
     </div>
@@ -41,7 +41,7 @@
                 <h6 class="text-muted mb-0 fw-semibold">Critical Alerts</h6>
                 <span class="badge badge-critical rounded-pill">Critical</span>
             </div>
-            <h2 class="mt-3 mb-0 fw-bold text-danger">3</h2>
+            <h2 class="mt-3 mb-0 fw-bold text-danger">{{ $criticalTicketsCount }}</h2>
             <small class="text-danger">Immediate attention</small>
         </div>
     </div>
@@ -51,7 +51,7 @@
                 <h6 class="text-muted mb-0 fw-semibold">SLA Lapsed</h6>
                 <span class="badge badge-lapsed rounded-pill">Lapsed</span>
             </div>
-            <h2 class="mt-3 mb-0 fw-bold">1</h2>
+            <h2 class="mt-3 mb-0 fw-bold">{{ $slaLapsedCount }}</h2>
             <small class="text-muted">Exceeded threshold</small>
         </div>
     </div>
