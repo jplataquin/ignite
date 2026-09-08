@@ -57,8 +57,5 @@ Route::middleware('auth')->group(function () {
 
         // Status Management
         Route::resource('ticket-statuses', TicketStatusController::class)->except(['show']);
-
-        // Priority Management
-        Route::resource('ticket-priorities', TicketPriorityController::class)->except(['show']);
     });
 });

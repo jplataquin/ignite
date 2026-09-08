@@ -61,13 +61,13 @@
                         @enderror
                     </div>
 
-                    <!-- Priority -->
+                    <!-- Severity -->
                     <div>
-                        <label for="priority_id" class="form-label fw-semibold text-dark small">Priority</label>
+                        <label for="priority_id" class="form-label fw-semibold text-dark small">Severity</label>
                         <select id="priority_id" class="form-select @error('priority_id') is-invalid @enderror" name="priority_id" required>
-                            <option value="">Select Priority</option>
+                            <option value="">Select Severity</option>
                             @foreach($priorities as $priority)
-                                <option value="{{ $priority->id }}" {{ old('priority_id') == $priority->id ? 'selected' : '' }}>{{ $priority->name }} (Lvl {{ $priority->level }})</option>
+                                <option value="{{ $priority->id }}" {{ old('priority_id') == $priority->id ? 'selected' : '' }}>{{ $priority->name }}</option>
                             @endforeach
                         </select>
                         @error('priority_id')

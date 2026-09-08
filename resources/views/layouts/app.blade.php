@@ -115,11 +115,6 @@
                                                 Ticket Statuses
                                             </a>
                                         </li>
-                                        <li class="nav-item">
-                                            <a class="nav-link text-dark py-1.5 {{ Request::routeIs('admin.ticket-priorities.*') ? 'active fw-bold text-primary' : '' }}" href="{{ route('admin.ticket-priorities.index') }}">
-                                                Ticket Priorities
-                                            </a>
-                                        </li>
                                     </ul>
                                 </div>
                             </li>

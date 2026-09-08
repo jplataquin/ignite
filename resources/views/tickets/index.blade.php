@@ -32,7 +32,7 @@
                 <tr>
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small">Ticket Number</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Title</th>
-                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Priority</th>
+                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Severity</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Status</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Assignee</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Created By</th>

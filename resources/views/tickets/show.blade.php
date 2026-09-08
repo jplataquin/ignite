@@ -43,15 +43,11 @@
                     <span class="badge badge-lapsed rounded-pill px-3 py-1.5 fw-semibold">Closed</span>
                 @endif
 
-                <!-- Priority Badge -->
-                @if(($ticket->priority->level ?? 0) >= 4)
-                    <span class="badge badge-critical rounded-pill px-3 py-1.5 fw-semibold">Critical</span>
-                @elseif(($ticket->priority->level ?? 0) === 3)
-                    <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">High</span>
-                @elseif(($ticket->priority->level ?? 0) === 2)
-                    <span class="badge bg-primary rounded-pill px-3 py-1.5 fw-semibold text-white">Medium</span>
+                <!-- Severity Badge -->
+                @if(($ticket->priority->level ?? 0) >= 2)
+                    <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">Major</span>
                 @else
-                    <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Low</span>
+                    <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Minor</span>
                 @endif
             </div>
 

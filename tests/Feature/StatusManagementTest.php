@@ -3,17 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\TicketStatus;
-use App\Models\TicketPriority;
 use App\Models\User;
-use App\Models\Ticket;
-use App\Models\TicketType;
-use App\Models\Division;
-use App\Models\Department;
-use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class StatusPriorityManagementTest extends TestCase
+class StatusManagementTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -26,21 +20,19 @@ class StatusPriorityManagementTest extends TestCase
     /**
      * Test guest access restrictions.
      */
-    public function test_guests_cannot_access_status_and_priority_management(): void
+    public function test_guests_cannot_access_status_management(): void
     {
         $this->get('/admin/ticket-statuses')->assertRedirect('/login');
-        $this->get('/admin/ticket-priorities')->assertRedirect('/login');
     }
 
     /**
      * Test non-admin access restrictions.
      */
-    public function test_non_admins_cannot_access_status_and_priority_management(): void
+    public function test_non_admins_cannot_access_status_management(): void
     {
         $user = User::factory()->create(['user_type' => 'regular']);
 
         $this->actingAs($user)->get('/admin/ticket-statuses')->assertStatus(403);
-        $this->actingAs($user)->get('/admin/ticket-priorities')->assertStatus(403);
     }
 
     /**
@@ -104,51 +96,5 @@ class StatusPriorityManagementTest extends TestCase
             ->assertSessionHas('error');
 
         $this->assertDatabaseHas('ticket_statuses', ['id' => $openStatus->id]);
-    }
-
-    /**
-     * Test ticket priorities CRUD operations.
-     */
-    public function test_ticket_priority_crud_operations(): void
-    {
-        $admin = User::factory()->create(['user_type' => 'admin']);
-
-        // Create Priority
-        $this->actingAs($admin)->post('/admin/ticket-priorities', [
-            'name' => 'Backlog Priority',
-            'level' => 10,
-        ])->assertRedirect('/admin/ticket-priorities');
-
-        $this->assertDatabaseHas('ticket_priorities', [
-            'name' => 'Backlog Priority',
-            'level' => 10,
-        ]);
-
-        $priority = TicketPriority::where('level', 10)->first();
-
-        // Edit View
-        $this->actingAs($admin)->get("/admin/ticket-priorities/{$priority->id}/edit")
-            ->assertStatus(200)
-            ->assertSee('Backlog Priority');
-
-        // Update Priority
-        $this->actingAs($admin)->put("/admin/ticket-priorities/{$priority->id}", [
-            'name' => 'Someday Priority',
-            'level' => 12,
-        ])->assertRedirect('/admin/ticket-priorities');
-
-        $this->assertDatabaseHas('ticket_priorities', [
-            'id' => $priority->id,
-            'name' => 'Someday Priority',
-            'level' => 12,
-        ]);
-
-        // Delete Priority
-        $this->actingAs($admin)->delete("/admin/ticket-priorities/{$priority->id}")
-            ->assertRedirect('/admin/ticket-priorities');
-
-        $this->assertDatabaseMissing('ticket_priorities', [
-            'id' => $priority->id,
-        ]);
     }
 }
