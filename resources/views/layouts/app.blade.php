@@ -57,29 +57,46 @@
                         </li>
                         @if(Auth::user() && Auth::user()->user_type === 'admin')
                             <li class="nav-item">
-                                <a class="nav-link text-dark {{ Request::routeIs('admin.users.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.users.index') }}">
-                                    Users
+                                <a class="nav-link text-dark d-flex align-items-center justify-content-between {{ Request::routeIs('admin.*') ? 'active fw-bold' : '' }}" 
+                                   data-bs-toggle="collapse" 
+                                   href="#masterDataCollapse" 
+                                   role="button" 
+                                   aria-expanded="{{ Request::routeIs('admin.*') ? 'true' : 'false' }}" 
+                                   aria-controls="masterDataCollapse">
+                                    <span>Master Data</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-chevron-down ms-2 text-muted" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708"/>
+                                    </svg>
                                 </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark {{ Request::routeIs('admin.roles.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.roles.index') }}">
-                                    Roles
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark {{ Request::routeIs('admin.divisions.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.divisions.index') }}">
-                                    Divisions
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark {{ Request::routeIs('admin.departments.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.departments.index') }}">
-                                    Departments
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark {{ Request::routeIs('admin.ticket-types.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.ticket-types.index') }}">
-                                    Ticket Types
-                                </a>
+                                <div class="collapse {{ Request::routeIs('admin.*') ? 'show' : '' }} ps-2" id="masterDataCollapse">
+                                    <ul class="nav flex-column border-start ms-3">
+                                        <li class="nav-item">
+                                            <a class="nav-link text-dark py-1.5 {{ Request::routeIs('admin.users.*') ? 'active fw-bold text-primary' : '' }}" href="{{ route('admin.users.index') }}">
+                                                Users
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link text-dark py-1.5 {{ Request::routeIs('admin.roles.*') ? 'active fw-bold text-primary' : '' }}" href="{{ route('admin.roles.index') }}">
+                                                Roles
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link text-dark py-1.5 {{ Request::routeIs('admin.divisions.*') ? 'active fw-bold text-primary' : '' }}" href="{{ route('admin.divisions.index') }}">
+                                                Divisions
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link text-dark py-1.5 {{ Request::routeIs('admin.departments.*') ? 'active fw-bold text-primary' : '' }}" href="{{ route('admin.departments.index') }}">
+                                                Departments
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link text-dark py-1.5 {{ Request::routeIs('admin.ticket-types.*') ? 'active fw-bold text-primary' : '' }}" href="{{ route('admin.ticket-types.index') }}">
+                                                Ticket Types
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
                             </li>
                         @endif
                     </ul>
