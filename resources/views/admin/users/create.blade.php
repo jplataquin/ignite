@@ -59,6 +59,24 @@
                     @enderror
                 </div>
 
+                <!-- Department -->
+                <div class="mb-3">
+                    <label for="department_id" class="form-label fw-semibold text-dark small">Department</label>
+                    <select id="department_id" class="form-select @error('department_id') is-invalid @enderror" name="department_id">
+                        <option value="">No Department / Unassigned</option>
+                        @foreach($departments as $department)
+                            <option value="{{ $department->id }}" {{ old('department_id') == $department->id ? 'selected' : '' }}>
+                                {{ $department->name }} ({{ $department->division->name ?? 'No Division' }})
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('department_id')
+                        <span class="invalid-feedback" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
                 <!-- Temporary Password -->
                 <div class="mb-4">
                     <label for="password" class="form-label fw-semibold text-dark small">Temporary Password</label>

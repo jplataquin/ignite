@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Department;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -14,7 +15,7 @@ class UserController extends Controller
      */
     public function index()
     {
-        $users = User::latest()->paginate(10);
+        $users = User::with('department')->latest()->paginate(10);
         return view('admin.users.index', compact('users'));
     }
 
@@ -23,7 +24,8 @@ class UserController extends Controller
      */
     public function create()
     {
-        return view('admin.users.create');
+        $departments = Department::orderBy('name')->get();
+        return view('admin.users.create', compact('departments'));
     }
 
     /**
@@ -36,12 +38,14 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'user_type' => 'required|string|in:admin,moderator,regular',
             'password' => 'required|string|min:8',
+            'department_id' => 'nullable|exists:departments,id',
         ]);
 
         User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'user_type' => $validated['user_type'],
+            'department_id' => $validated['department_id'] ?? null,
             'password' => Hash::make($validated['password']),
             'must_reset_password' => true, // Force reset upon first login!
         ]);

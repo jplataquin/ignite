@@ -33,6 +33,7 @@
                 <tr>
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small">Name</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Email</th>
+                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Department</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">User Type</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Status</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Created</th>
@@ -48,6 +49,14 @@
                             {{ $user->name }}
                         </td>
                         <td class="py-3 text-muted">{{ $user->email }}</td>
+                        <td class="py-3 text-muted">
+                            @if($user->department)
+                                <span class="fw-semibold text-dark">{{ $user->department->name }}</span>
+                                <span class="d-block text-muted small" style="font-size: 0.75rem;">{{ $user->department->division->name ?? '' }}</span>
+                            @else
+                                <span class="text-muted small italic">Unassigned</span>
+                            @endif
+                        </td>
                         <td class="py-3">
                             @if($user->user_type === 'admin')
                                 <span class="badge bg-dark rounded-pill px-3 py-1.5 fw-semibold">Admin</span>
@@ -79,7 +88,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">No users found.</td>
+                        <td colspan="6" class="text-center py-5 text-muted">No users found.</td>
                     </tr>
                 @endforelse
             </tbody>

@@ -67,6 +67,16 @@
                                 </a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link text-dark {{ Request::routeIs('admin.divisions.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.divisions.index') }}">
+                                    Divisions
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark {{ Request::routeIs('admin.departments.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.departments.index') }}">
+                                    Departments
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link text-dark {{ Request::routeIs('admin.ticket-types.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.ticket-types.index') }}">
                                     Ticket Types
                                 </a>
