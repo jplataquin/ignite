@@ -7,6 +7,21 @@
 
     <!-- Vite Assets -->
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
+
+    <!-- Prevent Flash of Unstyled Content (FOUC) -->
+    <style>
+        body {
+            opacity: 0;
+            transition: opacity 0.1s ease-in;
+        }
+    </style>
+    <noscript>
+        <style>
+            body {
+                opacity: 1 !important;
+            }
+        </style>
+    </noscript>
 </head>
 <body>
     <!-- Header -->
@@ -93,6 +108,16 @@
                                         <li class="nav-item">
                                             <a class="nav-link text-dark py-1.5 {{ Request::routeIs('admin.ticket-types.*') ? 'active fw-bold text-primary' : '' }}" href="{{ route('admin.ticket-types.index') }}">
                                                 Ticket Types
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link text-dark py-1.5 {{ Request::routeIs('admin.ticket-statuses.*') ? 'active fw-bold text-primary' : '' }}" href="{{ route('admin.ticket-statuses.index') }}">
+                                                Ticket Statuses
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link text-dark py-1.5 {{ Request::routeIs('admin.ticket-priorities.*') ? 'active fw-bold text-primary' : '' }}" href="{{ route('admin.ticket-priorities.index') }}">
+                                                Ticket Priorities
                                             </a>
                                         </li>
                                     </ul>

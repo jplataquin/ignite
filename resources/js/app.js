@@ -5,4 +5,5 @@ import * as bootstrap from 'bootstrap';
 // Initialize tooltips/popovers if needed
 document.addEventListener('DOMContentLoaded', () => {
     // Mobile-first off-canvas handling and interactions can go here
+    document.body.style.opacity = '1';
 });

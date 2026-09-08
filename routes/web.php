@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\TicketTypeController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\DivisionController;
 use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\TicketStatusController;
+use App\Http\Controllers\Admin\TicketPriorityController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
@@ -52,5 +54,11 @@ Route::middleware('auth')->group(function () {
 
         // Department Management
         Route::resource('departments', DepartmentController::class)->except(['show']);
+
+        // Status Management
+        Route::resource('ticket-statuses', TicketStatusController::class)->except(['show']);
+
+        // Priority Management
+        Route::resource('ticket-priorities', TicketPriorityController::class)->except(['show']);
     });
 });
