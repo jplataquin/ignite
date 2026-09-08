@@ -37,6 +37,7 @@
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">User Type</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Status</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Created</th>
+                    <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small text-end" style="width: 100px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -85,10 +86,15 @@
                             @endif
                         </td>
                         <td class="py-3 text-muted small">{{ $user->created_at->format('M d, Y') }}</td>
+                        <td class="px-4 py-3 text-end">
+                            <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center" style="min-height: 34px;">
+                                Edit
+                            </a>
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="text-center py-5 text-muted">No users found.</td>
+                        <td colspan="7" class="text-center py-5 text-muted">No users found.</td>
                     </tr>
                 @endforelse
             </tbody>

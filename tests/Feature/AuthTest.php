@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -181,5 +182,69 @@ class AuthTest extends TestCase
 
         $response->assertRedirect('/');
         $this->assertFalse($user->fresh()->must_reset_password);
+    }
+
+    /**
+     * Test that admins can view the user edit screen.
+     */
+    public function test_admins_can_view_user_edit_screen(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $user = User::factory()->create(['user_type' => 'regular']);
+
+        $response = $this->actingAs($admin)->get("/admin/users/{$user->id}/edit");
+
+        $response->assertStatus(200);
+        $response->assertSee('Edit User Profile');
+    }
+
+    /**
+     * Test that admins can update a user and assign roles to them.
+     */
+    public function test_admins_can_update_user_and_assign_roles(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $user = User::factory()->create(['user_type' => 'regular']);
+        $role1 = Role::create(['name' => 'Support Rep', 'slug' => 'support-rep']);
+        $role2 = Role::create(['name' => 'Billing Agent', 'slug' => 'billing-agent']);
+
+        $response = $this->actingAs($admin)->put("/admin/users/{$user->id}", [
+            'name' => 'Updated Name',
+            'email' => 'updated@example.com',
+            'user_type' => 'moderator',
+            'roles' => [$role1->id, $role2->id],
+        ]);
+
+        $response->assertRedirect('/admin/users');
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'name' => 'Updated Name',
+            'email' => 'updated@example.com',
+            'user_type' => 'moderator',
+        ]);
+
+        $this->assertTrue($user->fresh()->roles->contains($role1->id));
+        $this->assertTrue($user->fresh()->roles->contains($role2->id));
+    }
+
+    /**
+     * Test that non-admins cannot update user profiles.
+     */
+    public function test_non_admins_cannot_update_user_profiles(): void
+    {
+        $nonAdmin = User::factory()->create(['user_type' => 'regular']);
+        $user = User::factory()->create(['user_type' => 'regular']);
+
+        $response = $this->actingAs($nonAdmin)->put("/admin/users/{$user->id}", [
+            'name' => 'Malicious Update',
+            'email' => 'malicious@example.com',
+            'user_type' => 'admin',
+        ]);
+
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('users', [
+            'id' => $user->id,
+            'name' => 'Malicious Update',
+        ]);
     }
 }
