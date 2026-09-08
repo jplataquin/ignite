@@ -33,6 +33,17 @@
                     @enderror
                 </div>
 
+                <!-- Description of Findings -->
+                <div class="mb-3">
+                    <label for="description" class="form-label fw-semibold text-dark small">Description of Findings</label>
+                    <textarea id="description" class="form-control @error('description') is-invalid @enderror" name="description" rows="4" placeholder="Provide detailed findings or description of the issue...">{{ old('description') }}</textarea>
+                    @error('description')
+                        <span class="invalid-feedback" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
                 <div class="row row-cols-1 row-cols-md-2 g-3 mb-3">
                     <!-- Ticket Type -->
                     <div>

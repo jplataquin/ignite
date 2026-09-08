@@ -55,6 +55,12 @@
                 @endif
             </div>
 
+            <!-- Description of Findings -->
+            <div class="mb-4 bg-light p-3.5 rounded border">
+                <span class="text-muted small d-block mb-1.5 fw-semibold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Description of Findings</span>
+                <p class="text-dark small mb-0" style="white-space: pre-line; line-height: 1.55;">{{ $ticket->description ?: 'No detailed findings provided.' }}</p>
+            </div>
+
             <h6 class="fw-bold text-dark mb-3">Incident Properties</h6>
             <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">
                 <div>

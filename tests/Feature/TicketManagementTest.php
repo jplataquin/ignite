@@ -81,6 +81,7 @@ class TicketManagementTest extends TestCase
 
         $response = $this->actingAs($user)->post('/tickets', [
             'title' => 'New Ticket Title',
+            'description' => 'These are my detailed findings regarding this incident.',
             'ticket_type_id' => $type->id,
             'priority_id' => $priority->id,
             'status_id' => $status->id,
@@ -93,6 +94,7 @@ class TicketManagementTest extends TestCase
 
         $this->assertNotNull($ticket);
         $this->assertEquals('New Ticket Title', $ticket->title);
+        $this->assertEquals('These are my detailed findings regarding this incident.', $ticket->description);
         $response->assertRedirect(route('tickets.show', $ticket));
     }
 

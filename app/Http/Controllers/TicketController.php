@@ -63,6 +63,7 @@ class TicketController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
             'ticket_type_id' => [
                 'required',
                 'exists:ticket_types,id',
@@ -102,6 +103,7 @@ class TicketController extends Controller
             $ticket = Ticket::create([
                 'ticket_number' => $ticketNumber,
                 'title' => $validated['title'],
+                'description' => $validated['description'] ?? null,
                 'ticket_type_id' => $validated['ticket_type_id'],
                 'priority_id' => $validated['priority_id'],
                 'status_id' => $validated['status_id'],
