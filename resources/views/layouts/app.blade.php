@@ -62,6 +62,11 @@
                                 </a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link text-dark {{ Request::routeIs('admin.roles.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.roles.index') }}">
+                                    Roles
+                                </a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link text-dark {{ Request::routeIs('admin.ticket-types.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.ticket-types.index') }}">
                                     Ticket Types
                                 </a>
