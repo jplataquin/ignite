@@ -15,7 +15,7 @@ class RoleController extends Controller
      */
     public function index()
     {
-        $roles = Role::withCount('users')->latest()->paginate(10);
+        $roles = Role::with('ticketTypes')->withCount('users')->latest()->paginate(10);
         return view('admin.roles.index', compact('roles'));
     }
 

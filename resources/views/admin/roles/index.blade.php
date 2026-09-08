@@ -45,6 +45,7 @@
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small">Name</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Slug</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Description</th>
+                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Allowed Ticket Types</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small text-center">Assigned Users</th>
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small text-end" style="width: 150px;">Actions</th>
                 </tr>
@@ -60,6 +61,13 @@
                         </td>
                         <td class="py-3 text-muted">
                             {{ $role->description ?: 'No description provided.' }}
+                        </td>
+                        <td class="py-3">
+                            @forelse($role->ticketTypes as $type)
+                                <span class="badge bg-light text-dark border px-2.5 py-1.5 fw-semibold me-1 mb-1" style="font-size: 0.75rem;">{{ $type->name }}</span>
+                            @empty
+                                <span class="text-muted small italic">None</span>
+                            @endforelse
                         </td>
                         <td class="py-3 text-center fw-bold text-muted">
                             {{ $role->users_count }}
@@ -81,7 +89,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">No roles found.</td>
+                        <td colspan="6" class="text-center py-5 text-muted">No roles found.</td>
                     </tr>
                 @endforelse
             </tbody>
