@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'user_type', 'department_id', 'must_reset_password'])]
+#[Fillable(['name', 'email', 'password', 'user_type', 'division_id', 'department_id', 'must_reset_password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -34,6 +34,14 @@ class User extends Authenticatable
             'password' => 'hashed',
             'must_reset_password' => 'boolean',
         ];
+    }
+
+    /**
+     * Get the division that the user belongs to.
+     */
+    public function division(): BelongsTo
+    {
+        return $this->belongsTo(Division::class);
     }
 
     /**

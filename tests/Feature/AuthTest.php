@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\Role;
+use App\Models\Division;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -135,12 +136,14 @@ class AuthTest extends TestCase
         $admin = User::factory()->create([
             'user_type' => 'admin',
         ]);
+        $division = Division::create(['name' => 'HR Division']);
 
         $response = $this->actingAs($admin)->post('/admin/users', [
             'name' => 'New User',
             'email' => 'newuser@example.com',
             'user_type' => 'regular',
             'password' => 'TempPassword123!',
+            'division_id' => $division->id,
         ]);
 
         $response->assertRedirect('/admin/users');
@@ -148,6 +151,7 @@ class AuthTest extends TestCase
             'email' => 'newuser@example.com',
             'name' => 'New User',
             'user_type' => 'regular',
+            'division_id' => $division->id,
             'must_reset_password' => true,
         ]);
     }

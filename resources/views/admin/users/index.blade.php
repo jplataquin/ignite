@@ -51,9 +51,13 @@
                         </td>
                         <td class="py-3 text-muted">{{ $user->email }}</td>
                         <td class="py-3 text-muted">
-                            @if($user->department)
-                                <span class="fw-semibold text-dark">{{ $user->department->name }}</span>
-                                <span class="d-block text-muted small" style="font-size: 0.75rem;">{{ $user->department->division->name ?? '' }}</span>
+                            @if($user->division)
+                                <span class="fw-semibold text-dark d-block mb-1">{{ $user->division->name }}</span>
+                                @if($user->department)
+                                    <span class="badge bg-light text-dark border small fw-normal">{{ $user->department->name }}</span>
+                                @else
+                                    <span class="text-muted small italic" style="font-size: 0.75rem;">No Department</span>
+                                @endif
                             @else
                                 <span class="text-muted small italic">Unassigned</span>
                             @endif

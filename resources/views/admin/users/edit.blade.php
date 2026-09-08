@@ -60,14 +60,32 @@
                     @enderror
                 </div>
 
+                <!-- Division -->
+                <div class="mb-3">
+                    <label id="division_label" for="division_id" class="form-label fw-semibold text-dark small">Division <span id="division_required_dot" class="text-danger d-none">*</span></label>
+                    <select id="division_id" class="form-select @error('division_id') is-invalid @enderror" name="division_id">
+                        <option value="">Select Division</option>
+                        @foreach($divisions as $division)
+                            <option value="{{ $division->id }}" {{ old('division_id', $user->division_id) == $division->id ? 'selected' : '' }}>
+                                {{ $division->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('division_id')
+                        <span class="invalid-feedback" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
                 <!-- Department -->
                 <div class="mb-4">
-                    <label for="department_id" class="form-label fw-semibold text-dark small">Department</label>
-                    <select id="department_id" class="form-select @error('department_id') is-invalid @enderror" name="department_id">
-                        <option value="">No Department / Unassigned</option>
+                    <label for="department_id" class="form-label fw-semibold text-dark small">Department (Optional)</label>
+                    <select id="department_id" class="form-select @error('department_id') is-invalid @enderror" name="department_id" disabled>
+                        <option value="" data-division-id="">Select Department</option>
                         @foreach($departments as $department)
-                            <option value="{{ $department->id }}" {{ old('department_id', $user->department_id) == $department->id ? 'selected' : '' }}>
-                                {{ $department->name }} ({{ $department->division->name ?? 'No Division' }})
+                            <option value="{{ $department->id }}" data-division-id="{{ $department->division_id }}" {{ old('department_id', $user->department_id) == $department->id ? 'selected' : '' }}>
+                                {{ $department->name }}
                             </option>
                         @endforeach
                     </select>
@@ -112,4 +130,63 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    const userTypeSelect = document.getElementById('user_type');
+    const divisionSelect = document.getElementById('division_id');
+    const divisionRequiredDot = document.getElementById('division_required_dot');
+    const departmentSelect = document.getElementById('department_id');
+    const originalDepartmentOptions = Array.from(departmentSelect.options);
+
+    // Dynamic required division based on user type
+    function checkUserType() {
+        if (userTypeSelect.value === 'regular') {
+            divisionSelect.required = true;
+            divisionRequiredDot.classList.remove('d-none');
+        } else {
+            divisionSelect.required = false;
+            divisionRequiredDot.classList.add('d-none');
+        }
+    }
+
+    // Dynamic filtering of departments based on selected division
+    function filterDepartments(initial = false) {
+        const selectedDivisionId = divisionSelect.value;
+        const previousVal = initial ? "{{ old('department_id', $user->department_id) }}" : departmentSelect.value;
+
+        // Clear and rebuild options
+        departmentSelect.innerHTML = '';
+
+        // Add default/placeholder option
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = selectedDivisionId ? 'No Department / Unassigned' : 'Select Division First';
+        departmentSelect.appendChild(placeholderOption);
+
+        if (selectedDivisionId) {
+            departmentSelect.disabled = false;
+            originalDepartmentOptions.forEach(option => {
+                if (option.getAttribute('data-division-id') === selectedDivisionId) {
+                    const clonedOpt = option.cloneNode(true);
+                    if (clonedOpt.value === previousVal) {
+                        clonedOpt.selected = true;
+                    }
+                    departmentSelect.appendChild(clonedOpt);
+                }
+            });
+        } else {
+            departmentSelect.disabled = true;
+            departmentSelect.value = '';
+        }
+    }
+
+    userTypeSelect.addEventListener('change', checkUserType);
+    divisionSelect.addEventListener('change', () => filterDepartments(false));
+
+    // Run on initial load
+    checkUserType();
+    filterDepartments(true);
+</script>
+@endpush
 @endsection

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Department;
+use App\Models\Division;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -16,7 +17,7 @@ class UserController extends Controller
      */
     public function index()
     {
-        $users = User::with('department')->latest()->paginate(10);
+        $users = User::with(['division', 'department'])->latest()->paginate(10);
         return view('admin.users.index', compact('users'));
     }
 
@@ -25,8 +26,9 @@ class UserController extends Controller
      */
     public function create()
     {
+        $divisions = Division::orderBy('name')->get();
         $departments = Department::orderBy('name')->get();
-        return view('admin.users.create', compact('departments'));
+        return view('admin.users.create', compact('divisions', 'departments'));
     }
 
     /**
@@ -39,13 +41,28 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'user_type' => 'required|string|in:admin,moderator,regular',
             'password' => 'required|string|min:8',
-            'department_id' => 'nullable|exists:departments,id',
+            'division_id' => 'required_with:department_id|required_if:user_type,regular|nullable|exists:divisions,id',
+            'department_id' => [
+                'nullable',
+                'exists:departments,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($value && $request->input('division_id')) {
+                        $exists = Department::where('id', $value)
+                            ->where('division_id', $request->input('division_id'))
+                            ->exists();
+                        if (!$exists) {
+                            $fail('The selected department must belong to the selected division.');
+                        }
+                    }
+                }
+            ],
         ]);
 
         User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'user_type' => $validated['user_type'],
+            'division_id' => $validated['division_id'] ?? null,
             'department_id' => $validated['department_id'] ?? null,
             'password' => Hash::make($validated['password']),
             'must_reset_password' => true, // Force reset upon first login!
@@ -61,10 +78,11 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $user->load('roles');
+        $divisions = Division::orderBy('name')->get();
         $departments = Department::orderBy('name')->get();
         $roles = Role::orderBy('name')->get();
         
-        return view('admin.users.edit', compact('user', 'departments', 'roles'));
+        return view('admin.users.edit', compact('user', 'divisions', 'departments', 'roles'));
     }
 
     /**
@@ -76,7 +94,21 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'user_type' => 'required|string|in:admin,moderator,regular',
-            'department_id' => 'nullable|exists:departments,id',
+            'division_id' => 'required_with:department_id|required_if:user_type,regular|nullable|exists:divisions,id',
+            'department_id' => [
+                'nullable',
+                'exists:departments,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($value && $request->input('division_id')) {
+                        $exists = Department::where('id', $value)
+                            ->where('division_id', $request->input('division_id'))
+                            ->exists();
+                        if (!$exists) {
+                            $fail('The selected department must belong to the selected division.');
+                        }
+                    }
+                }
+            ],
             'roles' => 'nullable|array',
             'roles.*' => 'exists:roles,id',
         ]);
@@ -85,6 +117,7 @@ class UserController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'user_type' => $validated['user_type'],
+            'division_id' => $validated['division_id'] ?? null,
             'department_id' => $validated['department_id'] ?? null,
         ]);
 

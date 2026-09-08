@@ -194,13 +194,86 @@ class DivisionDepartmentManagementTest extends TestCase
             'email' => 'john.p@example.com',
             'user_type' => 'regular',
             'password' => 'SecurePass123!',
+            'division_id' => $division->id,
             'department_id' => $department->id,
         ])->assertRedirect('/admin/users');
 
         $this->assertDatabaseHas('users', [
             'name' => 'John Programmer',
             'email' => 'john.p@example.com',
+            'division_id' => $division->id,
             'department_id' => $department->id,
+        ]);
+    }
+
+    /**
+     * Test that regular users cannot be created without a division_id.
+     */
+    public function test_regular_user_requires_division_to_be_created(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        // Post without division_id for a regular user
+        $response = $this->actingAs($admin)->post('/admin/users', [
+            'name' => 'No Division User',
+            'email' => 'nodiv@example.com',
+            'user_type' => 'regular',
+            'password' => 'SecurePass123!',
+        ]);
+
+        $response->assertSessionHasErrors(['division_id']);
+        $this->assertDatabaseMissing('users', [
+            'email' => 'nodiv@example.com',
+        ]);
+    }
+
+    /**
+     * Test that regular users can be created with a division but without a department (department is optional).
+     */
+    public function test_regular_user_can_be_created_with_only_division(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $division = Division::create(['name' => 'Only Division Div']);
+
+        $response = $this->actingAs($admin)->post('/admin/users', [
+            'name' => 'Only Div User',
+            'email' => 'onlydiv@example.com',
+            'user_type' => 'regular',
+            'password' => 'SecurePass123!',
+            'division_id' => $division->id,
+        ]);
+
+        $response->assertRedirect('/admin/users');
+        $this->assertDatabaseHas('users', [
+            'email' => 'onlydiv@example.com',
+            'division_id' => $division->id,
+            'department_id' => null,
+        ]);
+    }
+
+    /**
+     * Test that the department must belong to the selected division.
+     */
+    public function test_selected_department_must_belong_to_the_selected_division(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $division1 = Division::create(['name' => 'Div 1']);
+        $division2 = Division::create(['name' => 'Div 2']);
+        $departmentFromDiv2 = Department::create(['name' => 'Dept of Div 2', 'division_id' => $division2->id]);
+
+        // Attempt to create a user in Div 1 but with Dept of Div 2
+        $response = $this->actingAs($admin)->post('/admin/users', [
+            'name' => 'Mismatched User',
+            'email' => 'mismatch@example.com',
+            'user_type' => 'regular',
+            'password' => 'SecurePass123!',
+            'division_id' => $division1->id,
+            'department_id' => $departmentFromDiv2->id,
+        ]);
+
+        $response->assertSessionHasErrors(['department_id']);
+        $this->assertDatabaseMissing('users', [
+            'email' => 'mismatch@example.com',
         ]);
     }
 }
