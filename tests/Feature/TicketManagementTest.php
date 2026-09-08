@@ -10,6 +10,7 @@ use App\Models\TicketPriority;
 use App\Models\TicketStatus;
 use App\Models\TicketType;
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -65,11 +66,15 @@ class TicketManagementTest extends TestCase
     public function test_users_can_create_a_new_ticket(): void
     {
         $user = User::factory()->create();
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $user->roles()->attach($role->id);
 
         // Seed lookups
         $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priority = TicketPriority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
+        $role->ticketTypes()->attach($type->id);
+
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);

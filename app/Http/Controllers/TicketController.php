@@ -32,7 +32,19 @@ class TicketController extends Controller
      */
     public function create()
     {
-        $ticketTypes = TicketType::all();
+        $user = Auth::user();
+        if ($user && $user->user_type === 'admin') {
+            $ticketTypes = TicketType::all();
+        } else {
+            $ticketTypes = $user->roles()
+                ->with('ticketTypes')
+                ->get()
+                ->pluck('ticketTypes')
+                ->collapse()
+                ->unique('id')
+                ->values();
+        }
+        
         $priorities = TicketPriority::orderBy('level')->get();
         $statuses = TicketStatus::all();
         $divisions = Division::all();
@@ -51,7 +63,25 @@ class TicketController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'ticket_type_id' => 'required|exists:ticket_types,id',
+            'ticket_type_id' => [
+                'required',
+                'exists:ticket_types,id',
+                function ($attribute, $value, $fail) {
+                    $user = Auth::user();
+                    if ($user && $user->user_type !== 'admin') {
+                        $allowedTypeIds = $user->roles()
+                            ->with('ticketTypes')
+                            ->get()
+                            ->pluck('ticketTypes')
+                            ->collapse()
+                            ->pluck('id')
+                            ->toArray();
+                        if (!in_array((int)$value, $allowedTypeIds)) {
+                            $fail('You do not have permission to create tickets of this type.');
+                        }
+                    }
+                }
+            ],
             'priority_id' => 'required|exists:ticket_priorities,id',
             'status_id' => 'required|exists:ticket_statuses,id',
             'division_id' => 'required|exists:divisions,id',

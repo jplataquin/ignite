@@ -4,6 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Models\TicketType;
+use App\Models\Division;
+use App\Models\Department;
+use App\Models\TicketPriority;
+use App\Models\TicketStatus;
+use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -163,5 +169,87 @@ class RoleManagementTest extends TestCase
         $response->assertRedirect('/admin/roles');
         $response->assertSessionHas('error');
         $this->assertDatabaseHas('roles', ['id' => $role->id]);
+    }
+
+    /**
+     * Test that admins can store a role with allowed ticket types.
+     */
+    public function test_admins_can_store_role_with_ticket_types(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $type1 = TicketType::create(['name' => 'Incident']);
+        $type2 = TicketType::create(['name' => 'Service Request']);
+
+        $response = $this->actingAs($admin)->post('/admin/roles', [
+            'name' => 'Technician',
+            'ticket_types' => [$type1->id, $type2->id],
+        ]);
+
+        $response->assertRedirect('/admin/roles');
+        $role = Role::where('name', 'Technician')->first();
+        $this->assertNotNull($role);
+        $this->assertTrue($role->ticketTypes->contains($type1->id));
+        $this->assertTrue($role->ticketTypes->contains($type2->id));
+    }
+
+    /**
+     * Test that ticket creation filters and enforces allowed ticket types based on user roles.
+     */
+    public function test_role_ticket_type_enforcement_on_creation(): void
+    {
+        $user = User::factory()->create(['user_type' => 'regular']);
+        $role = Role::create(['name' => 'Junior Rep', 'slug' => 'junior-rep']);
+        $user->roles()->attach($role->id);
+
+        $allowedType = TicketType::create(['name' => 'Allowed Type']);
+        $disallowedType = TicketType::create(['name' => 'Disallowed Type']);
+
+        $role->ticketTypes()->attach($allowedType->id);
+
+        // Core ticket setup data
+        $division = Division::create(['name' => 'Tech Division']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $priority = TicketPriority::create(['name' => 'Medium', 'level' => 2]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#F59E0B']);
+        $category = Category::create(['name' => 'Software Issue', 'ticket_type_id' => $allowedType->id]);
+
+        // 1. Check create view filters list
+        $response = $this->actingAs($user)->get('/tickets/create');
+        $response->assertStatus(200);
+        $response->assertSee('Allowed Type');
+        $response->assertDontSee('Disallowed Type');
+
+        // 2. Try creating allowed ticket type (should pass)
+        $response = $this->actingAs($user)->post('/tickets', [
+            'title' => 'Allowed Ticket',
+            'ticket_type_id' => $allowedType->id,
+            'priority_id' => $priority->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('tickets', [
+            'title' => 'Allowed Ticket',
+            'ticket_type_id' => $allowedType->id,
+        ]);
+
+        // 3. Try creating disallowed ticket type (should fail backend validation)
+        $response = $this->actingAs($user)->post('/tickets', [
+            'title' => 'Disallowed Ticket',
+            'ticket_type_id' => $disallowedType->id,
+            'priority_id' => $priority->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response->assertSessionHasErrors(['ticket_type_id']);
+        $this->assertDatabaseMissing('tickets', [
+            'title' => 'Disallowed Ticket',
+        ]);
     }
 }

@@ -34,11 +34,41 @@
                 </div>
 
                 <!-- Description -->
-                <div class="mb-4">
+                <div class="mb-3">
                     <label for="description" class="form-label fw-semibold text-dark small">Description</label>
                     <textarea id="description" class="form-control @error('description') is-invalid @enderror" name="description" rows="3" placeholder="Provide a brief description of what this role represents...">{{ old('description') }}</textarea>
                     @error('description')
                         <span class="invalid-feedback" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
+                <!-- Ticket Type Permissions -->
+                <div class="border-top pt-4 mb-4">
+                    <h6 class="fw-bold text-dark mb-2">Allowed Ticket Types</h6>
+                    <p class="text-muted small mb-3">Specify which ticket types can be created by users assigned to this role.</p>
+
+                    <div class="row g-3">
+                        @forelse($ticketTypes as $type)
+                            <div class="col-12 col-md-6">
+                                <div class="form-check border rounded p-3 h-100 bg-light d-flex align-items-start">
+                                    <input class="form-check-input me-2 mt-1" type="checkbox" name="ticket_types[]" value="{{ $type->id }}" id="type_{{ $type->id }}" {{ is_array(old('ticket_types')) && in_array($type->id, old('ticket_types')) ? 'checked' : '' }}>
+                                    <label class="form-check-label w-100" for="type_{{ $type->id }}">
+                                        <span class="fw-bold text-dark d-block small mb-1">{{ $type->name }}</span>
+                                        <span class="text-muted d-block" style="font-size: 0.75rem; line-height: 1.3;">{{ $type->description ?: 'No description provided.' }}</span>
+                                    </label>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="col-12 text-center py-3 text-muted border border-dashed rounded">
+                                <span class="small d-block">No ticket types available in the system yet.</span>
+                                <a href="{{ route('admin.ticket-types.create') }}" class="small fw-semibold text-decoration-none">Create a new ticket type</a>
+                            </div>
+                        @endforelse
+                    </div>
+                    @error('ticket_types')
+                        <span class="text-danger small mt-2 d-block">
                             <strong>{{ $message }}</strong>
                         </span>
                     @enderror

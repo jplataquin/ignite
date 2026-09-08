@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Role;
+use App\Models\TicketType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -23,7 +24,8 @@ class RoleController extends Controller
      */
     public function create()
     {
-        return view('admin.roles.create');
+        $ticketTypes = TicketType::orderBy('name')->get();
+        return view('admin.roles.create', compact('ticketTypes'));
     }
 
     /**
@@ -34,11 +36,14 @@ class RoleController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:roles,name',
             'description' => 'nullable|string',
+            'ticket_types' => 'nullable|array',
+            'ticket_types.*' => 'exists:ticket_types,id',
         ]);
 
         $validated['slug'] = Str::slug($validated['name']);
 
-        Role::create($validated);
+        $role = Role::create($validated);
+        $role->ticketTypes()->sync($request->input('ticket_types', []));
 
         return redirect()->route('admin.roles.index')
             ->with('success', "Role '{$validated['name']}' created successfully.");
@@ -49,7 +54,9 @@ class RoleController extends Controller
      */
     public function edit(Role $role)
     {
-        return view('admin.roles.edit', compact('role'));
+        $role->load('ticketTypes');
+        $ticketTypes = TicketType::orderBy('name')->get();
+        return view('admin.roles.edit', compact('role', 'ticketTypes'));
     }
 
     /**
@@ -60,11 +67,14 @@ class RoleController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
             'description' => 'nullable|string',
+            'ticket_types' => 'nullable|array',
+            'ticket_types.*' => 'exists:ticket_types,id',
         ]);
 
         $validated['slug'] = Str::slug($validated['name']);
 
         $role->update($validated);
+        $role->ticketTypes()->sync($request->input('ticket_types', []));
 
         return redirect()->route('admin.roles.index')
             ->with('success', "Role '{$validated['name']}' updated successfully.");
