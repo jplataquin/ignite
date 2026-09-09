@@ -56,8 +56,9 @@ class DatabaseSeeder extends Seeder
 
         // 4. Seed Ticket Priorities
         $priorities = [
-            ['name' => 'Minor', 'level' => 1],
-            ['name' => 'Major', 'level' => 2],
+            ['name' => 'Low', 'level' => 1],
+            ['name' => 'High', 'level' => 2],
+            ['name' => 'Critical', 'level' => 3],
         ];
         foreach ($priorities as $priority) {
             TicketPriority::updateOrCreate(['name' => $priority['name']], $priority);

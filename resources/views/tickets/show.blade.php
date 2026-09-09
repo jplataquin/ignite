@@ -50,10 +50,12 @@
                 @endif
 
                 <!-- Severity Badge -->
-                @if(($ticket->priority->level ?? 0) >= 2)
-                    <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">Severity: Major</span>
+                @if(($ticket->priority->name ?? '') === 'Critical')
+                    <span class="badge badge-critical rounded-pill px-3 py-1.5 fw-semibold">Severity: Critical</span>
+                @elseif(($ticket->priority->name ?? '') === 'High')
+                    <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">Severity: High</span>
                 @else
-                    <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Severity: Minor</span>
+                    <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Severity: Low</span>
                 @endif
 
                 <!-- Priority Badge -->

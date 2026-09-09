@@ -20,7 +20,7 @@ class DashboardController extends Controller
 
         $criticalTicketsCount = Ticket::whereHas('priority', function ($query) {
             $query->where('level', '>=', 2)
-                  ->orWhereIn('name', ['Major', 'major']);
+                  ->orWhereIn('name', ['High', 'Critical', 'high', 'critical']);
         })->count();
 
         $slaLapsedCount = Ticket::whereHas('status', function ($query) {

@@ -38,8 +38,8 @@
     <div class="col">
         <div class="card fd-card h-100 p-3 border-start border-4 border-danger">
             <div class="d-flex justify-content-between align-items-center">
-                <h6 class="text-muted mb-0 fw-semibold">Major Tickets</h6>
-                <span class="badge badge-critical rounded-pill">Major</span>
+                <h6 class="text-muted mb-0 fw-semibold">Critical Tickets</h6>
+                <span class="badge badge-critical rounded-pill">Critical</span>
             </div>
             <h2 class="mt-3 mb-0 fw-bold text-danger">{{ $criticalTicketsCount }}</h2>
             <small class="text-danger">High importance</small>
