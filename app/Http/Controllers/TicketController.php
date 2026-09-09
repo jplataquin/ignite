@@ -10,6 +10,7 @@ use App\Models\Division;
 use App\Models\TicketPriority;
 use App\Models\TicketStatus;
 use App\Models\TicketType;
+use App\Models\Priority;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -23,7 +24,7 @@ class TicketController extends Controller
      */
     public function index()
     {
-        $tickets = Ticket::with(['ticketType', 'priority', 'status', 'creator', 'assignee'])->latest()->paginate(10);
+        $tickets = Ticket::with(['ticketType', 'priority', 'priorityOption', 'status', 'creator', 'assignee'])->latest()->paginate(10);
         return view('tickets.index', compact('tickets'));
     }
 
@@ -45,14 +46,15 @@ class TicketController extends Controller
                 ->values();
         }
         
-        $priorities = TicketPriority::orderBy('level')->get();
+        $severities = TicketPriority::orderBy('level')->get();
+        $priorities = Priority::orderBy('level')->get();
         $statuses = TicketStatus::all();
         $divisions = Division::all();
         $departments = Department::all();
         $categories = Category::all();
 
         return view('tickets.create', compact(
-            'ticketTypes', 'priorities', 'statuses', 'divisions', 'departments', 'categories'
+            'ticketTypes', 'severities', 'priorities', 'statuses', 'divisions', 'departments', 'categories'
         ));
     }
 
@@ -84,7 +86,8 @@ class TicketController extends Controller
                 }
             ],
             'priority_id' => 'required|exists:ticket_priorities,id',
-            'status_id' => 'required|exists:ticket_statuses,id',
+            'priority_option_id' => 'required|exists:priorities,id',
+            'status_id' => 'nullable|exists:ticket_statuses,id',
             'division_id' => 'required|exists:divisions,id',
             'department_id' => 'required|exists:departments,id',
             'category_1_id' => 'required|exists:categories,id',
@@ -100,13 +103,25 @@ class TicketController extends Controller
             $nextId = $latest ? $latest->id + 1 : 1;
             $ticketNumber = 'FLR-' . Carbon::now()->format('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
 
+            // Default to Open status if status_id is not specified
+            $statusId = $validated['status_id'] ?? null;
+            if (!$statusId) {
+                $openStatus = TicketStatus::where('slug', 'open')->first();
+                $statusId = $openStatus ? $openStatus->id : null;
+            }
+
+            if (!$statusId) {
+                throw new \Exception('Default Open status not found in database.');
+            }
+
             $ticket = Ticket::create([
                 'ticket_number' => $ticketNumber,
                 'title' => $validated['title'],
                 'description' => $validated['description'] ?? null,
                 'ticket_type_id' => $validated['ticket_type_id'],
                 'priority_id' => $validated['priority_id'],
-                'status_id' => $validated['status_id'],
+                'priority_option_id' => $validated['priority_option_id'],
+                'status_id' => $statusId,
                 'division_id' => $validated['division_id'],
                 'department_id' => $validated['department_id'],
                 'created_by' => Auth::id() ?? 1, // Fallback to 1 for tests/system

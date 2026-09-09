@@ -38,7 +38,7 @@ class ProcessLapsedTickets extends Command
             return Command::FAILURE;
         }
 
-        $closedStatuses = TicketStatus::whereIn('slug', ['closed', 'archived', 'resolved'])->pluck('id')->toArray();
+        $closedStatuses = TicketStatus::whereIn('slug', ['closed', 'canceled'])->pluck('id')->toArray();
 
         // Process in chunks to handle large datasets efficiently
         Ticket::whereNotIn('status_id', $closedStatuses)

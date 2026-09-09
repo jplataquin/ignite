@@ -13,7 +13,7 @@ class DashboardController extends Controller
     public function index()
     {
         $openTicketsCount = Ticket::whereHas('status', function ($query) {
-            $query->whereIn('slug', ['open', 'in-progress']);
+            $query->whereIn('slug', ['open', 'accepted', 'review']);
         })->count();
 
         $unassignedTicketsCount = Ticket::whereNull('assigned_to')->count();
@@ -24,7 +24,7 @@ class DashboardController extends Controller
         })->count();
 
         $slaLapsedCount = Ticket::whereHas('status', function ($query) {
-            $query->whereNotIn('slug', ['resolved', 'closed', 'resolved', 'closed']);
+            $query->whereNotIn('slug', ['closed', 'canceled']);
         })->where('deadline_date', '<', now())->count();
 
         return view('dashboard', compact(

@@ -35,19 +35,34 @@
                 <!-- Status Badge -->
                 @if(($ticket->status->slug ?? '') === 'open')
                     <span class="badge badge-open rounded-pill px-3 py-1.5 fw-semibold">Open</span>
-                @elseif(($ticket->status->slug ?? '') === 'in-progress')
-                    <span class="badge badge-progress rounded-pill px-3 py-1.5 fw-semibold">In Progress</span>
-                @elseif(($ticket->status->slug ?? '') === 'resolved')
-                    <span class="badge badge-resolved rounded-pill px-3 py-1.5 fw-semibold">Resolved</span>
+                @elseif(($ticket->status->slug ?? '') === 'accepted')
+                    <span class="badge badge-accepted rounded-pill px-3 py-1.5 fw-semibold">Accepted</span>
+                @elseif(($ticket->status->slug ?? '') === 'review')
+                    <span class="badge badge-review rounded-pill px-3 py-1.5 fw-semibold">Review</span>
+                @elseif(($ticket->status->slug ?? '') === 'closed')
+                    <span class="badge badge-closed rounded-pill px-3 py-1.5 fw-semibold">Closed</span>
+                @elseif(($ticket->status->slug ?? '') === 'canceled')
+                    <span class="badge badge-canceled rounded-pill px-3 py-1.5 fw-semibold">Canceled</span>
                 @else
-                    <span class="badge badge-lapsed rounded-pill px-3 py-1.5 fw-semibold">Closed</span>
+                    <span class="badge rounded-pill px-3 py-1.5 fw-semibold text-white" style="background-color: {{ $ticket->status->color_code ?? '#6b7280' }};">
+                        {{ $ticket->status->name ?? 'Unknown' }}
+                    </span>
                 @endif
 
                 <!-- Severity Badge -->
                 @if(($ticket->priority->level ?? 0) >= 2)
-                    <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">Major</span>
+                    <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">Severity: Major</span>
                 @else
-                    <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Minor</span>
+                    <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Severity: Minor</span>
+                @endif
+
+                <!-- Priority Badge -->
+                @if(($ticket->priorityOption->name ?? '') === 'Critical')
+                    <span class="badge badge-critical rounded-pill px-3 py-1.5 fw-semibold">Priority: Critical</span>
+                @elseif(($ticket->priorityOption->name ?? '') === 'High')
+                    <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">Priority: High</span>
+                @else
+                    <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Priority: Low</span>
                 @endif
             </div>
 
@@ -59,6 +74,14 @@
 
             <h6 class="fw-bold text-dark mb-3">Incident Properties</h6>
             <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">
+                <div>
+                    <span class="text-muted small d-block">Severity</span>
+                    <span class="fw-semibold text-dark">{{ $ticket->priority->name ?? 'N/A' }}</span>
+                </div>
+                <div>
+                    <span class="text-muted small d-block">Priority</span>
+                    <span class="fw-semibold text-dark">{{ $ticket->priorityOption->name ?? 'N/A' }}</span>
+                </div>
                 <div>
                     <span class="text-muted small d-block">Division</span>
                     <span class="fw-semibold text-dark">{{ $ticket->division->name ?? 'N/A' }}</span>

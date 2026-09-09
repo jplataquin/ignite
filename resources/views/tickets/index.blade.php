@@ -33,6 +33,7 @@
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small">Ticket Number</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Title</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Severity</th>
+                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Priority</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Status</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Assignee</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Created By</th>
@@ -51,13 +52,20 @@
                             <div class="fw-bold text-dark">{{ $ticket->title }}</div>
                             <span class="text-muted small">{{ $ticket->ticketType->name ?? 'N/A' }}</span>
                         </td>
+                        <!-- Severity Badge -->
                         <td class="py-3">
-                            @if(($ticket->priority->level ?? 0) >= 4)
+                            @if(($ticket->priority->level ?? 0) >= 2)
+                                <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">Major</span>
+                            @else
+                                <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Minor</span>
+                            @endif
+                        </td>
+                        <!-- Priority Badge -->
+                        <td class="py-3">
+                            @if(($ticket->priorityOption->name ?? '') === 'Critical')
                                 <span class="badge badge-critical rounded-pill px-3 py-1.5 fw-semibold">Critical</span>
-                            @elseif(($ticket->priority->level ?? 0) === 3)
+                            @elseif(($ticket->priorityOption->name ?? '') === 'High')
                                 <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">High</span>
-                            @elseif(($ticket->priority->level ?? 0) === 2)
-                                <span class="badge bg-primary rounded-pill px-3 py-1.5 fw-semibold text-white">Medium</span>
                             @else
                                 <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Low</span>
                             @endif
@@ -65,12 +73,18 @@
                         <td class="py-3">
                             @if(($ticket->status->slug ?? '') === 'open')
                                 <span class="badge badge-open rounded-pill px-3 py-1.5 fw-semibold">Open</span>
-                            @elseif(($ticket->status->slug ?? '') === 'in-progress')
-                                <span class="badge badge-progress rounded-pill px-3 py-1.5 fw-semibold">In Progress</span>
-                            @elseif(($ticket->status->slug ?? '') === 'resolved')
-                                <span class="badge badge-resolved rounded-pill px-3 py-1.5 fw-semibold">Resolved</span>
+                            @elseif(($ticket->status->slug ?? '') === 'accepted')
+                                <span class="badge badge-accepted rounded-pill px-3 py-1.5 fw-semibold">Accepted</span>
+                            @elseif(($ticket->status->slug ?? '') === 'review')
+                                <span class="badge badge-review rounded-pill px-3 py-1.5 fw-semibold">Review</span>
+                            @elseif(($ticket->status->slug ?? '') === 'closed')
+                                <span class="badge badge-closed rounded-pill px-3 py-1.5 fw-semibold">Closed</span>
+                            @elseif(($ticket->status->slug ?? '') === 'canceled')
+                                <span class="badge badge-canceled rounded-pill px-3 py-1.5 fw-semibold">Canceled</span>
                             @else
-                                <span class="badge badge-lapsed rounded-pill px-3 py-1.5 fw-semibold">Closed</span>
+                                <span class="badge rounded-pill px-3 py-1.5 fw-semibold text-white" style="background-color: {{ $ticket->status->color_code ?? '#6b7280' }};">
+                                    {{ $ticket->status->name ?? 'Unknown' }}
+                                </span>
                             @endif
                         </td>
                         <td class="py-3 text-muted">

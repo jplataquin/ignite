@@ -9,6 +9,7 @@ use App\Models\Ticket;
 use App\Models\TicketPriority;
 use App\Models\TicketStatus;
 use App\Models\TicketType;
+use App\Models\Priority;
 use App\Models\User;
 use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -72,6 +73,7 @@ class TicketManagementTest extends TestCase
         // Seed lookups
         $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priority = TicketPriority::create(['name' => 'Minor', 'level' => 1]);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $role->ticketTypes()->attach($type->id);
 
@@ -84,6 +86,7 @@ class TicketManagementTest extends TestCase
             'description' => 'These are my detailed findings regarding this incident.',
             'ticket_type_id' => $type->id,
             'priority_id' => $priority->id,
+            'priority_option_id' => $priorityOption->id,
             'status_id' => $status->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
@@ -95,6 +98,46 @@ class TicketManagementTest extends TestCase
         $this->assertNotNull($ticket);
         $this->assertEquals('New Ticket Title', $ticket->title);
         $this->assertEquals('These are my detailed findings regarding this incident.', $ticket->description);
+        $this->assertEquals($priorityOption->id, $ticket->priority_option_id);
+        $response->assertRedirect(route('tickets.show', $ticket));
+    }
+
+    /**
+     * Test that creating a ticket without providing a status defaults to 'Open'.
+     */
+    public function test_creating_a_ticket_without_status_defaults_to_open(): void
+    {
+        $user = User::factory()->create();
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $user->roles()->attach($role->id);
+
+        // Seed lookups
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priority = TicketPriority::create(['name' => 'Minor', 'level' => 1]);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $role->ticketTypes()->attach($type->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $response = $this->actingAs($user)->post('/tickets', [
+            'title' => 'New Ticket Default Status',
+            'description' => 'This is a ticket created without explicitly specifying status.',
+            'ticket_type_id' => $type->id,
+            'priority_id' => $priority->id,
+            'priority_option_id' => $priorityOption->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'category_1_id' => $category->id,
+            // status_id is omitted
+        ]);
+
+        $ticket = Ticket::where('title', 'New Ticket Default Status')->first();
+
+        $this->assertNotNull($ticket);
+        $this->assertEquals($status->id, $ticket->status_id);
         $response->assertRedirect(route('tickets.show', $ticket));
     }
 
@@ -108,6 +151,7 @@ class TicketManagementTest extends TestCase
         // Seed lookups
         $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priority = TicketPriority::create(['name' => 'Minor', 'level' => 1]);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
@@ -118,6 +162,7 @@ class TicketManagementTest extends TestCase
             'title' => 'Ticket Under Inspection',
             'ticket_type_id' => $type->id,
             'priority_id' => $priority->id,
+            'priority_option_id' => $priorityOption->id,
             'status_id' => $status->id,
             'division_id' => $division->id,
             'department_id' => $department->id,

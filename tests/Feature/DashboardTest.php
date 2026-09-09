@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\Division;
 use App\Models\Ticket;
 use App\Models\TicketPriority;
+use App\Models\Priority;
 use App\Models\TicketStatus;
 use App\Models\TicketType;
 use App\Models\User;
@@ -30,6 +31,7 @@ class DashboardTest extends TestCase
         
         $priorityMinor = TicketPriority::create(['name' => 'Minor', 'level' => 1]);
         $priorityMajor = TicketPriority::create(['name' => 'Major', 'level' => 2]);
+        $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
 
         $type = TicketType::create(['name' => 'Incident']);
         $division = Division::create(['name' => 'IT']);
@@ -42,6 +44,7 @@ class DashboardTest extends TestCase
             'title' => 'Open Unassigned Critical Ticket',
             'ticket_type_id' => $type->id,
             'priority_id' => $priorityMajor->id,
+            'priority_option_id' => $priorityLow->id,
             'status_id' => $statusOpen->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
@@ -55,6 +58,7 @@ class DashboardTest extends TestCase
             'title' => 'Open Unassigned Low Ticket',
             'ticket_type_id' => $type->id,
             'priority_id' => $priorityMinor->id,
+            'priority_option_id' => $priorityLow->id,
             'status_id' => $statusOpen->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
@@ -69,6 +73,7 @@ class DashboardTest extends TestCase
             'title' => 'Closed Ticket',
             'ticket_type_id' => $type->id,
             'priority_id' => $priorityMinor->id,
+            'priority_option_id' => $priorityLow->id,
             'status_id' => $statusClosed->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
@@ -84,6 +89,7 @@ class DashboardTest extends TestCase
             'title' => 'Lapsed SLA Ticket',
             'ticket_type_id' => $type->id,
             'priority_id' => $priorityMinor->id,
+            'priority_option_id' => $priorityLow->id,
             'status_id' => $statusOpen->id,
             'division_id' => $division->id,
             'department_id' => $department->id,

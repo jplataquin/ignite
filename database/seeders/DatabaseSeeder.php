@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Department;
 use App\Models\Division;
 use App\Models\TicketPriority;
+use App\Models\Priority;
 use App\Models\TicketStatus;
 use App\Models\TicketType;
 use App\Models\User;
@@ -44,9 +45,10 @@ class DatabaseSeeder extends Seeder
         // 3. Seed Ticket Statuses
         $statuses = [
             ['name' => 'Open', 'slug' => 'open', 'color_code' => '#F59E0B'],
-            ['name' => 'In Progress', 'slug' => 'in-progress', 'color_code' => '#0284C7'],
-            ['name' => 'Resolved', 'slug' => 'resolved', 'color_code' => '#10B981'],
+            ['name' => 'Accepted', 'slug' => 'accepted', 'color_code' => '#0284C7'],
+            ['name' => 'Review', 'slug' => 'review', 'color_code' => '#8B5CF6'],
             ['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#6B7280'],
+            ['name' => 'Canceled', 'slug' => 'canceled', 'color_code' => '#EF4444'],
         ];
         foreach ($statuses as $status) {
             TicketStatus::updateOrCreate(['slug' => $status['slug']], $status);
@@ -59,6 +61,16 @@ class DatabaseSeeder extends Seeder
         ];
         foreach ($priorities as $priority) {
             TicketPriority::updateOrCreate(['name' => $priority['name']], $priority);
+        }
+
+        // Seed Priority Options (Low, High, Critical)
+        $priorityOptions = [
+            ['name' => 'Low', 'level' => 1],
+            ['name' => 'High', 'level' => 2],
+            ['name' => 'Critical', 'level' => 3],
+        ];
+        foreach ($priorityOptions as $option) {
+            Priority::updateOrCreate(['name' => $option['name']], $option);
         }
 
         // 5. Seed Ticket Types

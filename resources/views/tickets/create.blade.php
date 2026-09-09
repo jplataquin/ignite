@@ -66,8 +66,8 @@
                         <label for="priority_id" class="form-label fw-semibold text-dark small">Severity</label>
                         <select id="priority_id" class="form-select @error('priority_id') is-invalid @enderror" name="priority_id" required>
                             <option value="">Select Severity</option>
-                            @foreach($priorities as $priority)
-                                <option value="{{ $priority->id }}" {{ old('priority_id') == $priority->id ? 'selected' : '' }}>{{ $priority->name }}</option>
+                            @foreach($severities as $severity)
+                                <option value="{{ $severity->id }}" {{ old('priority_id') == $severity->id ? 'selected' : '' }}>{{ $severity->name }}</option>
                             @endforeach
                         </select>
                         @error('priority_id')
@@ -79,13 +79,28 @@
                 </div>
 
                 <div class="row row-cols-1 row-cols-md-2 g-3 mb-3">
+                    <!-- Priority -->
+                    <div>
+                        <label for="priority_option_id" class="form-label fw-semibold text-dark small">Priority</label>
+                        <select id="priority_option_id" class="form-select @error('priority_option_id') is-invalid @enderror" name="priority_option_id" required>
+                            <option value="">Select Priority</option>
+                            @foreach($priorities as $priority)
+                                <option value="{{ $priority->id }}" {{ old('priority_option_id') == $priority->id ? 'selected' : '' }}>{{ $priority->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('priority_option_id')
+                            <span class="invalid-feedback" role="alert">
+                                <strong>{{ $message }}</strong>
+                            </span>
+                        @enderror
+                    </div>
+
                     <!-- Status -->
                     <div>
                         <label for="status_id" class="form-label fw-semibold text-dark small">Status</label>
                         <select id="status_id" class="form-select @error('status_id') is-invalid @enderror" name="status_id" required>
-                            <option value="">Select Status</option>
                             @foreach($statuses as $status)
-                                <option value="{{ $status->id }}" {{ old('status_id') == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+                                <option value="{{ $status->id }}" {{ (old('status_id') ? old('status_id') == $status->id : $status->slug === 'open') ? 'selected' : '' }}>{{ $status->name }}</option>
                             @endforeach
                         </select>
                         @error('status_id')
