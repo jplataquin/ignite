@@ -46,10 +46,21 @@
                 </div>
 
                 <!-- SLA Threshold Days -->
-                <div class="mb-4">
+                <div class="mb-3">
                     <label for="threshold_days" class="form-label fw-semibold text-dark small">SLA Resolution Threshold (Days)</label>
                     <input id="threshold_days" type="number" class="form-control @error('threshold_days') is-invalid @enderror" name="threshold_days" value="{{ old('threshold_days', $ticketType->threshold_days) }}" min="1" placeholder="e.g. 3 (Leave empty for no SLA threshold)">
                     @error('threshold_days')
+                        <span class="invalid-feedback" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
+                <!-- Assignment SLA Threshold Days -->
+                <div class="mb-4">
+                    <label for="assignment_threshold_days" class="form-label fw-semibold text-dark small">SLA Assignment Threshold (Days)</label>
+                    <input id="assignment_threshold_days" type="number" class="form-control @error('assignment_threshold_days') is-invalid @enderror" name="assignment_threshold_days" value="{{ old('assignment_threshold_days', $ticketType->assignment_threshold_days) }}" min="1" placeholder="e.g. 2 (Leave empty for no assignment threshold)">
+                    @error('assignment_threshold_days')
                         <span class="invalid-feedback" role="alert">
                             <strong>{{ $message }}</strong>
                         </span>

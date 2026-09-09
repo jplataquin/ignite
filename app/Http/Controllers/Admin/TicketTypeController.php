@@ -34,6 +34,7 @@ class TicketTypeController extends Controller
             'name' => 'required|string|max:255|unique:ticket_types,name',
             'description' => 'nullable|string',
             'threshold_days' => 'nullable|integer|min:1',
+            'assignment_threshold_days' => 'nullable|integer|min:1',
         ]);
 
         TicketType::create($validated);
@@ -59,6 +60,7 @@ class TicketTypeController extends Controller
             'name' => 'required|string|max:255|unique:ticket_types,name,' . $ticketType->id,
             'description' => 'nullable|string',
             'threshold_days' => 'nullable|integer|min:1',
+            'assignment_threshold_days' => 'nullable|integer|min:1',
         ]);
 
         $ticketType->update($validated);

@@ -15,6 +15,7 @@ class TicketType extends Model
         'name',
         'description',
         'threshold_days',
+        'assignment_threshold_days',
     ];
 
     /**
