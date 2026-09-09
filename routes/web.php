@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\TicketStatusController;
 use App\Http\Controllers\Admin\TicketPriorityController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\ChunkUploadController;
 use Illuminate\Support\Facades\Route;
 
 // Guest Routes
@@ -33,6 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
     Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
+    Route::post('/tickets/upload-chunk', [ChunkUploadController::class, 'upload'])->name('tickets.upload-chunk');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
     Route::get('/api/categories', [TicketController::class, 'getCategories'])->name('api.categories');
 
