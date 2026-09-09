@@ -93,13 +93,31 @@ class TicketController extends Controller
             'category_1_id' => 'required|exists:categories,id',
             'category_2_id' => 'nullable|exists:categories,id',
             'category_3_id' => 'nullable|exists:categories,id',
-            'temp_token' => 'nullable|string',
-            'total_chunks' => 'nullable|integer',
-            'file_name' => 'nullable|string',
-            'mime_type' => 'nullable|string',
+            'attachments_json' => 'nullable|string',
         ]);
 
-        return DB::transaction(function () use ($validated) {
+        $attachments = [];
+        if ($request->filled('attachments_json')) {
+            $attachments = json_decode($request->input('attachments_json'), true);
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($attachments)) {
+                return redirect()->back()->with('error', 'Invalid attachments data.')->withInput();
+            }
+
+            // Validate Extensions (photos, pdf, excel, documents)
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+            foreach ($attachments as $attachment) {
+                if (empty($attachment['temp_token']) || empty($attachment['total_chunks']) || empty($attachment['file_name'])) {
+                    return redirect()->back()->with('error', 'Incomplete attachment details.')->withInput();
+                }
+
+                $extension = strtolower(pathinfo($attachment['file_name'], PATHINFO_EXTENSION));
+                if (!in_array($extension, $allowedExtensions)) {
+                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are photos, pdf, excel, and documents.") ->withInput();
+                }
+            }
+        }
+
+        return DB::transaction(function () use ($validated, $attachments) {
             // Generate ticket number with lock
             $latest = Ticket::lockForUpdate()->latest('id')->first();
             $nextId = $latest ? $latest->id + 1 : 1;
@@ -132,13 +150,13 @@ class TicketController extends Controller
                 'category_3_id' => $validated['category_3_id'] ?? null,
             ]);
 
-            // Merge File Chunks
-            if (!empty($validated['temp_token']) && !empty($validated['total_chunks'])) {
-                $tempToken = $validated['temp_token'];
-                $totalChunks = (int)$validated['total_chunks'];
+            // Merge File Chunks for each attachment
+            foreach ($attachments as $attachment) {
+                $tempToken = $attachment['temp_token'];
+                $totalChunks = (int)$attachment['total_chunks'];
                 $stagingDir = 'staging/' . $tempToken;
                 
-                $finalFileName = $validated['file_name'] ?? 'attachment_' . time();
+                $finalFileName = $attachment['file_name'];
                 $finalPath = 'attachments/' . $ticket->id . '/' . $finalFileName;
                 
                 Storage::makeDirectory('attachments/' . $ticket->id);
@@ -162,7 +180,7 @@ class TicketController extends Controller
                     'file_name' => $finalFileName,
                     'file_path' => $finalPath,
                     'file_size' => Storage::size($finalPath),
-                    'mime_type' => $validated['mime_type'] ?? 'application/octet-stream',
+                    'mime_type' => $attachment['mime_type'] ?? 'application/octet-stream',
                     'uploaded_by' => Auth::id() ?? 1,
                 ]);
             }

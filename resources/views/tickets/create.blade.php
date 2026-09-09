@@ -46,34 +46,24 @@
 
                 <!-- File Drop Zone -->
                 <div class="mb-4">
-                    <label class="form-label fw-semibold text-dark small">Attachments</label>
+                    <label class="form-label fw-semibold text-dark small">Attachments (Photos, PDF, Excel, Documents)</label>
                     <div id="drop-zone" class="border border-2 border-dashed rounded p-4 text-center bg-light" style="border-style: dashed !important; transition: background-color 0.2s, border-color 0.2s; cursor: pointer;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" class="bi bi-cloud-upload text-secondary mb-2" viewBox="0 0 16 16">
                             <path fill-rule="evenodd" d="M4.406 1.342A5.53 5.53 0 0 1 8 0c2.69 0 4.923 2 5.166 4.579C14.758 4.804 16 6.137 16 7.773 16 9.562 14.384 11 12.362 11H4.378C2.261 11 0 9.286 0 7.117c0-2.117 2.134-3.51 4.406-3.51a.54.54 0 0 1 .494.314l.056.109.057-.109a2.524 2.524 0 0 1 2.215-1.378c.84 0 1.572.41 1.996 1.053a.5.5 0 0 1-.84.54C7.79 3.593 7.218 3.25 6.64 3.25a1.524 1.524 0 0 0-1.314.806.5.5 0 0 1-.868-.04 3.411 3.411 0 0 0-3.14 2.457.5.5 0 0 1-.368.354A2.5 2.5 0 0 0 1 7.117c0 1.536 1.547 2.383 3.378 2.383h7.984c1.482 0 2.638-.973 2.638-2.227 0-1.254-1.156-2.227-2.638-2.227a.5.5 0 0 1-.482-.364 3.52 3.52 0 0 0-3.416-2.509.5.5 0 0 1-.487-.354A4.5 4.5 0 0 0 8 1a4.5 4.5 0 0 0-4.084 2.766.5.5 0 0 1-.908-.424l.053-.112z"/>
                             <path fill-rule="evenodd" d="M7.646 5.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708l2-2z"/>
                         </svg>
-                        <p class="mb-1 fw-semibold text-dark small">Drag & drop a file here, or click to browse</p>
-                        <p class="text-muted mb-0" style="font-size: 0.75rem;">Supports robust, resumable chunked upload</p>
-                        <input type="file" id="file-input" class="d-none">
+                        <p class="mb-1 fw-semibold text-dark small">Drag & drop files here, or click to browse</p>
+                        <p class="text-muted mb-0" style="font-size: 0.75rem;">Allowed formats: .jpg, .png, .gif, .pdf, .xls, .xlsx, .doc, .docx, .txt, .csv</p>
+                        <input type="file" id="file-input" class="d-none" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.xls,.xlsx,.csv,.doc,.docx,.odt,.txt,.rtf">
                     </div>
 
-                    <!-- Upload Progress -->
-                    <div id="upload-progress-container" class="mt-3 d-none">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span id="upload-filename" class="text-dark small fw-semibold text-truncate" style="max-width: 250px;">file_name.pdf</span>
-                            <span id="upload-percentage" class="text-muted small fw-semibold">0%</span>
-                        </div>
-                        <div class="progress" style="height: 6px;">
-                            <div id="upload-progress-bar" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-                        </div>
-                        <div id="upload-status-text" class="text-muted mt-1" style="font-size: 0.75rem;">Uploading...</div>
+                    <!-- Dynamic List of Upload Progresses -->
+                    <div id="upload-progress-list" class="mt-3">
+                        <!-- Progress rows will be appended here dynamically -->
                     </div>
 
-                    <!-- Hidden Fields for Attachment Merging -->
-                    <input type="hidden" name="temp_token" id="temp_token">
-                    <input type="hidden" name="total_chunks" id="total_chunks">
-                    <input type="hidden" name="file_name" id="file_name">
-                    <input type="hidden" name="mime_type" id="mime_type">
+                    <!-- Hidden Field for All Completed Attachments -->
+                    <input type="hidden" name="attachments_json" id="attachments_json">
                 </div>
 
                 <div class="row row-cols-1 row-cols-md-2 g-3 mb-3">
@@ -311,17 +301,18 @@
                 });
         }
 
-        // --- CHUNKED FILE UPLOADER LOGIC ---
+        // --- CHUNKED MULTI-FILE UPLOADER LOGIC ---
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
-        const progressContainer = document.getElementById('upload-progress-container');
-        const filenameLabel = document.getElementById('upload-filename');
-        const percentageLabel = document.getElementById('upload-percentage');
-        const progressBar = document.getElementById('upload-progress-bar');
-        const statusText = document.getElementById('upload-status-text');
+        const progressList = document.getElementById('upload-progress-list');
+        const attachmentsJsonInput = document.getElementById('attachments_json');
         const submitBtn = document.querySelector('button[type="submit"]');
 
         const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
+        const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+
+        let completedAttachments = [];
+        let activeUploadsCount = 0;
 
         // Handle Click to Browse
         dropZone.addEventListener('click', () => fileInput.click());
@@ -340,27 +331,51 @@
             e.preventDefault();
             dropZone.classList.remove('bg-dark', 'text-white', 'opacity-75');
             if (e.dataTransfer.files.length > 0) {
-                handleFile(e.dataTransfer.files[0]);
+                handleFiles(e.dataTransfer.files);
             }
         });
 
         fileInput.addEventListener('change', function () {
             if (this.files.length > 0) {
-                handleFile(this.files[0]);
+                handleFiles(this.files);
             }
         });
 
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                const extension = file.name.split('.').pop().toLowerCase();
+                if (!ALLOWED_EXTENSIONS.includes(extension)) {
+                    alert(`File "${file.name}" is not allowed. Allowed types are photos, pdf, excel, and documents.`);
+                    return;
+                }
+                handleFile(file);
+            });
+        }
+
         function handleFile(file) {
-            progressContainer.classList.remove('d-none');
-            filenameLabel.textContent = file.name;
-            percentageLabel.textContent = '0%';
-            progressBar.style.width = '0%';
-            statusText.textContent = 'Preparing upload...';
+            const identifier = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            // Increment active uploads and disable submit button
+            activeUploadsCount++;
             submitBtn.disabled = true;
 
-            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-            const identifier = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            // Append progress row to progress list
+            const progressRowId = `progress-row-${identifier}`;
+            const rowHTML = `
+                <div id="${progressRowId}" class="p-3 mb-2 bg-white rounded border shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-dark small fw-semibold text-truncate" style="max-width: 250px;">${escapeHtml(file.name)}</span>
+                        <span id="percentage-${identifier}" class="text-muted small fw-semibold">0%</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div id="bar-${identifier}" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div id="status-${identifier}" class="text-muted mt-1" style="font-size: 0.75rem;">Preparing upload...</div>
+                </div>
+            `;
+            progressList.insertAdjacentHTML('beforeend', rowHTML);
 
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
             uploadNextChunk(file, identifier, 1, totalChunks);
         }
 
@@ -376,7 +391,13 @@
             formData.append('resumableChunkNumber', chunkNumber);
             formData.append('resumableTotalChunks', totalChunks);
 
-            statusText.textContent = `Uploading chunk ${chunkNumber} of ${totalChunks}...`;
+            const statusText = document.getElementById(`status-${identifier}`);
+            const progressBar = document.getElementById(`bar-${identifier}`);
+            const percentageLabel = document.getElementById(`percentage-${identifier}`);
+
+            if (statusText) {
+                statusText.textContent = `Uploading chunk ${chunkNumber} of ${totalChunks}...`;
+            }
 
             fetch('/tickets/upload-chunk', {
                 method: 'POST',
@@ -393,27 +414,46 @@
             })
             .then(data => {
                 const percentComplete = Math.round((chunkNumber / totalChunks) * 100);
-                progressBar.style.width = percentComplete + '%';
-                percentageLabel.textContent = percentComplete + '%';
+                if (progressBar) progressBar.style.width = percentComplete + '%';
+                if (percentageLabel) percentageLabel.textContent = percentComplete + '%';
 
                 if (chunkNumber < totalChunks) {
                     uploadNextChunk(file, identifier, chunkNumber + 1, totalChunks);
                 } else {
                     // Upload Completed
-                    statusText.innerHTML = '<span class="text-success fw-bold">✓ Upload Complete</span>';
-                    submitBtn.disabled = false;
+                    if (statusText) {
+                        statusText.innerHTML = '<span class="text-success fw-bold">✓ Upload Complete</span>';
+                    }
+                    
+                    // Save to completedAttachments array
+                    completedAttachments.push({
+                        temp_token: identifier,
+                        total_chunks: totalChunks,
+                        file_name: file.name,
+                        mime_type: file.type || 'application/octet-stream'
+                    });
 
-                    // Populate Hidden Inputs
-                    document.getElementById('temp_token').value = identifier;
-                    document.getElementById('total_chunks').value = totalChunks;
-                    document.getElementById('file_name').value = file.name;
-                    document.getElementById('mime_type').value = file.type || 'application/octet-stream';
+                    // Update Hidden Input with Serialized JSON
+                    attachmentsJsonInput.value = JSON.stringify(completedAttachments);
+
+                    // Decrement active uploads and check if we can re-enable the submit button
+                    activeUploadsCount--;
+                    if (activeUploadsCount === 0) {
+                        submitBtn.disabled = false;
+                    }
                 }
             })
             .catch(error => {
                 console.error(error);
-                statusText.innerHTML = '<span class="text-danger fw-bold">✗ Upload Failed. Please try again.</span>';
-                submitBtn.disabled = false;
+                if (statusText) {
+                    statusText.innerHTML = '<span class="text-danger fw-bold">✗ Upload Failed. Please try again.</span>';
+                }
+                
+                // Decrement active uploads and check if we can re-enable the submit button
+                activeUploadsCount--;
+                if (activeUploadsCount === 0) {
+                    submitBtn.disabled = false;
+                }
             });
         }
     });

@@ -207,4 +207,76 @@ class TicketManagementTest extends TestCase
             ->assertJsonCount(1)
             ->assertJsonFragment(['id' => $cat2->id, 'name' => 'Laptops']);
     }
+
+    /**
+     * Test that users can create tickets with multiple file attachments.
+     */
+    public function test_users_can_create_ticket_with_multiple_attachments(): void
+    {
+        $user = User::factory()->create();
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $user->roles()->attach($role->id);
+        
+        // Seed lookups
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priority = TicketPriority::create(['name' => 'Minor', 'level' => 1]);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $role->ticketTypes()->attach($type->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Stage mock chunks in storage
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $token1 = 'token_abc123';
+        $token2 = 'token_xyz789';
+        
+        \Illuminate\Support\Facades\Storage::put("staging/{$token1}/1.part", "part1");
+        \Illuminate\Support\Facades\Storage::put("staging/{$token2}/1.part", "part2");
+
+        $attachmentsJson = json_encode([
+            [
+                'temp_token' => $token1,
+                'total_chunks' => 1,
+                'file_name' => 'report.pdf',
+                'mime_type' => 'application/pdf'
+            ],
+            [
+                'temp_token' => $token2,
+                'total_chunks' => 1,
+                'file_name' => 'photo.jpg',
+                'mime_type' => 'image/jpeg'
+            ]
+        ]);
+
+        $response = $this->actingAs($user)->post('/tickets', [
+            'title' => 'Ticket with multiple files',
+            'description' => 'See files attached.',
+            'ticket_type_id' => $type->id,
+            'priority_id' => $priority->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'category_1_id' => $category->id,
+            'attachments_json' => $attachmentsJson
+        ]);
+
+        $ticket = Ticket::where('title', 'Ticket with multiple files')->first();
+        $this->assertNotNull($ticket);
+
+        $response->assertRedirect(route('tickets.show', $ticket));
+
+        // Assert attachments were created
+        $this->assertDatabaseHas('attachments', [
+            'ticket_id' => $ticket->id,
+            'file_name' => 'report.pdf'
+        ]);
+        $this->assertDatabaseHas('attachments', [
+            'ticket_id' => $ticket->id,
+            'file_name' => 'photo.jpg'
+        ]);
+    }
 }
