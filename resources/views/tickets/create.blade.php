@@ -362,18 +362,50 @@
             // Append progress row to progress list
             const progressRowId = `progress-row-${identifier}`;
             const rowHTML = `
-                <div id="${progressRowId}" class="p-3 mb-2 bg-white rounded border shadow-sm">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="text-dark small fw-semibold text-truncate" style="max-width: 250px;">${escapeHtml(file.name)}</span>
-                        <span id="percentage-${identifier}" class="text-muted small fw-semibold">0%</span>
+                <div id="${progressRowId}" class="p-3 mb-2 bg-white rounded border shadow-sm d-flex gap-3 align-items-center">
+                    <!-- Icon / Thumbnail Container -->
+                    <div id="preview-${identifier}" class="flex-shrink-0 border rounded bg-light d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; overflow: hidden;">
+                        <!-- Populate via JS -->
                     </div>
-                    <div class="progress" style="height: 6px;">
-                        <div id="bar-${identifier}" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+
+                    <!-- Progress Info -->
+                    <div class="flex-grow-1 min-width-0">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-dark small fw-semibold text-truncate" style="max-width: 250px;">${escapeHtml(file.name)}</span>
+                            <span id="percentage-${identifier}" class="text-muted small fw-semibold">0%</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div id="bar-${identifier}" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div id="status-${identifier}" class="text-muted mt-1" style="font-size: 0.75rem;">Preparing upload...</div>
                     </div>
-                    <div id="status-${identifier}" class="text-muted mt-1" style="font-size: 0.75rem;">Preparing upload...</div>
+
+                    <!-- Delete Button -->
+                    <div class="flex-shrink-0 ms-2">
+                        <button type="button" id="delete-${identifier}" class="btn btn-sm btn-outline-danger d-none d-flex align-items-center justify-content-center p-0 rounded-circle" style="width: 32px; height: 32px;" onclick="deleteAttachment('${identifier}')" title="Delete attachment">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-1.995 0L3.83 3.5h8.34zM5 5.033V13h1V5.033zm4 0V13h1V5.033z"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             `;
             progressList.insertAdjacentHTML('beforeend', rowHTML);
+
+            // Populate preview container
+            const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(file.name.split('.').pop().toLowerCase());
+            const previewContainer = document.getElementById(`preview-${identifier}`);
+            if (isImage) {
+                const imgUrl = URL.createObjectURL(file);
+                previewContainer.innerHTML = `<img src="${imgUrl}" class="w-100 h-100" style="object-fit: cover;">`;
+            } else {
+                previewContainer.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-file-earmark-text text-secondary" viewBox="0 0 16 16">
+                        <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+                        <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
+                    </svg>
+                `;
+            }
 
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
             uploadNextChunk(file, identifier, 1, totalChunks);
@@ -424,6 +456,13 @@
                     if (statusText) {
                         statusText.innerHTML = '<span class="text-success fw-bold">✓ Upload Complete</span>';
                     }
+                    if (progressBar) {
+                        progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                    }
+                    const deleteBtn = document.getElementById(`delete-${identifier}`);
+                    if (deleteBtn) {
+                        deleteBtn.classList.remove('d-none');
+                    }
                     
                     // Save to completedAttachments array
                     completedAttachments.push({
@@ -448,6 +487,10 @@
                 if (statusText) {
                     statusText.innerHTML = '<span class="text-danger fw-bold">✗ Upload Failed. Please try again.</span>';
                 }
+                const deleteBtn = document.getElementById(`delete-${identifier}`);
+                if (deleteBtn) {
+                    deleteBtn.classList.remove('d-none');
+                }
                 
                 // Decrement active uploads and check if we can re-enable the submit button
                 activeUploadsCount--;
@@ -456,6 +499,17 @@
                 }
             });
         }
+
+        window.deleteAttachment = function(identifier) {
+            if (confirm("Are you sure you want to remove this attachment?")) {
+                const row = document.getElementById(`progress-row-${identifier}`);
+                if (row) {
+                    row.remove();
+                }
+                completedAttachments = completedAttachments.filter(item => item.temp_token !== identifier);
+                attachmentsJsonInput.value = JSON.stringify(completedAttachments);
+            }
+        };
 
         function escapeHtml(text) {
             return text
