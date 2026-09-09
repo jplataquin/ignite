@@ -83,6 +83,9 @@
                         </td>
                         <td class="px-4 py-3 text-end">
                             <div class="d-inline-flex gap-1">
+                                <a href="{{ route('admin.ticket-types.categories.index', $type) }}" class="btn btn-sm btn-outline-primary d-flex align-items-center" style="min-height: 34px;">
+                                    Categories
+                                </a>
                                 <a href="{{ route('admin.ticket-types.edit', $type) }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center" style="min-height: 34px;">
                                     Edit
                                 </a>

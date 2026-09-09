@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\TicketTypeController;
+use App\Http\Controllers\Admin\TicketTypeCategoryController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\DivisionController;
 use App\Http\Controllers\Admin\DepartmentController;
@@ -45,6 +46,8 @@ Route::middleware('auth')->group(function () {
 
         // Ticket Type Management
         Route::resource('ticket-types', TicketTypeController::class)->except(['show']);
+        Route::get('ticket-types/{ticket_type}/categories', [TicketTypeCategoryController::class, 'index'])->name('ticket-types.categories.index');
+        Route::post('ticket-types/{ticket_type}/categories', [TicketTypeCategoryController::class, 'store'])->name('ticket-types.categories.store');
 
         // Role Management
         Route::resource('roles', RoleController::class)->except(['show']);
