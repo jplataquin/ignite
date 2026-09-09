@@ -94,32 +94,42 @@
                             </span>
                         @enderror
                     </div>
+                </div>
 
-                    <!-- Status -->
+                <div class="row row-cols-1 row-cols-md-3 g-3 mb-3">
+                    <!-- Category 1 -->
                     <div>
-                        <label for="status_id" class="form-label fw-semibold text-dark small">Status</label>
-                        <select id="status_id" class="form-select @error('status_id') is-invalid @enderror" name="status_id" required>
-                            @foreach($statuses as $status)
-                                <option value="{{ $status->id }}" {{ (old('status_id') ? old('status_id') == $status->id : $status->slug === 'open') ? 'selected' : '' }}>{{ $status->name }}</option>
-                            @endforeach
+                        <label for="category_1_id" class="form-label fw-semibold text-dark small">Category 1</label>
+                        <select id="category_1_id" class="form-select @error('category_1_id') is-invalid @enderror" name="category_1_id" required disabled>
+                            <option value="">Select Category 1</option>
                         </select>
-                        @error('status_id')
+                        @error('category_1_id')
                             <span class="invalid-feedback" role="alert">
                                 <strong>{{ $message }}</strong>
                             </span>
                         @enderror
                     </div>
 
-                    <!-- Category 1 -->
+                    <!-- Category 2 -->
                     <div>
-                        <label for="category_1_id" class="form-label fw-semibold text-dark small">Primary Category</label>
-                        <select id="category_1_id" class="form-select @error('category_1_id') is-invalid @enderror" name="category_1_id" required>
-                            <option value="">Select Category</option>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->id }}" {{ old('category_1_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
-                            @endforeach
+                        <label for="category_2_id" class="form-label fw-semibold text-dark small">Category 2</label>
+                        <select id="category_2_id" class="form-select @error('category_2_id') is-invalid @enderror" name="category_2_id" disabled>
+                            <option value="">Select Category 2</option>
                         </select>
-                        @error('category_1_id')
+                        @error('category_2_id')
+                            <span class="invalid-feedback" role="alert">
+                                <strong>{{ $message }}</strong>
+                            </span>
+                        @enderror
+                    </div>
+
+                    <!-- Category 3 -->
+                    <div>
+                        <label for="category_3_id" class="form-label fw-semibold text-dark small">Category 3</label>
+                        <select id="category_3_id" class="form-select @error('category_3_id') is-invalid @enderror" name="category_3_id" disabled>
+                            <option value="">Select Category 3</option>
+                        </select>
+                        @error('category_3_id')
                             <span class="invalid-feedback" role="alert">
                                 <strong>{{ $message }}</strong>
                             </span>
@@ -170,4 +180,104 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ticketTypeSelect = document.getElementById('ticket_type_id');
+        const category1Select = document.getElementById('category_1_id');
+        const category2Select = document.getElementById('category_2_id');
+        const category3Select = document.getElementById('category_3_id');
+
+        // Initial setup/load if values exist (e.g. on validation error)
+        if (ticketTypeSelect.value) {
+            loadCategories(ticketTypeSelect.value, null, category1Select, '{{ old('category_1_id') }}').then(() => {
+                if (category1Select.value) {
+                    loadCategories(null, category1Select.value, category2Select, '{{ old('category_2_id') }}').then(() => {
+                        if (category2Select.value) {
+                            loadCategories(null, category2Select.value, category3Select, '{{ old('category_3_id') }}');
+                        }
+                    });
+                }
+            });
+        }
+
+        // On Ticket Type Change
+        ticketTypeSelect.addEventListener('change', function () {
+            const ticketTypeId = this.value;
+            resetSelect(category1Select, 'Category 1');
+            resetSelect(category2Select, 'Category 2');
+            resetSelect(category3Select, 'Category 3');
+
+            if (ticketTypeId) {
+                loadCategories(ticketTypeId, null, category1Select);
+            }
+        });
+
+        // On Category 1 Change
+        category1Select.addEventListener('change', function () {
+            const category1Id = this.value;
+            resetSelect(category2Select, 'Category 2');
+            resetSelect(category3Select, 'Category 3');
+
+            if (category1Id) {
+                loadCategories(null, category1Id, category2Select);
+            }
+        });
+
+        // On Category 2 Change
+        category2Select.addEventListener('change', function () {
+            const category2Id = this.value;
+            resetSelect(category3Select, 'Category 3');
+
+            if (category2Id) {
+                loadCategories(null, category2Id, category3Select);
+            }
+        });
+
+        function resetSelect(selectEl, label) {
+            selectSelectDisabled(selectEl, true);
+            selectEl.innerHTML = `<option value="">Select ${label}</option>`;
+        }
+
+        function selectSelectDisabled(selectEl, isDisabled) {
+            selectEl.disabled = isDisabled;
+            if (isDisabled) {
+                selectEl.removeAttribute('required');
+            } else {
+                // Category 1 is required, Category 2 and 3 are optional
+                if (selectEl.id === 'category_1_id') {
+                    selectEl.setAttribute('required', 'required');
+                }
+            }
+        }
+
+        function loadCategories(ticketTypeId, parentId, selectEl, selectedValue = '') {
+            let url = `/api/categories?`;
+            if (ticketTypeId) {
+                url += `ticket_type_id=${ticketTypeId}`;
+            } else if (parentId) {
+                url += `parent_id=${parentId}`;
+            }
+
+            return fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        selectSelectDisabled(selectEl, false);
+                        let options = `<option value="">Select ${selectEl.id === 'category_1_id' ? 'Category 1' : (selectEl.id === 'category_2_id' ? 'Category 2' : 'Category 3')}</option>`;
+                        data.forEach(item => {
+                            const selected = selectedValue == item.id ? 'selected' : '';
+                            options += `<option value="${item.id}" ${selected}>${item.name}</option>`;
+                        });
+                        selectEl.innerHTML = options;
+                    } else {
+                        resetSelect(selectEl, selectEl.id === 'category_1_id' ? 'Category 1' : (selectEl.id === 'category_2_id' ? 'Category 2' : 'Category 3'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading categories:', error);
+                });
+        }
+    });
+</script>
 @endsection

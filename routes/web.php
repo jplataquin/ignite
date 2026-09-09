@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+    Route::get('/api/categories', [TicketController::class, 'getCategories'])->name('api.categories');
 
     // Admin-only Routes
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {

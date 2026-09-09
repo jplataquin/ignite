@@ -91,6 +91,8 @@ class TicketController extends Controller
             'division_id' => 'required|exists:divisions,id',
             'department_id' => 'required|exists:departments,id',
             'category_1_id' => 'required|exists:categories,id',
+            'category_2_id' => 'nullable|exists:categories,id',
+            'category_3_id' => 'nullable|exists:categories,id',
             'temp_token' => 'nullable|string',
             'total_chunks' => 'nullable|integer',
             'file_name' => 'nullable|string',
@@ -126,6 +128,8 @@ class TicketController extends Controller
                 'department_id' => $validated['department_id'],
                 'created_by' => Auth::id() ?? 1, // Fallback to 1 for tests/system
                 'category_1_id' => $validated['category_1_id'],
+                'category_2_id' => $validated['category_2_id'] ?? null,
+                'category_3_id' => $validated['category_3_id'] ?? null,
             ]);
 
             // Merge File Chunks
@@ -174,5 +178,32 @@ class TicketController extends Controller
     {
         $ticket->load(['ticketType', 'priority', 'status', 'division', 'department', 'creator', 'assignee', 'category1', 'attachments', 'comments.user']);
         return view('tickets.show', compact('ticket'));
+    }
+
+    /**
+     * Get categories based on Ticket Type or Parent Category (AJAX API).
+     */
+    public function getCategories(Request $request)
+    {
+        $ticketTypeId = $request->query('ticket_type_id');
+        $parentId = $request->query('parent_id');
+
+        if ($parentId) {
+            // Fetch descendants with depth = 1
+            $categories = Category::whereHas('ancestorClosures', function ($query) use ($parentId) {
+                $query->where('ancestor_id', $parentId)
+                      ->where('depth', 1);
+            })->get(['id', 'name']);
+        } elseif ($ticketTypeId) {
+            // Fetch Category 1s (no ancestors of depth > 0)
+            $categories = Category::where('ticket_type_id', $ticketTypeId)
+                ->whereDoesntHave('ancestorClosures', function ($query) {
+                    $query->where('depth', '>', 0);
+                })->get(['id', 'name']);
+        } else {
+            $categories = collect();
+        }
+
+        return response()->json($categories);
     }
 }

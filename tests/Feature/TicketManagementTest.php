@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\CategoryClosure;
 use App\Models\Department;
 use App\Models\Division;
 use App\Models\Ticket;
@@ -175,5 +176,35 @@ class TicketManagementTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('FLR-2026-9999');
         $response->assertSee('Ticket Under Inspection');
+    }
+
+    /**
+     * Test that authenticated users can fetch categories via AJAX API.
+     */
+    public function test_users_can_fetch_categories_via_ajax(): void
+    {
+        $user = User::factory()->create();
+        $type = TicketType::create(['name' => 'Incident']);
+
+        // Category 1
+        $cat1 = Category::create(['name' => 'Hardware', 'ticket_type_id' => $type->id]);
+        CategoryClosure::create(['ancestor_id' => $cat1->id, 'descendant_id' => $cat1->id, 'depth' => 0]);
+
+        // Category 2 under Category 1
+        $cat2 = Category::create(['name' => 'Laptops', 'ticket_type_id' => $type->id]);
+        CategoryClosure::create(['ancestor_id' => $cat2->id, 'descendant_id' => $cat2->id, 'depth' => 0]);
+        CategoryClosure::create(['ancestor_id' => $cat1->id, 'descendant_id' => $cat2->id, 'depth' => 1]);
+
+        // 1. Fetch Category 1s by ticket_type_id
+        $response = $this->actingAs($user)->getJson("/api/categories?ticket_type_id={$type->id}");
+        $response->assertStatus(200)
+            ->assertJsonCount(1)
+            ->assertJsonFragment(['id' => $cat1->id, 'name' => 'Hardware']);
+
+        // 2. Fetch Category 2s by parent_id (depth = 1)
+        $response = $this->actingAs($user)->getJson("/api/categories?parent_id={$cat1->id}");
+        $response->assertStatus(200)
+            ->assertJsonCount(1)
+            ->assertJsonFragment(['id' => $cat2->id, 'name' => 'Laptops']);
     }
 }
