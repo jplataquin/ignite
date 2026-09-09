@@ -13,14 +13,14 @@ class DashboardController extends Controller
     public function index()
     {
         $openTicketsCount = Ticket::whereHas('status', function ($query) {
-            $query->whereIn('slug', ['open', 'accepted', 'review']);
+            $query->whereIn('slug', ['open', 'assigned', 'review']);
         })->count();
 
         $unassignedTicketsCount = Ticket::whereNull('assigned_to')->count();
 
         $criticalTicketsCount = Ticket::whereHas('priority', function ($query) {
             $query->where('level', '>=', 2)
-                  ->orWhereIn('name', ['High', 'Critical', 'high', 'critical']);
+                  ->orWhereIn('name', ['Major', 'major']);
         })->count();
 
         $slaLapsedCount = Ticket::whereHas('status', function ($query) {

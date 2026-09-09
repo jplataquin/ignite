@@ -154,7 +154,7 @@ class TicketTypeManagementTest extends TestCase
 
         // Seed other resources to create a ticket
         $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
-        $priority = TicketPriority::create(['name' => 'Low', 'level' => 1]);
+        $priority = TicketPriority::create(['name' => 'Minor', 'level' => 1]);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);

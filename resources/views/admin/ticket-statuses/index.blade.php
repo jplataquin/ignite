@@ -72,7 +72,7 @@
                                 <a href="{{ route('admin.ticket-statuses.edit', $status) }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center" style="min-height: 34px;">
                                     Edit
                                 </a>
-                                @if(!in_array($status->slug, ['open', 'accepted', 'review', 'closed', 'canceled']))
+                                @if(!in_array($status->slug, ['open', 'assigned', 'review', 'closed', 'canceled']))
                                     <form action="{{ route('admin.ticket-statuses.destroy', $status) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this status?');">
                                         @csrf
                                         @method('DELETE')

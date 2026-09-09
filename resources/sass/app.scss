@@ -13,7 +13,7 @@
     --fd-status-progress: #0284C7;
     --fd-status-resolved: #10B981;
     --fd-status-lapsed: #9333EA;
-    --fd-status-accepted: #0284C7;
+    --fd-status-assigned: #0284C7;
     --fd-status-review: #8B5CF6;
     --fd-status-closed: #6B7280;
     --fd-status-canceled: #EF4444;
@@ -56,7 +56,7 @@ body {
 .badge-progress { background-color: var(--fd-status-progress); color: white; }
 .badge-resolved { background-color: var(--fd-status-resolved); color: white; }
 .badge-lapsed { background-color: var(--fd-status-lapsed); color: white; }
-.badge-accepted { background-color: var(--fd-status-accepted); color: white; }
+.badge-assigned { background-color: var(--fd-status-assigned); color: white; }
 .badge-review { background-color: var(--fd-status-review); color: white; }
 .badge-closed { background-color: var(--fd-status-closed); color: white; }
 .badge-canceled { background-color: var(--fd-status-canceled); color: white; }

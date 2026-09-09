@@ -35,8 +35,8 @@
                 <!-- Status Badge -->
                 @if(($ticket->status->slug ?? '') === 'open')
                     <span class="badge badge-open rounded-pill px-3 py-1.5 fw-semibold">Open</span>
-                @elseif(($ticket->status->slug ?? '') === 'accepted')
-                    <span class="badge badge-accepted rounded-pill px-3 py-1.5 fw-semibold">Accepted</span>
+                @elseif(($ticket->status->slug ?? '') === 'assigned')
+                    <span class="badge badge-assigned rounded-pill px-3 py-1.5 fw-semibold">Assigned</span>
                 @elseif(($ticket->status->slug ?? '') === 'review')
                     <span class="badge badge-review rounded-pill px-3 py-1.5 fw-semibold">Review</span>
                 @elseif(($ticket->status->slug ?? '') === 'closed')
@@ -50,12 +50,10 @@
                 @endif
 
                 <!-- Severity Badge -->
-                @if(($ticket->priority->name ?? '') === 'Critical')
-                    <span class="badge badge-critical rounded-pill px-3 py-1.5 fw-semibold">Severity: Critical</span>
-                @elseif(($ticket->priority->name ?? '') === 'High')
-                    <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">Severity: High</span>
+                @if(($ticket->priority->level ?? 0) >= 2)
+                    <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">Severity: Major</span>
                 @else
-                    <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Severity: Low</span>
+                    <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Severity: Minor</span>
                 @endif
 
                 <!-- Priority Badge -->

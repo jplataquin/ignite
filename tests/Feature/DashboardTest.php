@@ -29,8 +29,8 @@ class DashboardTest extends TestCase
         $statusOpen = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $statusClosed = TicketStatus::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#2']);
         
-        $priorityLowSeverity = TicketPriority::create(['name' => 'Low', 'level' => 1]);
-        $priorityHighSeverity = TicketPriority::create(['name' => 'High', 'level' => 2]);
+        $priorityMinor = TicketPriority::create(['name' => 'Minor', 'level' => 1]);
+        $priorityMajor = TicketPriority::create(['name' => 'Major', 'level' => 2]);
         $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
 
         $type = TicketType::create(['name' => 'Incident']);
@@ -43,7 +43,7 @@ class DashboardTest extends TestCase
             'ticket_number' => 'FLR-2026-0001',
             'title' => 'Open Unassigned Critical Ticket',
             'ticket_type_id' => $type->id,
-            'priority_id' => $priorityHighSeverity->id,
+            'priority_id' => $priorityMajor->id,
             'priority_option_id' => $priorityLow->id,
             'status_id' => $statusOpen->id,
             'division_id' => $division->id,
@@ -57,7 +57,7 @@ class DashboardTest extends TestCase
             'ticket_number' => 'FLR-2026-0002',
             'title' => 'Open Unassigned Low Ticket',
             'ticket_type_id' => $type->id,
-            'priority_id' => $priorityLowSeverity->id,
+            'priority_id' => $priorityMinor->id,
             'priority_option_id' => $priorityLow->id,
             'status_id' => $statusOpen->id,
             'division_id' => $division->id,
@@ -72,7 +72,7 @@ class DashboardTest extends TestCase
             'ticket_number' => 'FLR-2026-0003',
             'title' => 'Closed Ticket',
             'ticket_type_id' => $type->id,
-            'priority_id' => $priorityLowSeverity->id,
+            'priority_id' => $priorityMinor->id,
             'priority_option_id' => $priorityLow->id,
             'status_id' => $statusClosed->id,
             'division_id' => $division->id,
@@ -88,7 +88,7 @@ class DashboardTest extends TestCase
             'ticket_number' => 'FLR-2026-0004',
             'title' => 'Lapsed SLA Ticket',
             'ticket_type_id' => $type->id,
-            'priority_id' => $priorityLowSeverity->id,
+            'priority_id' => $priorityMinor->id,
             'priority_option_id' => $priorityLow->id,
             'status_id' => $statusOpen->id,
             'division_id' => $division->id,

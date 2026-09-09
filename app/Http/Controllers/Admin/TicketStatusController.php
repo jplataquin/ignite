@@ -93,7 +93,7 @@ class TicketStatusController extends Controller
         }
 
         // Prevent deleting core system statuses that might break system assumptions
-        $coreStatuses = ['open', 'accepted', 'review', 'closed', 'canceled'];
+        $coreStatuses = ['open', 'assigned', 'review', 'closed', 'canceled'];
         if (in_array($ticketStatus->slug, $coreStatuses)) {
             return redirect()->route('admin.ticket-statuses.index')
                 ->with('error', "Cannot delete core system status '{$ticketStatus->name}'.");
