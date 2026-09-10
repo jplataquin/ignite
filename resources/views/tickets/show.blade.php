@@ -71,27 +71,27 @@
                 @endif
             </div>
 
-            <!-- Description -->
-            <div class="mb-4 bg-light p-3.5 rounded border shadow-sm">
-                <span class="text-muted small d-block mb-1.5 fw-semibold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">Description</span>
-                <p class="text-dark small mb-0" style="white-space: pre-line; line-height: 1.55;">{{ $ticket->description ?: 'No detailed description provided.' }}</p>
+            <!-- Description Card (Flat Material Style) -->
+            <div class="mb-4 bg-white p-4 rounded-4 border shadow-none" style="border-color: #e2e8f0 !important;">
+                <span class="text-secondary small d-block mb-2 fw-bold text-uppercase tracking-wider" style="font-size: 0.72rem; letter-spacing: 0.8px; color: #64748b !important;">Description</span>
+                <p class="text-dark mb-0" style="white-space: pre-line; line-height: 1.6; font-size: 0.95rem; color: #334155 !important;">{{ $ticket->description ?: 'No detailed description provided.' }}</p>
             </div>
 
-            <!-- File Attachments List -->
+            <!-- File Attachments List (Flat Material Style) -->
             @if($ticket->attachments->count() > 0)
-                <div class="mb-4 bg-light p-3.5 rounded border shadow-sm">
-                    <span class="text-muted small d-block mb-3 fw-semibold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">File Attachments</span>
-                    <div class="row row-cols-1 g-2">
+                <div class="mb-4 bg-white p-4 rounded-4 border shadow-none" style="border-color: #e2e8f0 !important;">
+                    <span class="text-secondary small d-block mb-3 fw-bold text-uppercase tracking-wider" style="font-size: 0.72rem; letter-spacing: 0.8px; color: #64748b !important;">File Attachments</span>
+                    <div class="row row-cols-1 g-3">
                         @foreach($ticket->attachments as $index => $attachment)
-                            <div class="d-flex flex-column p-3 bg-white rounded shadow-sm border mb-2">
+                            <div class="d-flex flex-column p-3 rounded-3 mb-2" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
                                 <div class="d-flex align-items-center justify-content-between">
                                     <div class="d-flex align-items-center previewable-attachment" style="cursor: pointer;"
                                          data-url="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}"
                                          data-name="{{ $attachment->file_name }}"
                                          data-mime="{{ $attachment->mime_type }}">
-                                        
-                                        <!-- Thumbnail Container -->
-                                        <div class="flex-shrink-0 border rounded bg-light d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; overflow: hidden;">
+
+                                        <!-- Flat Thumbnail -->
+                                        <div class="flex-shrink-0 border bg-white d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; overflow: hidden; border-radius: 8px; border-color: #cbd5e1 !important;">
                                             @php
                                                 $isImage = str_starts_with($attachment->mime_type ?? '', 'image/') || 
                                                            in_array(strtolower(pathinfo($attachment->file_name ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
@@ -99,7 +99,7 @@
                                             @if($isImage)
                                                 <img src="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" class="w-100 h-100" style="object-fit: cover;">
                                             @else
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-file-earmark-text text-secondary" viewBox="0 0 16 16">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-file-earmark-text text-secondary" viewBox="0 0 16 16">
                                                     <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
                                                     <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
                                                 </svg>
@@ -107,16 +107,16 @@
                                         </div>
 
                                         <div class="overflow-hidden">
-                                            <span class="d-block fw-semibold text-dark text-truncate small" style="max-width: 250px;">
-                                                <span class="badge bg-secondary me-1">Attachment #{{ $index + 1 }}</span>
+                                            <span class="d-block fw-bold text-dark text-truncate" style="max-width: 250px; font-size: 0.88rem; color: #1e293b !important;">
+                                                <span class="badge bg-secondary me-1.5" style="font-size: 0.7rem; font-weight: 500; background-color: #64748b !important;">Attachment #{{ $index + 1 }}</span>
                                                 {{ $attachment->file_name }}
                                             </span>
-                                            <span class="text-muted" style="font-size: 0.75rem;">{{ round($attachment->file_size / 1024, 1) }} KB</span>
+                                            <span class="text-muted d-block mt-0.5" style="font-size: 0.72rem; color: #64748b !important;">{{ round($attachment->file_size / 1024, 1) }} KB</span>
                                         </div>
                                     </div>
 
-                                    <!-- Download Button -->
-                                    <a href="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" download="{{ $attachment->file_name }}" class="btn btn-sm btn-outline-secondary p-0 rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Download file">
+                                    <!-- Download Button (Flat) -->
+                                    <a href="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" download="{{ $attachment->file_name }}" class="btn btn-sm btn-light p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border-radius: 8px; background-color: #f1f5f9; border: 1px solid #e2e8f0; color: #475569;" title="Download file">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-download" viewBox="0 0 16 16">
                                             <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
                                             <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
@@ -124,8 +124,8 @@
                                     </a>
                                 </div>
                                 @if($attachment->note)
-                                    <div class="mt-2.5 pt-2 border-top text-muted small" style="font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap;">
-                                        <strong class="text-dark small d-block mb-0.5">Note:</strong>
+                                    <div class="mt-2.5 pt-2 border-top text-muted" style="font-size: 0.82rem; line-height: 1.5; white-space: pre-wrap; border-top-color: #e2e8f0 !important; color: #475569 !important;">
+                                        <strong class="text-dark small d-block mb-0.5" style="color: #334155 !important; font-weight: 600;">Note:</strong>
                                         {{ $attachment->note }}
                                     </div>
                                 @endif

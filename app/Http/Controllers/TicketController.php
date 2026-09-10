@@ -196,7 +196,10 @@ class TicketController extends Controller
      */
     public function show(Ticket $ticket)
     {
-        $ticket->load(['ticketType', 'status', 'division', 'department', 'creator', 'assignee', 'category1', 'attachments', 'comments.user']);
+        $ticket->load([
+            'ticketType', 'status', 'division', 'department', 'creator', 'assignee', 
+            'category1', 'category2', 'category3', 'attachments', 'comments.user'
+        ]);
         return view('tickets.show', compact('ticket'));
     }
 
