@@ -83,24 +83,6 @@
                         @enderror
                     </div>
 
-                    <!-- Severity -->
-                    <div>
-                        <label for="priority_id" class="form-label fw-semibold text-dark small">Severity</label>
-                        <select id="priority_id" class="form-select @error('priority_id') is-invalid @enderror" name="priority_id" required>
-                            <option value="">Select Severity</option>
-                            @foreach($severities as $severity)
-                                <option value="{{ $severity->id }}" {{ old('priority_id') == $severity->id ? 'selected' : '' }}>{{ $severity->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('priority_id')
-                            <span class="invalid-feedback" role="alert">
-                                <strong>{{ $message }}</strong>
-                            </span>
-                        @enderror
-                    </div>
-                </div>
-
-                <div class="row row-cols-1 row-cols-md-2 g-3 mb-3">
                     <!-- Priority -->
                     <div>
                         <label for="priority_option_id" class="form-label fw-semibold text-dark small">Priority</label>

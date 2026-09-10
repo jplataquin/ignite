@@ -7,7 +7,6 @@ use App\Models\CategoryClosure;
 use App\Models\Department;
 use App\Models\Division;
 use App\Models\Ticket;
-use App\Models\TicketPriority;
 use App\Models\TicketStatus;
 use App\Models\TicketType;
 use App\Models\Priority;
@@ -73,7 +72,6 @@ class TicketManagementTest extends TestCase
 
         // Seed lookups
         $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
-        $priority = TicketPriority::create(['name' => 'Minor', 'level' => 1]);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $role->ticketTypes()->attach($type->id);
@@ -86,7 +84,6 @@ class TicketManagementTest extends TestCase
             'title' => 'New Ticket Title',
             'description' => 'These are my detailed findings regarding this incident.',
             'ticket_type_id' => $type->id,
-            'priority_id' => $priority->id,
             'priority_option_id' => $priorityOption->id,
             'status_id' => $status->id,
             'division_id' => $division->id,
@@ -114,7 +111,6 @@ class TicketManagementTest extends TestCase
 
         // Seed lookups
         $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
-        $priority = TicketPriority::create(['name' => 'Minor', 'level' => 1]);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $role->ticketTypes()->attach($type->id);
@@ -127,7 +123,6 @@ class TicketManagementTest extends TestCase
             'title' => 'New Ticket Default Status',
             'description' => 'This is a ticket created without explicitly specifying status.',
             'ticket_type_id' => $type->id,
-            'priority_id' => $priority->id,
             'priority_option_id' => $priorityOption->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
@@ -151,7 +146,6 @@ class TicketManagementTest extends TestCase
 
         // Seed lookups
         $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
-        $priority = TicketPriority::create(['name' => 'Minor', 'level' => 1]);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $division = Division::create(['name' => 'IT']);
@@ -162,7 +156,6 @@ class TicketManagementTest extends TestCase
             'ticket_number' => 'FLR-2026-9999',
             'title' => 'Ticket Under Inspection',
             'ticket_type_id' => $type->id,
-            'priority_id' => $priority->id,
             'priority_option_id' => $priorityOption->id,
             'status_id' => $status->id,
             'division_id' => $division->id,
@@ -219,7 +212,6 @@ class TicketManagementTest extends TestCase
         
         // Seed lookups
         $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
-        $priority = TicketPriority::create(['name' => 'Minor', 'level' => 1]);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $role->ticketTypes()->attach($type->id);
@@ -255,7 +247,6 @@ class TicketManagementTest extends TestCase
             'title' => 'Ticket with multiple files',
             'description' => 'See files attached.',
             'ticket_type_id' => $type->id,
-            'priority_id' => $priority->id,
             'priority_option_id' => $priorityOption->id,
             'status_id' => $status->id,
             'division_id' => $division->id,

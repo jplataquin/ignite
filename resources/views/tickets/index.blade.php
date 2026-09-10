@@ -32,7 +32,6 @@
                 <tr>
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small">Ticket Number</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Title</th>
-                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Severity</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Priority</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Status</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Assignee</th>
@@ -51,14 +50,6 @@
                         <td class="py-3">
                             <div class="fw-bold text-dark">{{ $ticket->title }}</div>
                             <span class="text-muted small">{{ $ticket->ticketType->name ?? 'N/A' }}</span>
-                        </td>
-                        <!-- Severity Badge -->
-                        <td class="py-3">
-                            @if(($ticket->priority->level ?? 0) >= 2)
-                                <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">Major</span>
-                            @else
-                                <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Minor</span>
-                            @endif
                         </td>
                         <!-- Priority Badge -->
                         <td class="py-3">

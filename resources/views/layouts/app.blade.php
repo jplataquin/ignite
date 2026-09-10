@@ -115,6 +115,11 @@
                                                 Ticket Statuses
                                             </a>
                                         </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link text-dark py-1.5 {{ Request::routeIs('admin.settings.*') ? 'active fw-bold text-primary' : '' }}" href="{{ route('admin.settings.index') }}">
+                                                System Settings
+                                            </a>
+                                        </li>
                                     </ul>
                                 </div>
                             </li>

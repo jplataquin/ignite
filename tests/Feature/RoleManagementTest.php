@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Models\TicketType;
 use App\Models\Division;
 use App\Models\Department;
-use App\Models\TicketPriority;
 use App\Models\Priority;
 use App\Models\TicketStatus;
 use App\Models\Category;
@@ -210,7 +209,6 @@ class RoleManagementTest extends TestCase
         // Core ticket setup data
         $division = Division::create(['name' => 'Tech Division']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $priority = TicketPriority::create(['name' => 'Major', 'level' => 2]);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#F59E0B']);
         $category = Category::create(['name' => 'Software Issue', 'ticket_type_id' => $allowedType->id]);
@@ -225,7 +223,6 @@ class RoleManagementTest extends TestCase
         $response = $this->actingAs($user)->post('/tickets', [
             'title' => 'Allowed Ticket',
             'ticket_type_id' => $allowedType->id,
-            'priority_id' => $priority->id,
             'priority_option_id' => $priorityOption->id,
             'status_id' => $status->id,
             'division_id' => $division->id,
@@ -243,7 +240,6 @@ class RoleManagementTest extends TestCase
         $response = $this->actingAs($user)->post('/tickets', [
             'title' => 'Disallowed Ticket',
             'ticket_type_id' => $disallowedType->id,
-            'priority_id' => $priority->id,
             'priority_option_id' => $priorityOption->id,
             'status_id' => $status->id,
             'division_id' => $division->id,

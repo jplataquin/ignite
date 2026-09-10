@@ -8,7 +8,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\DivisionController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\TicketStatusController;
-use App\Http\Controllers\Admin\TicketPriorityController;
+use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\ChunkUploadController;
@@ -63,5 +63,9 @@ Route::middleware('auth')->group(function () {
 
         // Status Management
         Route::resource('ticket-statuses', TicketStatusController::class)->except(['show']);
+
+        // System Settings Management
+        Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+        Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
     });
 });

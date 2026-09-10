@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\TicketPriority;
 use App\Models\Priority;
 use App\Models\TicketStatus;
+use App\Models\Setting;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -26,16 +26,7 @@ class DatabaseSeeder extends Seeder
             TicketStatus::updateOrCreate(['slug' => $status['slug']], $status);
         }
 
-        // 2. Seed Ticket Priorities
-        $priorities = [
-            ['name' => 'Minor', 'level' => 1],
-            ['name' => 'Major', 'level' => 2],
-        ];
-        foreach ($priorities as $priority) {
-            TicketPriority::updateOrCreate(['name' => $priority['name']], $priority);
-        }
-
-        // 3. Seed Priority Options (Low, High, Critical)
+        // 2. Seed Priority Options (Low, High, Critical)
         $priorityOptions = [
             ['name' => 'Low', 'level' => 1],
             ['name' => 'High', 'level' => 2],
@@ -43,6 +34,19 @@ class DatabaseSeeder extends Seeder
         ];
         foreach ($priorityOptions as $option) {
             Priority::updateOrCreate(['name' => $option['name']], $option);
+        }
+
+        // 3. Seed Default System Settings
+        $settings = [
+            'sla_days_low' => '5',
+            'sla_days_high' => '3',
+            'sla_days_critical' => '1',
+            'sla_days_assign_low' => '2',
+            'sla_days_assign_high' => '1',
+            'sla_days_assign_critical' => '0',
+        ];
+        foreach ($settings as $key => $value) {
+            Setting::updateOrCreate(['key' => $key], ['value' => $value]);
         }
     }
 }

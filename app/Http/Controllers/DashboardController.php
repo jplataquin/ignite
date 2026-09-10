@@ -18,9 +18,9 @@ class DashboardController extends Controller
 
         $unassignedTicketsCount = Ticket::whereNull('assigned_to')->count();
 
-        $criticalTicketsCount = Ticket::whereHas('priority', function ($query) {
-            $query->where('level', '>=', 2)
-                  ->orWhereIn('name', ['Major', 'major']);
+        $criticalTicketsCount = Ticket::whereHas('priorityOption', function ($query) {
+            $query->where('level', '>=', 3)
+                  ->orWhereIn('name', ['Critical', 'critical']);
         })->count();
 
         $slaLapsedCount = Ticket::whereHas('status', function ($query) {

@@ -6,7 +6,6 @@ use App\Models\Category;
 use App\Models\Department;
 use App\Models\Division;
 use App\Models\Ticket;
-use App\Models\TicketPriority;
 use App\Models\Priority;
 use App\Models\TicketStatus;
 use App\Models\TicketType;
@@ -158,7 +157,6 @@ class TicketTypeManagementTest extends TestCase
 
         // Seed other resources to create a ticket
         $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
-        $priority = TicketPriority::create(['name' => 'Minor', 'level' => 1]);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
@@ -168,7 +166,6 @@ class TicketTypeManagementTest extends TestCase
             'ticket_number' => 'FLR-2026-8888',
             'title' => 'An active ticket',
             'ticket_type_id' => $type->id,
-            'priority_id' => $priority->id,
             'priority_option_id' => $priorityOption->id,
             'status_id' => $status->id,
             'division_id' => $division->id,

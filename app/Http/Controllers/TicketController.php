@@ -7,7 +7,6 @@ use App\Models\Attachment;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\Division;
-use App\Models\TicketPriority;
 use App\Models\TicketStatus;
 use App\Models\TicketType;
 use App\Models\Priority;
@@ -24,7 +23,7 @@ class TicketController extends Controller
      */
     public function index()
     {
-        $tickets = Ticket::with(['ticketType', 'priority', 'priorityOption', 'status', 'creator', 'assignee'])->latest()->paginate(10);
+        $tickets = Ticket::with(['ticketType', 'priorityOption', 'status', 'creator', 'assignee'])->latest()->paginate(10);
         return view('tickets.index', compact('tickets'));
     }
 
@@ -46,7 +45,6 @@ class TicketController extends Controller
                 ->values();
         }
         
-        $severities = TicketPriority::orderBy('level')->get();
         $priorities = Priority::orderBy('level')->get();
         $statuses = TicketStatus::all();
         $divisions = Division::all();
@@ -54,7 +52,7 @@ class TicketController extends Controller
         $categories = Category::all();
 
         return view('tickets.create', compact(
-            'ticketTypes', 'severities', 'priorities', 'statuses', 'divisions', 'departments', 'categories'
+            'ticketTypes', 'priorities', 'statuses', 'divisions', 'departments', 'categories'
         ));
     }
 
@@ -85,7 +83,6 @@ class TicketController extends Controller
                     }
                 }
             ],
-            'priority_id' => 'required|exists:ticket_priorities,id',
             'priority_option_id' => 'required|exists:priorities,id',
             'status_id' => 'nullable|exists:ticket_statuses,id',
             'division_id' => 'required|exists:divisions,id',
@@ -139,7 +136,6 @@ class TicketController extends Controller
                 'title' => $validated['title'],
                 'description' => $validated['description'] ?? null,
                 'ticket_type_id' => $validated['ticket_type_id'],
-                'priority_id' => $validated['priority_id'],
                 'priority_option_id' => $validated['priority_option_id'],
                 'status_id' => $statusId,
                 'division_id' => $validated['division_id'],
@@ -194,7 +190,7 @@ class TicketController extends Controller
      */
     public function show(Ticket $ticket)
     {
-        $ticket->load(['ticketType', 'priority', 'status', 'division', 'department', 'creator', 'assignee', 'category1', 'attachments', 'comments.user']);
+        $ticket->load(['ticketType', 'status', 'division', 'department', 'creator', 'assignee', 'category1', 'attachments', 'comments.user']);
         return view('tickets.show', compact('ticket'));
     }
 

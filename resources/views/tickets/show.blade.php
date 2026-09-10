@@ -49,13 +49,6 @@
                     </span>
                 @endif
 
-                <!-- Severity Badge -->
-                @if(($ticket->priority->level ?? 0) >= 2)
-                    <span class="badge bg-danger rounded-pill px-3 py-1.5 fw-semibold text-white">Severity: Major</span>
-                @else
-                    <span class="badge bg-secondary rounded-pill px-3 py-1.5 fw-semibold text-white">Severity: Minor</span>
-                @endif
-
                 <!-- Priority Badge -->
                 @if(($ticket->priorityOption->name ?? '') === 'Critical')
                     <span class="badge badge-critical rounded-pill px-3 py-1.5 fw-semibold">Priority: Critical</span>
@@ -74,10 +67,6 @@
 
             <h6 class="fw-bold text-dark mb-3">Incident Properties</h6>
             <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">
-                <div>
-                    <span class="text-muted small d-block">Severity</span>
-                    <span class="fw-semibold text-dark">{{ $ticket->priority->name ?? 'N/A' }}</span>
-                </div>
                 <div>
                     <span class="text-muted small d-block">Priority</span>
                     <span class="fw-semibold text-dark">{{ $ticket->priorityOption->name ?? 'N/A' }}</span>
