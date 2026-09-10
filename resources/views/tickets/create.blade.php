@@ -519,9 +519,16 @@
         const toUserIdInput = document.getElementById('to_user_id');
         const autocompleteResults = document.getElementById('autocomplete-results');
 
-        let allUsers = @json($users); // Seeded with initial users from backend
+        let allUsers = []; // Dynamic, loaded when division is selected
 
         function renderAutocomplete() {
+            const divisionId = divisionSelect.value;
+            if (!divisionId) {
+                autocompleteResults.innerHTML = '<li class="dropdown-item text-muted disabled py-2" style="min-height: auto;">Please select a division first</li>';
+                autocompleteResults.style.display = 'block';
+                return;
+            }
+
             const query = userSearchInput.value.trim().toLowerCase();
             if (!query) {
                 showResults(allUsers);
@@ -577,9 +584,13 @@
             const divisionId = divisionSelect.value;
             const departmentId = departmentSelect.value;
 
-            let url = `/api/users?`;
-            if (divisionId) url += `division_id=${divisionId}&`;
-            if (departmentId) url += `department_id=${departmentId}`;
+            if (!divisionId) {
+                allUsers = [];
+                return;
+            }
+
+            let url = `/api/users?division_id=${divisionId}`;
+            if (departmentId) url += `&department_id=${departmentId}`;
 
             fetch(url)
                 .then(res => res.json())
