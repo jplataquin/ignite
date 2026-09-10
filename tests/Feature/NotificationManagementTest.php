@@ -41,6 +41,8 @@ class NotificationManagementTest extends TestCase
             'department_id' => $department->id,
         ]);
 
+        $this->actingAs($user);
+
         $status = TicketStatus::create([
             'name' => 'Open',
             'slug' => 'open',
@@ -168,5 +170,41 @@ class NotificationManagementTest extends TestCase
             ]);
 
         $this->assertEquals(0, $user->fresh()->unreadNotifications->count());
+    }
+
+    /**
+     * Intended user receives notification if ticket is created with open status.
+     */
+    public function test_intended_user_receives_notification_on_open_ticket_creation(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
+        $intendedUser = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $response = $this->actingAs($creator)->post('/tickets', [
+            'title' => 'Ticket for intended user',
+            'description' => 'Detailed test description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'category_1_id' => $category->id,
+            'to_user_id' => $intendedUser->id,
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect();
+        
+        // Assert intendedUser has received the notification
+        $this->assertEquals(1, $intendedUser->fresh()->unreadNotifications->count());
+        $notification = $intendedUser->fresh()->unreadNotifications->first();
+        $this->assertEquals(\App\Notifications\TicketUpdatedNotification::class, $notification->type);
     }
 }

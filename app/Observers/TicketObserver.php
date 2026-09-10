@@ -53,11 +53,22 @@ class TicketObserver
             return $user->id !== $actorId;
         });
         
-        $usersToNotify = $usersToNotify->merge($subscribers)->unique('id')->filter();
+        $usersToNotify = $usersToNotify->merge($subscribers);
+
+        // 4. Intended User (If ticket is in open status)
+        if ($ticket->to_user_id && $ticket->to_user_id !== $actorId) {
+            // Load status if not loaded, then verify slug is 'open'
+            $status = $ticket->relationLoaded('status') ? $ticket->status : $ticket->status()->first();
+            if ($status && $status->slug === 'open') {
+                $usersToNotify->push($ticket->toUser);
+            }
+        }
+        
+        $usersToNotify = $usersToNotify->unique('id')->filter();
 
         // Dispatch
         foreach ($usersToNotify as $user) {
-            $user->notify(new TicketUpdatedNotification($ticket, $message));
+            $user->notifyNow(new TicketUpdatedNotification($ticket, $message));
         }
     }
 }

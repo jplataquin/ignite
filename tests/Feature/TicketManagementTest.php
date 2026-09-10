@@ -441,4 +441,69 @@ class TicketManagementTest extends TestCase
             ->assertJsonFragment(['id' => $userInDiv2Dept2->id, 'name' => 'Jane Div2Dept2'])
             ->assertJsonMissing(['id' => $userInDiv1Dept1->id]);
     }
+
+    /**
+     * Test that involved users can comment on an open ticket, but uninvolved users cannot.
+     */
+    public function test_involved_users_can_comment_on_open_ticket(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $agent = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $unInvolved = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-99881',
+            'title' => 'Open status test ticket',
+            'description' => 'Test ticket description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'assigned_to' => $agent->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 1. Creator can comment
+        $response = $this->actingAs($creator)->post("/tickets/{$ticket->id}/comments", [
+            'content' => 'Creator comment'
+        ]);
+        $response->assertRedirect();
+        $this->assertDatabaseHas('ticket_comments', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $creator->id,
+            'content' => 'Creator comment'
+        ]);
+
+        // 2. Assigned Agent can comment
+        $response = $this->actingAs($agent)->post("/tickets/{$ticket->id}/comments", [
+            'content' => 'Agent comment'
+        ]);
+        $response->assertRedirect();
+        $this->assertDatabaseHas('ticket_comments', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $agent->id,
+            'content' => 'Agent comment'
+        ]);
+
+        // 3. Uninvolved user cannot comment
+        $response = $this->actingAs($unInvolved)->post("/tickets/{$ticket->id}/comments", [
+            'content' => 'Uninvolved user comment'
+        ]);
+        $response->assertRedirect();
+        $response->assertSessionHas('error');
+        $this->assertDatabaseMissing('ticket_comments', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $unInvolved->id,
+            'content' => 'Uninvolved user comment'
+        ]);
+    }
 }

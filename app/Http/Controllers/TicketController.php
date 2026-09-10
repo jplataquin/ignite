@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ticket;
 use App\Models\Attachment;
+use App\Models\TicketComment;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\Division;
@@ -296,5 +297,39 @@ class TicketController extends Controller
         }
 
         return Storage::response($attachment->file_path);
+    }
+
+    /**
+     * Add a comment to the specified ticket.
+     */
+    public function storeComment(Request $request, Ticket $ticket)
+    {
+        $validated = $request->validate([
+            'content' => 'required|string|min:1',
+        ]);
+
+        $user = Auth::user();
+        if (!$user) {
+            abort(403);
+        }
+
+        // Involved users are: the creator, assigned support staff, intended user, and admin users
+        $isInvolved = $user->user_type === 'admin' ||
+                      $ticket->created_by === $user->id ||
+                      $ticket->assigned_to === $user->id ||
+                      $ticket->to_user_id === $user->id;
+
+        if (!$isInvolved) {
+            return redirect()->back()->with('error', 'You are not authorized to comment on this ticket.');
+        }
+
+        TicketComment::create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $user->id,
+            'type' => 'comment',
+            'content' => $validated['content'],
+        ]);
+
+        return redirect()->back()->with('success', 'Comment added successfully.');
     }
 }

@@ -92,8 +92,20 @@
                     <span class="fw-semibold text-dark">{{ $ticket->department->name ?? 'N/A' }}</span>
                 </div>
                 <div>
-                    <span class="text-muted small d-block">Primary Category</span>
+                    <span class="text-muted small d-block">Date Created</span>
+                    <span class="fw-semibold text-dark">{{ $ticket->created_at->format('M d, Y h:i A') }}</span>
+                </div>
+                <div>
+                    <span class="text-muted small d-block">Category 1</span>
                     <span class="fw-semibold text-dark">{{ $ticket->category1->name ?? 'N/A' }}</span>
+                </div>
+                <div>
+                    <span class="text-muted small d-block">Category 2</span>
+                    <span class="fw-semibold text-dark">{{ $ticket->category2->name ?? '-' }}</span>
+                </div>
+                <div>
+                    <span class="text-muted small d-block">Category 3</span>
+                    <span class="fw-semibold text-dark">{{ $ticket->category3->name ?? '-' }}</span>
                 </div>
                 @if($ticket->toUser)
                 <div>
@@ -111,20 +123,52 @@
         <!-- Comments / Thread Area -->
         <div class="card fd-card p-4 shadow-sm">
             <h5 class="fw-bold text-dark mb-4">Comments & History</h5>
+
+            <!-- Comment Submission Form (for involved actors only) -->
+            @if(Auth::user()->user_type === 'admin' || 
+                $ticket->created_by === Auth::id() || 
+                $ticket->assigned_to === Auth::id() || 
+                $ticket->to_user_id === Auth::id())
+                <form action="{{ route('tickets.comments.store', $ticket) }}" method="POST" class="mb-4">
+                    @csrf
+                    <div class="mb-3">
+                        <textarea class="form-control form-control-sm" name="content" rows="3" placeholder="Write a comment..." required></textarea>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary px-4 btn-sm" style="min-height: auto;">Add Comment</button>
+                    </div>
+                </form>
+                <hr class="my-4 text-muted">
+            @endif
             
             <div class="mb-4">
                 @forelse($ticket->comments as $comment)
                     <div class="d-flex mb-3">
-                        <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold me-3 flex-shrink-0" style="width: 38px; height: 38px;">
-                            {{ substr($comment->user->name ?? 'U', 0, 1) }}
-                        </div>
-                        <div class="bg-light p-3 rounded-3 w-100">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-bold text-dark small">{{ $comment->user->name ?? 'System' }}</span>
-                                <span class="text-muted" style="font-size: 0.75rem;">{{ $comment->created_at->diffForHumans() }}</span>
+                        @if($comment->type === 'system_event')
+                            <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold me-3 flex-shrink-0" style="width: 38px; height: 38px; background-color: #fef3c7 !important;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear-fill" viewBox="0 0 16 16">
+                                    <path d="M9.405 1.02c.63-1.026 2.01-1.026 2.64 0l.445.725c.196.32.556.518.932.518h.853c1.205 0 2.102 1.173 1.635 2.274l-.326.77a1.002 1.002 0 0 0 .153 1.054l.582.72c.81.99.274 2.476-.948 2.6l-.888.093a1.002 1.002 0 0 0-.85.73l-.225.86c-.347 1.155-1.637 1.603-2.585.876l-.682-.544a1.002 1.002 0 0 0-1.127-.08l-.804.43c-1.122.6-2.457-.35-2.22-1.57l.18-.94a1.002 1.002 0 0 0-.616-1.1l-.856-.4a1.1 1.1 0 0 1-.58-1.55l.43-.804a1.002 1.002 0 0 0-.08-1.127l-.544-.682c-.727-.948-.28-2.238.876-2.585l.86-.225a1.002 1.002 0 0 0 .73-.85l.093-.888c.123-1.222 1.61-1.758 2.6-1.048l.72.582zM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>
+                                </svg>
                             </div>
-                            <p class="mb-0 text-muted small">{{ $comment->comment }}</p>
-                        </div>
+                            <div class="bg-light p-3 rounded-3 w-100 border border-warning" style="background-color: #fffbef !important;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold text-dark small">System Event</span>
+                                    <span class="text-muted" style="font-size: 0.75rem;">{{ $comment->created_at->diffForHumans() }}</span>
+                                </div>
+                                <p class="mb-0 text-muted small fw-semibold">{{ $comment->content }}</p>
+                            </div>
+                        @else
+                            <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold me-3 flex-shrink-0" style="width: 38px; height: 38px;">
+                                {{ substr($comment->user->name ?? 'U', 0, 1) }}
+                            </div>
+                            <div class="bg-light p-3 rounded-3 w-100">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold text-dark small">{{ $comment->user->name ?? 'System' }}</span>
+                                    <span class="text-muted" style="font-size: 0.75rem;">{{ $comment->created_at->diffForHumans() }}</span>
+                                </div>
+                                <p class="mb-0 text-muted small">{{ $comment->content }}</p>
+                            </div>
+                        @endif
                     </div>
                 @empty
                     <div class="text-center py-4 text-muted small">No comments yet.</div>
@@ -205,10 +249,23 @@
                              data-url="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}"
                              data-name="{{ $attachment->file_name }}"
                              data-mime="{{ $attachment->mime_type }}">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-file-earmark-arrow-down text-danger me-2" viewBox="0 0 16 16">
-                                <path d="M8.5 6.5a.5.5 0 0 0-1 0v3.793L6.354 9.146a.5.5 0 1 0-.708.708l2 2a.5.5 0 0 0 .708 0l2-2a.5.5 0 0 0-.708-.708L8.5 10.293z"/>
-                                <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2M9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>
-                            </svg>
+                            
+                            <!-- Thumbnail Container -->
+                            <div class="flex-shrink-0 border rounded bg-white d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; overflow: hidden;">
+                                @php
+                                    $isImage = str_starts_with($attachment->mime_type ?? '', 'image/') || 
+                                               in_array(strtolower(pathinfo($attachment->file_name ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                                @endphp
+                                @if($isImage)
+                                    <img src="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" class="w-100 h-100" style="object-fit: cover;">
+                                @else
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-file-earmark-text text-secondary" viewBox="0 0 16 16">
+                                        <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+                                        <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
+                                    </svg>
+                                @endif
+                            </div>
+
                             <div class="overflow-hidden">
                                 <span class="d-block fw-semibold text-dark text-truncate small" style="max-width: 180px;">
                                     <span class="badge bg-secondary me-1">Attachment #{{ $index + 1 }}</span>
