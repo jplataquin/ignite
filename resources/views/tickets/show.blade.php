@@ -77,8 +77,59 @@
                 <p class="text-dark small mb-0" style="white-space: pre-line; line-height: 1.55;">{{ $ticket->description ?: 'No detailed findings provided.' }}</p>
             </div>
 
+            <!-- File Attachments List -->
+            @if($ticket->attachments->count() > 0)
+                <div class="mb-4 bg-light p-3.5 rounded border shadow-sm">
+                    <span class="text-muted small d-block mb-3 fw-semibold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">File Attachments</span>
+                    <div class="row row-cols-1 g-2">
+                        @foreach($ticket->attachments as $index => $attachment)
+                            <div class="d-flex align-items-center p-2 bg-white rounded shadow-sm border justify-content-between">
+                                <div class="d-flex align-items-center previewable-attachment" style="cursor: pointer;"
+                                     data-url="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}"
+                                     data-name="{{ $attachment->file_name }}"
+                                     data-mime="{{ $attachment->mime_type }}">
+                                    
+                                    <!-- Thumbnail Container -->
+                                    <div class="flex-shrink-0 border rounded bg-light d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; overflow: hidden;">
+                                        @php
+                                            $isImage = str_starts_with($attachment->mime_type ?? '', 'image/') || 
+                                                       in_array(strtolower(pathinfo($attachment->file_name ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                                        @endphp
+                                        @if($isImage)
+                                            <img src="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" class="w-100 h-100" style="object-fit: cover;">
+                                        @else
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-file-earmark-text text-secondary" viewBox="0 0 16 16">
+                                                <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+                                                <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
+                                            </svg>
+                                        @endif
+                                    </div>
+
+                                    <div class="overflow-hidden">
+                                        <span class="d-block fw-semibold text-dark text-truncate small" style="max-width: 250px;">
+                                            <span class="badge bg-secondary me-1">Attachment #{{ $index + 1 }}</span>
+                                            {{ $attachment->file_name }}
+                                        </span>
+                                        <span class="text-muted" style="font-size: 0.75rem;">{{ round($attachment->file_size / 1024, 1) }} KB</span>
+                                    </div>
+                                </div>
+                                @if($attachment->note)
+                                    <div class="ms-3 pe-2 text-muted text-wrap text-end small" style="max-width: 400px; font-style: italic; font-size: 0.85rem;">
+                                        Note: {{ $attachment->note }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
             <h6 class="fw-bold text-dark mb-3">Incident Properties</h6>
             <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">
+                <div>
+                    <span class="text-muted small d-block">Date Created</span>
+                    <span class="fw-semibold text-dark">{{ $ticket->created_at->format('M d, Y h:i A') }}</span>
+                </div>
                 <div>
                     <span class="text-muted small d-block">Priority</span>
                     <span class="fw-semibold text-dark">{{ $ticket->priorityOption->name ?? 'N/A' }}</span>
@@ -90,10 +141,6 @@
                 <div>
                     <span class="text-muted small d-block">Department</span>
                     <span class="fw-semibold text-dark">{{ $ticket->department->name ?? 'N/A' }}</span>
-                </div>
-                <div>
-                    <span class="text-muted small d-block">Date Created</span>
-                    <span class="fw-semibold text-dark">{{ $ticket->created_at->format('M d, Y h:i A') }}</span>
                 </div>
                 <div>
                     <span class="text-muted small d-block">Category 1</span>
@@ -236,53 +283,6 @@
                         <span class="text-muted" style="font-size: 0.75rem;">Requester</span>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Attachments Card -->
-        <div class="card fd-card p-4 shadow-sm">
-            <h5 class="fw-bold text-dark mb-3">Attachments</h5>
-            <div>
-                @forelse($ticket->attachments as $index => $attachment)
-                    <div class="d-flex align-items-center mb-2 p-2 bg-light rounded-3 justify-content-between">
-                        <div class="d-flex align-items-center previewable-attachment" style="cursor: pointer;"
-                             data-url="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}"
-                             data-name="{{ $attachment->file_name }}"
-                             data-mime="{{ $attachment->mime_type }}">
-                            
-                            <!-- Thumbnail Container -->
-                            <div class="flex-shrink-0 border rounded bg-white d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; overflow: hidden;">
-                                @php
-                                    $isImage = str_starts_with($attachment->mime_type ?? '', 'image/') || 
-                                               in_array(strtolower(pathinfo($attachment->file_name ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
-                                @endphp
-                                @if($isImage)
-                                    <img src="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" class="w-100 h-100" style="object-fit: cover;">
-                                @else
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-file-earmark-text text-secondary" viewBox="0 0 16 16">
-                                        <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
-                                        <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
-                                    </svg>
-                                @endif
-                            </div>
-
-                            <div class="overflow-hidden">
-                                <span class="d-block fw-semibold text-dark text-truncate small" style="max-width: 180px;">
-                                    <span class="badge bg-secondary me-1">Attachment #{{ $index + 1 }}</span>
-                                    {{ $attachment->file_name }}
-                                </span>
-                                <span class="text-muted" style="font-size: 0.75rem;">{{ round($attachment->file_size / 1024, 1) }} KB</span>
-                            </div>
-                        </div>
-                        @if($attachment->note)
-                            <div class="ms-3 pe-2 text-muted text-wrap text-end small" style="max-width: 400px; font-style: italic;">
-                                Note: {{ $attachment->note }}
-                            </div>
-                        @endif
-                    </div>
-                @empty
-                    <span class="text-muted small">No attachments uploaded for this ticket.</span>
-                @endforelse
             </div>
         </div>
     </div>
