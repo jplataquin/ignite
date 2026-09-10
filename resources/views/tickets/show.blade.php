@@ -124,8 +124,7 @@
                                     </a>
                                 </div>
                                 @if($attachment->note)
-                                    <div class="mt-2.5 pt-2 border-top text-muted" style="font-size: 0.82rem; line-height: 1.5; white-space: pre-wrap; border-top-color: #e2e8f0 !important; color: #475569 !important;">
-                                        <strong class="text-dark small d-block mb-0.5" style="color: #334155 !important; font-weight: 600;">Note:</strong>
+                                    <div class="mt-2.5 pt-2 border-top text-muted" style="font-size: 0.82rem; line-height: 1.5; border-top-color: #e2e8f0 !important; color: #475569 !important;">
                                         {{ $attachment->note }}
                                     </div>
                                 @endif
