@@ -182,6 +182,7 @@ class TicketController extends Controller
                     'file_size' => Storage::size($finalPath),
                     'mime_type' => $attachment['mime_type'] ?? 'application/octet-stream',
                     'uploaded_by' => Auth::id() ?? 1,
+                    'note' => $attachment['note'] ?? null,
                 ]);
             }
 

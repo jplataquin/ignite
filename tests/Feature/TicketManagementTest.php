@@ -233,13 +233,15 @@ class TicketManagementTest extends TestCase
                 'temp_token' => $token1,
                 'total_chunks' => 1,
                 'file_name' => 'report.pdf',
-                'mime_type' => 'application/pdf'
+                'mime_type' => 'application/pdf',
+                'note' => 'First attachment note'
             ],
             [
                 'temp_token' => $token2,
                 'total_chunks' => 1,
                 'file_name' => 'photo.jpg',
-                'mime_type' => 'image/jpeg'
+                'mime_type' => 'image/jpeg',
+                'note' => 'Second attachment note'
             ]
         ]);
 
@@ -263,11 +265,13 @@ class TicketManagementTest extends TestCase
         // Assert attachments were created
         $this->assertDatabaseHas('attachments', [
             'ticket_id' => $ticket->id,
-            'file_name' => 'report.pdf'
+            'file_name' => 'report.pdf',
+            'note' => 'First attachment note'
         ]);
         $this->assertDatabaseHas('attachments', [
             'ticket_id' => $ticket->id,
-            'file_name' => 'photo.jpg'
+            'file_name' => 'photo.jpg',
+            'note' => 'Second attachment note'
         ]);
     }
 

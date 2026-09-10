@@ -33,9 +33,9 @@
                     @enderror
                 </div>
 
-                <!-- Description of Findings -->
+                <!-- Description -->
                 <div class="mb-3">
-                    <label for="description" class="form-label fw-semibold text-dark small">Description of Findings</label>
+                    <label for="description" class="form-label fw-semibold text-dark small">Description</label>
                     <textarea id="description" class="form-control @error('description') is-invalid @enderror" name="description" rows="4" placeholder="Provide detailed findings or description of the issue...">{{ old('description') }}</textarea>
                     @error('description')
                         <span class="invalid-feedback" role="alert">
@@ -374,35 +374,49 @@
             // Append progress row to progress list
             const progressRowId = `progress-row-${identifier}`;
             const rowHTML = `
-                <div id="${progressRowId}" class="p-3 mb-2 bg-white rounded border shadow-sm d-flex gap-3 align-items-center">
-                    <!-- Icon / Thumbnail Container -->
-                    <div id="preview-${identifier}" class="flex-shrink-0 border rounded bg-light d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; overflow: hidden;">
-                        <!-- Populate via JS -->
+                <div id="${progressRowId}" class="p-3 mb-2 bg-white rounded border shadow-sm d-flex flex-column attachment-row" data-identifier="${identifier}">
+                    <div class="d-flex gap-3 align-items-center w-100">
+                        <!-- Icon / Thumbnail Container -->
+                        <div id="preview-${identifier}" class="flex-shrink-0 border rounded bg-light d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; overflow: hidden;">
+                            <!-- Populate via JS -->
+                        </div>
+
+                        <!-- Progress Info -->
+                        <div class="flex-grow-1 min-width-0">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-dark small fw-semibold text-truncate" style="max-width: 250px;">
+                                    <span class="badge bg-secondary me-1 attachment-number">Attachment #1</span>
+                                    ${escapeHtml(file.name)}
+                                </span>
+                                <span id="percentage-${identifier}" class="text-muted small fw-semibold">0%</span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div id="bar-${identifier}" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div id="status-${identifier}" class="text-muted mt-1" style="font-size: 0.75rem;">Preparing upload...</div>
+                        </div>
+
+                        <!-- Delete Button -->
+                        <div class="flex-shrink-0 ms-2">
+                            <button type="button" id="delete-${identifier}" class="btn btn-sm btn-outline-danger d-none d-flex align-items-center justify-content-center p-0 rounded-circle" style="width: 32px; height: 32px;" onclick="deleteAttachment('${identifier}')" title="Delete attachment">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                    <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-1.995 0L3.83 3.5h8.34zM5 5.033V13h1V5.033zm4 0V13h1V5.033z"/>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Progress Info -->
-                    <div class="flex-grow-1 min-width-0">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="text-dark small fw-semibold text-truncate" style="max-width: 250px;">${escapeHtml(file.name)}</span>
-                            <span id="percentage-${identifier}" class="text-muted small fw-semibold">0%</span>
+                    <!-- Note Input (Visible on complete) -->
+                    <div id="note-container-${identifier}" class="mt-2 d-none">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light text-muted small">File Note</span>
+                            <input type="text" id="note-${identifier}" class="form-control" placeholder="Enter an optional note/description for this file...">
                         </div>
-                        <div class="progress" style="height: 6px;">
-                            <div id="bar-${identifier}" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-                        </div>
-                        <div id="status-${identifier}" class="text-muted mt-1" style="font-size: 0.75rem;">Preparing upload...</div>
-                    </div>
-
-                    <!-- Delete Button -->
-                    <div class="flex-shrink-0 ms-2">
-                        <button type="button" id="delete-${identifier}" class="btn btn-sm btn-outline-danger d-none d-flex align-items-center justify-content-center p-0 rounded-circle" style="width: 32px; height: 32px;" onclick="deleteAttachment('${identifier}')" title="Delete attachment">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
-                                <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-1.995 0L3.83 3.5h8.34zM5 5.033V13h1V5.033zm4 0V13h1V5.033z"/>
-                            </svg>
-                        </button>
                     </div>
                 </div>
             `;
             progressList.insertAdjacentHTML('beforeend', rowHTML);
+            updateAttachmentNumbers();
 
             // Populate preview container
             const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(file.name.split('.').pop().toLowerCase());
@@ -481,11 +495,31 @@
                         temp_token: identifier,
                         total_chunks: totalChunks,
                         file_name: file.name,
-                        mime_type: file.type || 'application/octet-stream'
+                        mime_type: file.type || 'application/octet-stream',
+                        note: ''
                     });
 
                     // Update Hidden Input with Serialized JSON
                     attachmentsJsonInput.value = JSON.stringify(completedAttachments);
+
+                    // Show the Note Input container
+                    const noteContainer = document.getElementById(`note-container-${identifier}`);
+                    if (noteContainer) {
+                        noteContainer.classList.remove('d-none');
+                    }
+
+                    // Attach input change listener to Note Input
+                    const noteInput = document.getElementById(`note-${identifier}`);
+                    if (noteInput) {
+                        noteInput.addEventListener('input', function() {
+                            const val = this.value;
+                            const att = completedAttachments.find(item => item.temp_token === identifier);
+                            if (att) {
+                                att.note = val;
+                                attachmentsJsonInput.value = JSON.stringify(completedAttachments);
+                            }
+                        });
+                    }
 
                     // Decrement active uploads and check if we can re-enable the submit button
                     activeUploadsCount--;
@@ -627,6 +661,16 @@
             fetchAndFilterUsers(false);
         }
 
+        function updateAttachmentNumbers() {
+            const rows = document.querySelectorAll('#upload-progress-list .attachment-row');
+            rows.forEach((row, index) => {
+                const numberLabel = row.querySelector('.attachment-number');
+                if (numberLabel) {
+                    numberLabel.textContent = `Attachment #${index + 1}`;
+                }
+            });
+        }
+
         window.deleteAttachment = function(identifier) {
             if (confirm("Are you sure you want to remove this attachment?")) {
                 const row = document.getElementById(`progress-row-${identifier}`);
@@ -635,6 +679,7 @@
                 }
                 completedAttachments = completedAttachments.filter(item => item.temp_token !== identifier);
                 attachmentsJsonInput.value = JSON.stringify(completedAttachments);
+                updateAttachmentNumbers();
             }
         };
 
