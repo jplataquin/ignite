@@ -29,7 +29,9 @@ class AuthController extends Controller
         if (Auth::check()) {
             return redirect('/');
         }
-        return view('auth.register');
+        $divisions = \App\Models\Division::orderBy('name')->get();
+        $departments = \App\Models\Department::orderBy('name')->get();
+        return view('auth.register', compact('divisions', 'departments'));
     }
 
     /**
@@ -41,16 +43,39 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
+            'division_id' => 'required_with:department_id|nullable|exists:divisions,id',
+            'department_id' => [
+                'nullable',
+                'exists:departments,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($value && $request->input('division_id')) {
+                        $exists = \App\Models\Department::where('id', $value)
+                            ->where('division_id', $request->input('division_id'))
+                            ->exists();
+                        if (!$exists) {
+                            $fail('The selected department must belong to the selected division.');
+                        }
+                    }
+                }
+            ],
         ]);
 
-        \App\Models\User::create([
+        $user = \App\Models\User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'user_type' => 'regular',
+            'division_id' => $validated['division_id'] ?? null,
+            'department_id' => $validated['department_id'] ?? null,
             'is_approved' => false,
             'must_reset_password' => false,
         ]);
+
+        // Notify all admin users
+        $admins = \App\Models\User::where('user_type', 'admin')->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new \App\Notifications\PendingUserRegisteredNotification($user));
+        }
 
         return redirect()->route('login')->with('success', 'Your registration was successful! Your account is currently pending administrator approval before you can sign in.');
     }

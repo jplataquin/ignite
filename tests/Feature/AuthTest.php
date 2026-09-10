@@ -365,4 +365,49 @@ class AuthTest extends TestCase
             'name' => 'Malicious Update',
         ]);
     }
+
+    /**
+     * Test that registering users can select division and department, and admin receives notification.
+     */
+    public function test_registering_user_can_select_division_and_department_and_admin_is_notified(): void
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+
+        $admin = User::factory()->create([
+            'user_type' => 'admin',
+        ]);
+
+        $division = \App\Models\Division::create(['name' => 'HR Division']);
+        $department = \App\Models\Department::create(['name' => 'Recruiting', 'division_id' => $division->id]);
+
+        $response = $this->post('/register', [
+            'name' => 'Pending Staff',
+            'email' => 'pendingstaff@example.com',
+            'password' => 'SecurePassword123!',
+            'password_confirmation' => 'SecurePassword123!',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+        ]);
+
+        $response->assertRedirect('/login');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'pendingstaff@example.com',
+            'name' => 'Pending Staff',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'is_approved' => false,
+        ]);
+
+        $newUser = User::where('email', 'pendingstaff@example.com')->first();
+
+        // Assert notification was sent to admin
+        \Illuminate\Support\Facades\Notification::assertSentTo(
+            $admin,
+            \App\Notifications\PendingUserRegisteredNotification::class,
+            function ($notification, $channels) use ($newUser) {
+                return $notification->user->id === $newUser->id;
+            }
+        );
+    }
 }
