@@ -10,6 +10,7 @@ use App\Models\Division;
 use App\Models\TicketStatus;
 use App\Models\TicketType;
 use App\Models\Priority;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -50,9 +51,10 @@ class TicketController extends Controller
         $divisions = Division::all();
         $departments = Department::all();
         $categories = Category::all();
+        $users = User::orderBy('name')->get();
 
         return view('tickets.create', compact(
-            'ticketTypes', 'priorities', 'statuses', 'divisions', 'departments', 'categories'
+            'ticketTypes', 'priorities', 'statuses', 'divisions', 'departments', 'categories', 'users'
         ));
     }
 
@@ -90,6 +92,7 @@ class TicketController extends Controller
             'category_1_id' => 'required|exists:categories,id',
             'category_2_id' => 'nullable|exists:categories,id',
             'category_3_id' => 'nullable|exists:categories,id',
+            'to_user_id' => 'nullable|exists:users,id',
             'attachments_json' => 'nullable|string',
         ]);
 
@@ -144,6 +147,7 @@ class TicketController extends Controller
                 'category_1_id' => $validated['category_1_id'],
                 'category_2_id' => $validated['category_2_id'] ?? null,
                 'category_3_id' => $validated['category_3_id'] ?? null,
+                'to_user_id' => $validated['to_user_id'] ?? null,
             ]);
 
             // Merge File Chunks for each attachment
@@ -219,5 +223,56 @@ class TicketController extends Controller
         }
 
         return response()->json($categories);
+    }
+
+    /**
+     * Get users filtered by division and department (AJAX API).
+     */
+    public function getUsers(Request $request)
+    {
+        $divisionId = $request->query('division_id');
+        $departmentId = $request->query('department_id');
+
+        $query = User::query();
+
+        if ($divisionId) {
+            $query->where('division_id', $divisionId);
+        }
+
+        if ($departmentId) {
+            $query->where('department_id', $departmentId);
+        }
+
+        $users = $query->orderBy('name')->get(['id', 'name', 'user_type']);
+
+        return response()->json($users);
+    }
+
+    /**
+     * Accept/Assign a ticket to the authenticated user.
+     */
+    public function accept(Ticket $ticket)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            abort(403);
+        }
+
+        if ($ticket->assigned_to) {
+            return redirect()->back()->with('error', 'This ticket has already been accepted/assigned.');
+        }
+
+        if ($ticket->to_user_id && $ticket->to_user_id !== $user->id) {
+            return redirect()->back()->with('error', 'This ticket is intended for another user and can only be accepted by them.');
+        }
+
+        $assignedStatus = TicketStatus::where('slug', 'assigned')->first();
+
+        $ticket->update([
+            'assigned_to' => $user->id,
+            'status_id' => $assignedStatus ? $assignedStatus->id : $ticket->status_id,
+        ]);
+
+        return redirect()->back()->with('success', 'Ticket accepted successfully.');
     }
 }

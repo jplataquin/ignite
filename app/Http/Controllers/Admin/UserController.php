@@ -28,7 +28,8 @@ class UserController extends Controller
     {
         $divisions = Division::orderBy('name')->get();
         $departments = Department::orderBy('name')->get();
-        return view('admin.users.create', compact('divisions', 'departments'));
+        $roles = Role::orderBy('name')->get();
+        return view('admin.users.create', compact('divisions', 'departments', 'roles'));
     }
 
     /**
@@ -56,9 +57,11 @@ class UserController extends Controller
                     }
                 }
             ],
+            'roles' => 'nullable|array',
+            'roles.*' => 'exists:roles,id',
         ]);
 
-        User::create([
+        $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'user_type' => $validated['user_type'],
@@ -67,6 +70,8 @@ class UserController extends Controller
             'password' => Hash::make($validated['password']),
             'must_reset_password' => true, // Force reset upon first login!
         ]);
+
+        $user->roles()->sync($request->input('roles', []));
 
         return redirect()->route('admin.users.index')
             ->with('success', "User '{$validated['name']}' created successfully with temporary password. They will be prompted to reset it on their first login.");

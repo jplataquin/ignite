@@ -157,6 +157,37 @@ class AuthTest extends TestCase
     }
 
     /**
+     * Test that admins can create other users and assign roles to them upon creation.
+     */
+    public function test_admins_can_create_users_and_assign_roles(): void
+    {
+        $admin = User::factory()->create([
+            'user_type' => 'admin',
+        ]);
+        $division = Division::create(['name' => 'Support Division']);
+        $role1 = Role::create(['name' => 'Support Rep', 'slug' => 'support-rep']);
+        $role2 = Role::create(['name' => 'Billing Agent', 'slug' => 'billing-agent']);
+
+        $response = $this->actingAs($admin)->post('/admin/users', [
+            'name' => 'New Staff User',
+            'email' => 'staffuser@example.com',
+            'user_type' => 'moderator',
+            'password' => 'TempPassword123!',
+            'division_id' => $division->id,
+            'roles' => [$role1->id, $role2->id],
+        ]);
+
+        $response->assertRedirect('/admin/users');
+        
+        $newUser = User::where('email', 'staffuser@example.com')->firstOrFail();
+        
+        $this->assertEquals('New Staff User', $newUser->name);
+        $this->assertEquals('moderator', $newUser->user_type);
+        $this->assertTrue($newUser->roles->contains($role1->id));
+        $this->assertTrue($newUser->roles->contains($role2->id));
+    }
+
+    /**
      * Test that users requiring reset are redirected to the reset-password page.
      */
     public function test_users_requiring_reset_are_redirected_to_reset_password_page(): void

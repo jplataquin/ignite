@@ -110,6 +110,31 @@
                     @enderror
                 </div>
 
+                <!-- Roles Section -->
+                <div class="border-top pt-4 mb-4">
+                    <h6 class="fw-bold text-dark mb-2">Role Assignments</h6>
+                    <p class="text-muted small mb-3">Roles define specific cross-department privileges and access properties. Select the roles that apply to this user.</p>
+                    
+                    <div class="row g-3">
+                        @forelse($roles as $role)
+                            <div class="col-12 col-md-6">
+                                <div class="form-check border rounded p-3 h-100 bg-light d-flex align-items-start">
+                                    <input class="form-check-input me-2 mt-1" type="checkbox" name="roles[]" value="{{ $role->id }}" id="role_{{ $role->id }}" {{ is_array(old('roles')) && in_array($role->id, old('roles')) ? 'checked' : '' }}>
+                                    <label class="form-check-label w-100" for="role_{{ $role->id }}">
+                                        <span class="fw-bold text-dark d-block small mb-1">{{ $role->name }}</span>
+                                        <span class="text-muted d-block" style="font-size: 0.75rem; line-height: 1.3;">{{ $role->description ?: 'No description provided.' }}</span>
+                                    </label>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="col-12 text-center py-3 text-muted border border-dashed rounded">
+                                <span class="small d-block">No roles available in the system yet.</span>
+                                <a href="{{ route('admin.roles.create') }}" class="small fw-semibold text-decoration-none">Create a new role</a>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+
                 <!-- Actions -->
                 <div class="d-flex justify-content-end gap-2">
                     <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary">Cancel</a>

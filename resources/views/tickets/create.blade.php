@@ -100,6 +100,32 @@
                     </div>
                 </div>
 
+                <div class="row row-cols-1 row-cols-md-2 g-3 mb-3">
+                    <!-- Intended User -->
+                    <div>
+                        <label for="to_user_id" class="form-label fw-semibold text-dark small">Intended User (Optional)</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text bg-light text-muted small py-1 px-2.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+                                </svg>
+                            </span>
+                            <input type="text" id="user_search" class="form-control form-control-sm" placeholder="Type to search users by name..." style="height: 38px;">
+                        </div>
+                        <select id="to_user_id" class="form-select @error('to_user_id') is-invalid @enderror" name="to_user_id">
+                            <option value="">Select User (Any staff can accept)</option>
+                            @foreach($users as $u)
+                                <option value="{{ $u->id }}" {{ old('to_user_id') == $u->id ? 'selected' : '' }}>{{ $u->name }} ({{ $u->user_type }})</option>
+                            @endforeach
+                        </select>
+                        @error('to_user_id')
+                            <span class="invalid-feedback" role="alert">
+                                <strong>{{ $message }}</strong>
+                            </span>
+                        @enderror
+                    </div>
+                </div>
+
                 <div class="row row-cols-1 row-cols-md-3 g-3 mb-3">
                     <!-- Category 1 -->
                     <div>
@@ -481,6 +507,57 @@
                 }
             });
         }
+
+        // --- LIVE SEARCH AND DYNAMIC FILTERING LOGIC ---
+        const divisionSelect = document.getElementById('division_id');
+        const departmentSelect = document.getElementById('department_id');
+        const userSearchInput = document.getElementById('user_search');
+        const toUserSelect = document.getElementById('to_user_id');
+
+        let allUsers = @json($users); // Seeded with initial users from backend
+        let searchQuery = '';
+
+        function renderUsers() {
+            const selectedVal = toUserSelect.value;
+            let options = `<option value="">Select User (Any staff can accept)</option>`;
+            
+            const filtered = allUsers.filter(u => {
+                const nameMatches = u.name.toLowerCase().includes(searchQuery.toLowerCase());
+                return nameMatches;
+            });
+
+            filtered.forEach(u => {
+                const isSelected = selectedVal == u.id ? 'selected' : '';
+                options += `<option value="${u.id}" ${isSelected}>${u.name} (${u.user_type})</option>`;
+            });
+
+            toUserSelect.innerHTML = options;
+        }
+
+        function fetchAndFilterUsers() {
+            const divisionId = divisionSelect.value;
+            const departmentId = departmentSelect.value;
+
+            let url = `/api/users?`;
+            if (divisionId) url += `division_id=${divisionId}&`;
+            if (departmentId) url += `department_id=${departmentId}`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    allUsers = data;
+                    renderUsers();
+                })
+                .catch(err => console.error('Error fetching users:', err));
+        }
+
+        userSearchInput.addEventListener('input', function() {
+            searchQuery = this.value;
+            renderUsers();
+        });
+
+        divisionSelect.addEventListener('change', fetchAndFilterUsers);
+        departmentSelect.addEventListener('change', fetchAndFilterUsers);
 
         window.deleteAttachment = function(identifier) {
             if (confirm("Are you sure you want to remove this attachment?")) {

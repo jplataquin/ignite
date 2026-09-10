@@ -270,4 +270,165 @@ class TicketManagementTest extends TestCase
             'file_name' => 'photo.jpg'
         ]);
     }
+
+    /**
+     * Test that users can create a ticket specifying an intended user (to_user_id).
+     */
+    public function test_users_can_create_ticket_with_intended_user(): void
+    {
+        $creator = User::factory()->create();
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $creator->roles()->attach($role->id);
+        
+        $intendedUser = User::factory()->create();
+
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $role->ticketTypes()->attach($type->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $response = $this->actingAs($creator)->post('/tickets', [
+            'title' => 'Intended Ticket',
+            'description' => 'This ticket is meant specifically for someone.',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'category_1_id' => $category->id,
+            'to_user_id' => $intendedUser->id,
+        ]);
+
+        $ticket = Ticket::where('title', 'Intended Ticket')->first();
+        $this->assertNotNull($ticket);
+        $this->assertEquals($intendedUser->id, $ticket->to_user_id);
+    }
+
+    /**
+     * Test that only the intended user can accept the ticket if to_user_id is filled.
+     */
+    public function test_only_intended_user_can_accept_ticket(): void
+    {
+        $creator = User::factory()->create();
+        $intendedUser = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $statusOpen = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        TicketStatus::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']); // Used when accepted
+        
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-2026-1234',
+            'title' => 'For Intended User Only',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $statusOpen->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+            'to_user_id' => $intendedUser->id,
+        ]);
+
+        // Disable CSRF for requests forgery
+        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+
+        // Try accepting as other user - should fail
+        $response = $this->actingAs($otherUser)->post(route('tickets.accept', $ticket));
+        $response->assertRedirect();
+        $response->assertSessionHas('error');
+        $ticket->refresh();
+        $this->assertNull($ticket->assigned_to);
+
+        // Try accepting as intended user - should succeed
+        $response = $this->actingAs($intendedUser)->post(route('tickets.accept', $ticket));
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+        $ticket->refresh();
+        $this->assertEquals($intendedUser->id, $ticket->assigned_to);
+        $this->assertEquals('assigned', $ticket->status->slug);
+    }
+
+    /**
+     * Test that any user can accept a ticket if to_user_id is null.
+     */
+    public function test_any_user_can_accept_unintended_ticket(): void
+    {
+        $creator = User::factory()->create();
+        $acceptor = User::factory()->create();
+
+        $statusOpen = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        TicketStatus::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-2026-5678',
+            'title' => 'Open To Anyone',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $statusOpen->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+            'to_user_id' => null,
+        ]);
+
+        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+
+        $response = $this->actingAs($acceptor)->post(route('tickets.accept', $ticket));
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+        $ticket->refresh();
+        $this->assertEquals($acceptor->id, $ticket->assigned_to);
+    }
+
+    /**
+     * Test that users can fetch users list filtered by division and department via AJAX API.
+     */
+    public function test_users_can_fetch_filtered_users_via_ajax(): void
+    {
+        $user = User::factory()->create();
+
+        $div1 = Division::create(['name' => 'Division One']);
+        $div2 = Division::create(['name' => 'Division Two']);
+
+        $dept1 = Department::create(['name' => 'Dept One', 'division_id' => $div1->id]);
+        $dept2 = Department::create(['name' => 'Dept Two', 'division_id' => $div2->id]);
+
+        $userInDiv1Dept1 = User::factory()->create(['name' => 'John Div1Dept1', 'division_id' => $div1->id, 'department_id' => $dept1->id]);
+        $userInDiv2Dept2 = User::factory()->create(['name' => 'Jane Div2Dept2', 'division_id' => $div2->id, 'department_id' => $dept2->id]);
+
+        // 1. Fetch with division filter only
+        $response = $this->actingAs($user)->getJson("/api/users?division_id={$div1->id}");
+        $response->assertStatus(200)
+            ->assertJsonFragment(['id' => $userInDiv1Dept1->id, 'name' => 'John Div1Dept1'])
+            ->assertJsonMissing(['id' => $userInDiv2Dept2->id]);
+
+        // 2. Fetch with department filter only
+        $response = $this->actingAs($user)->getJson("/api/users?department_id={$dept2->id}");
+        $response->assertStatus(200)
+            ->assertJsonFragment(['id' => $userInDiv2Dept2->id, 'name' => 'Jane Div2Dept2'])
+            ->assertJsonMissing(['id' => $userInDiv1Dept1->id]);
+
+        // 3. Fetch with both filters
+        $response = $this->actingAs($user)->getJson("/api/users?division_id={$div1->id}&department_id={$dept1->id}");
+        $response->assertStatus(200)
+            ->assertJsonFragment(['id' => $userInDiv1Dept1->id, 'name' => 'John Div1Dept1'])
+            ->assertJsonMissing(['id' => $userInDiv2Dept2->id]);
+    }
 }
