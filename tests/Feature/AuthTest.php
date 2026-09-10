@@ -31,13 +31,96 @@ class AuthTest extends TestCase
     }
 
     /**
-     * Test that guests cannot view the registration page (since it's removed).
+     * Test that guests can view the registration page.
      */
-    public function test_registration_screen_cannot_be_rendered(): void
+    public function test_registration_screen_can_be_rendered(): void
     {
         $response = $this->get('/register');
 
-        $response->assertStatus(404);
+        $response->assertStatus(200);
+        $response->assertSee('Create an Account');
+    }
+
+    /**
+     * Test that unregistered users can register but cannot login without approval.
+     */
+    public function test_unregistered_users_can_register_but_cannot_login_without_approval(): void
+    {
+        $response = $this->post('/register', [
+            'name' => 'Pending User',
+            'email' => 'pending@example.com',
+            'password' => 'SecurePassword123!',
+            'password_confirmation' => 'SecurePassword123!',
+        ]);
+
+        $response->assertRedirect('/login');
+        $this->assertDatabaseHas('users', [
+            'email' => 'pending@example.com',
+            'name' => 'Pending User',
+            'is_approved' => false,
+        ]);
+
+        // Attempt login
+        $loginResponse = $this->post('/login', [
+            'email' => 'pending@example.com',
+            'password' => 'SecurePassword123!',
+        ]);
+
+        $loginResponse->assertSessionHasErrors('email');
+        $this->assertFalse(\Illuminate\Support\Facades\Auth::check());
+    }
+
+    /**
+     * Test that admin can approve a pending user.
+     */
+    public function test_admin_can_approve_pending_user(): void
+    {
+        $admin = User::factory()->create([
+            'user_type' => 'admin',
+        ]);
+
+        $pendingUser = User::factory()->create([
+            'name' => 'Pending User',
+            'email' => 'pending@example.com',
+            'password' => bcrypt('password123'),
+            'is_approved' => false,
+        ]);
+
+        $response = $this->actingAs($admin)->post("/admin/users/{$pendingUser->id}/approve");
+
+        $response->assertRedirect('/admin/users');
+        $this->assertTrue($pendingUser->fresh()->is_approved);
+
+        // Attempt login as approved user
+        $loginResponse = $this->post('/login', [
+            'email' => 'pending@example.com',
+            'password' => 'password123',
+        ]);
+
+        $loginResponse->assertRedirect('/');
+    }
+
+    /**
+     * Test that admin can reject and delete a pending user.
+     */
+    public function test_admin_can_reject_pending_user(): void
+    {
+        $admin = User::factory()->create([
+            'user_type' => 'admin',
+        ]);
+
+        $pendingUser = User::factory()->create([
+            'name' => 'Pending User',
+            'email' => 'pending@example.com',
+            'is_approved' => false,
+        ]);
+
+        $response = $this->actingAs($admin)->post("/admin/users/{$pendingUser->id}/reject");
+
+        $response->assertRedirect('/admin/users');
+        $this->assertDatabaseMissing('users', [
+            'id' => $pendingUser->id,
+        ]);
     }
 
     /**

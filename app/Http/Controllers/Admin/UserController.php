@@ -131,4 +131,27 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')
             ->with('success', "User '{$validated['name']}' updated successfully.");
     }
+
+    /**
+     * Approve the specified user account.
+     */
+    public function approve(User $user)
+    {
+        $user->update(['is_approved' => true]);
+
+        return redirect()->route('admin.users.index')
+            ->with('success', "User '{$user->name}' has been approved and can now log in.");
+    }
+
+    /**
+     * Reject and delete the specified user account.
+     */
+    public function reject(User $user)
+    {
+        $name = $user->name;
+        $user->delete();
+
+        return redirect()->route('admin.users.index')
+            ->with('success', "User '{$name}' has been rejected and their account deleted.");
+    }
 }

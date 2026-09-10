@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Log In - {{ config('app.name', 'Ignite') }}</title>
+    <title>Register - {{ config('app.name', 'Ignite') }}</title>
 
     <!-- Vite Assets -->
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
@@ -17,7 +17,7 @@
             justify-content: center;
         }
         .auth-card {
-            max-width: 420px;
+            max-width: 460px;
             width: 100%;
             padding: 2.5rem;
             border-radius: 12px;
@@ -43,10 +43,6 @@
             border-color: var(--fd-primary);
             box-shadow: 0 0 0 0.25rem rgba(225, 29, 72, 0.25);
         }
-        .form-check-input:checked {
-            background-color: var(--fd-primary);
-            border-color: var(--fd-primary);
-        }
     </style>
 </head>
 <body>
@@ -56,22 +52,27 @@
                 Ignite
             </div>
 
-            <h4 class="fw-bold text-dark text-center mb-1">Welcome Back</h4>
-            <p class="text-muted text-center mb-4 small">Log in to manage your tickets</p>
+            <h4 class="fw-bold text-dark text-center mb-1">Create an Account</h4>
+            <p class="text-muted text-center mb-4 small">Register to submit and track support tickets</p>
 
-            @if(session('success'))
-                <div class="alert alert-success border-0 shadow-sm mb-4 small" role="alert">
-                    {{ session('success') }}
-                </div>
-            @endif
-
-            <form method="POST" action="{{ route('login') }}">
+            <form method="POST" action="{{ route('register') }}">
                 @csrf
+
+                <!-- Full Name -->
+                <div class="mb-3">
+                    <label for="name" class="form-label fw-semibold text-dark small">Full Name</label>
+                    <input id="name" type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" required autocomplete="name" autofocus placeholder="Jane Doe">
+                    @error('name')
+                        <span class="invalid-feedback" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
 
                 <!-- Email Address -->
                 <div class="mb-3">
                     <label for="email" class="form-label fw-semibold text-dark small">Email Address</label>
-                    <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email" autofocus placeholder="name@example.com">
+                    <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email" placeholder="name@example.com">
                     @error('email')
                         <span class="invalid-feedback" role="alert">
                             <strong>{{ $message }}</strong>
@@ -82,7 +83,7 @@
                 <!-- Password -->
                 <div class="mb-3">
                     <label for="password" class="form-label fw-semibold text-dark small">Password</label>
-                    <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="current-password" placeholder="••••••••">
+                    <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="new-password" placeholder="Min. 8 characters">
                     @error('password')
                         <span class="invalid-feedback" role="alert">
                             <strong>{{ $message }}</strong>
@@ -90,25 +91,23 @@
                     @enderror
                 </div>
 
-                <!-- Remember Me -->
-                <div class="form-check mb-4">
-                    <input class="form-check-input" type="checkbox" name="remember" id="remember" {{ old('remember') ? 'checked' : '' }}>
-                    <label class="form-check-input-label text-muted small" for="remember">
-                        Remember me on this device
-                    </label>
+                <!-- Confirm Password -->
+                <div class="mb-4">
+                    <label for="password-confirm" class="form-label fw-semibold text-dark small">Confirm Password</label>
+                    <input id="password-confirm" type="password" class="form-control" name="password_confirmation" required autocomplete="new-password" placeholder="••••••••">
                 </div>
 
                 <!-- Submit Button -->
                 <div class="d-grid gap-2 mb-3">
                     <button type="submit" class="btn btn-primary btn-lg fs-6">
-                        Sign In
+                        Register Account
                     </button>
                 </div>
 
-                <!-- Registration Link -->
+                <!-- Alternative Link -->
                 <div class="text-center">
-                    <span class="text-muted small">Don't have an account? </span>
-                    <a href="{{ route('register') }}" class="text-danger fw-semibold small text-decoration-none">Register</a>
+                    <span class="text-muted small">Already have an account? </span>
+                    <a href="{{ route('login') }}" class="text-danger fw-semibold small text-decoration-none">Sign In</a>
                 </div>
             </form>
         </div>

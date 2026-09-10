@@ -72,7 +72,14 @@
                             @endif
                         </td>
                         <td class="py-3">
-                            @if($user->must_reset_password)
+                            @if(!$user->is_approved)
+                                <span class="badge bg-warning text-dark rounded-pill px-3 py-1.5 fw-semibold d-inline-flex align-items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-person-fill-lock me-1" viewBox="0 0 16 16">
+                                        <path d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0m-9 8c0 1 1 1 1 1h5v-1a2 2 0 0 1 .01-.2 4.49 4.49 0 0 1 1.534-3.693C8.86 11.344 7.029 11 6 11c-2.333 0-6 1.167-6 3.5zm7.854-4.646a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708-.708L10.793 12H9a1 1 0 0 1 0-2h1.793L9.146 8.646a.5.5 0 0 1 0-.708"/>
+                                    </svg>
+                                    Pending Approval
+                                </span>
+                            @elseif($user->must_reset_password)
                                 <span class="badge bg-warning text-dark rounded-pill px-3 py-1.5 fw-semibold d-inline-flex align-items-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-key-fill me-1" viewBox="0 0 16 16">
                                         <path d="M3.5 11.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0m5-3a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
@@ -91,9 +98,22 @@
                         </td>
                         <td class="py-3 text-muted small">{{ $user->created_at->format('M d, Y') }}</td>
                         <td class="px-4 py-3 text-end">
-                            <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center" style="min-height: 34px;">
-                                Edit
-                            </a>
+                            @if(!$user->is_approved)
+                                <div class="d-flex justify-content-end gap-1">
+                                    <form method="POST" action="{{ route('admin.users.approve', $user) }}" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-success px-2.5 py-1 fw-semibold text-white">Approve</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.users.reject', $user) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to reject and delete this registration?');">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-danger px-2.5 py-1 fw-semibold">Reject</button>
+                                    </form>
+                                </div>
+                            @else
+                                <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center justify-content-center" style="min-height: 34px;">
+                                    Edit
+                                </a>
+                            @endif
                         </td>
                     </tr>
                 @empty

@@ -22,6 +22,40 @@ class AuthController extends Controller
     }
 
     /**
+     * Show the registration form.
+     */
+    public function showRegister()
+    {
+        if (Auth::check()) {
+            return redirect('/');
+        }
+        return view('auth.register');
+    }
+
+    /**
+     * Handle a registration request.
+     */
+    public function register(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        \App\Models\User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'user_type' => 'regular',
+            'is_approved' => false,
+            'must_reset_password' => false,
+        ]);
+
+        return redirect()->route('login')->with('success', 'Your registration was successful! Your account is currently pending administrator approval before you can sign in.');
+    }
+
+    /**
      * Handle login request.
      */
     public function login(Request $request)
@@ -34,6 +68,13 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
 
         if (Auth::attempt($credentials, $remember)) {
+            if (!Auth::user()->is_approved) {
+                Auth::logout();
+                throw ValidationException::withMessages([
+                    'email' => 'Your account is pending administrator approval before you can sign in.',
+                ]);
+            }
+
             $request->session()->regenerate();
             
             // Redirect based on whether they need to reset their password
