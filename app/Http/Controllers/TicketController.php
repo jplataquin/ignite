@@ -159,6 +159,17 @@ class TicketController extends Controller
                 $finalFileName = $attachment['file_name'];
                 $finalPath = 'attachments/' . $ticket->id . '/' . $finalFileName;
                 
+
+                Attachment::create([
+                    'ticket_id' => $ticket->id,
+                    'file_name' => $finalFileName,
+                    'file_path' => $finalPath,
+                    'file_size' => Storage::size($finalPath),
+                    'mime_type' => $attachment['mime_type'] ?? 'application/octet-stream',
+                    'uploaded_by' => Auth::id() ?? 1,
+                    'note' => $attachment['note'] ?? null,
+                ]);
+
                 Storage::makeDirectory('attachments/' . $ticket->id);
                 
                 $finalContent = '';
@@ -175,15 +186,6 @@ class TicketController extends Controller
                 Storage::put($finalPath, $finalContent);
                 Storage::deleteDirectory($stagingDir);
                 
-                Attachment::create([
-                    'ticket_id' => $ticket->id,
-                    'file_name' => $finalFileName,
-                    'file_path' => $finalPath,
-                    'file_size' => Storage::size($finalPath),
-                    'mime_type' => $attachment['mime_type'] ?? 'application/octet-stream',
-                    'uploaded_by' => Auth::id() ?? 1,
-                    'note' => $attachment['note'] ?? null,
-                ]);
             }
 
             return redirect()->route('tickets.show', $ticket)->with('success', 'Ticket created successfully.');
