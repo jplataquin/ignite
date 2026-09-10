@@ -37,15 +37,24 @@
             </a>
 
             <!-- Notification Bell Hub -->
-            <div class="d-flex align-items-center ms-auto">
-                <button class="btn btn-link text-white position-relative p-0" id="notificationBell">
+            <div class="dropdown d-flex align-items-center ms-auto">
+                <button class="btn btn-link text-white position-relative p-0 dropdown-toggle" id="notificationBell" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-bell-fill" viewBox="0 0 16 16">
                         <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/>
                     </svg>
-                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
-                        <span class="visually-hidden">New alerts</span>
+                    <span id="notificationBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" style="font-size: 0.65rem; padding: 0.25em 0.4em;">
+                        0
                     </span>
                 </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-0" aria-labelledby="notificationBell" id="notificationDropdown" style="width: 320px; max-height: 400px; overflow-y: auto; font-size: 0.9rem; margin-top: 10px;">
+                    <li class="p-2 border-bottom d-flex justify-content-between align-items-center bg-light">
+                        <span class="fw-bold text-dark">Notifications</span>
+                        <button id="markAllRead" class="btn btn-link btn-sm text-decoration-none p-0 text-primary d-none" style="font-size: 0.8rem; min-height: auto;">Mark all as read</button>
+                    </li>
+                    <div id="notificationList">
+                        <li class="text-center p-3 text-muted">Loading notifications...</li>
+                    </div>
+                </ul>
             </div>
         </div>
     </header>

@@ -430,5 +430,11 @@ class TicketManagementTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonFragment(['id' => $userInDiv1Dept1->id, 'name' => 'John Div1Dept1'])
             ->assertJsonMissing(['id' => $userInDiv2Dept2->id]);
+
+        // 4. Fetch with search query filter 'q'
+        $response = $this->actingAs($user)->getJson("/api/users?q=Jane");
+        $response->assertStatus(200)
+            ->assertJsonFragment(['id' => $userInDiv2Dept2->id, 'name' => 'Jane Div2Dept2'])
+            ->assertJsonMissing(['id' => $userInDiv1Dept1->id]);
     }
 }

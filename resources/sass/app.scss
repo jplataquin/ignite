@@ -60,3 +60,30 @@ body {
 .badge-review { background-color: var(--fd-status-review); color: white; }
 .badge-closed { background-color: var(--fd-status-closed); color: white; }
 .badge-canceled { background-color: var(--fd-status-canceled); color: white; }
+
+// Notification dropdown and items styling
+#notificationBell::after {
+    display: none !important;
+}
+
+.notification-item {
+    transition: background-color 0.15s ease-in-out;
+    border-bottom: 1px solid #e2e8f0;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    
+    &:hover {
+        background-color: #f1f5f9;
+    }
+    
+    &.unread {
+        background-color: #fff1f2;
+        font-weight: 500;
+        
+        &:hover {
+            background-color: #ffe4e6;
+        }
+    }
+}

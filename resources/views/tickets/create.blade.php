@@ -100,31 +100,7 @@
                     </div>
                 </div>
 
-                <div class="row row-cols-1 row-cols-md-2 g-3 mb-3">
-                    <!-- Intended User -->
-                    <div>
-                        <label for="to_user_id" class="form-label fw-semibold text-dark small">Intended User (Optional)</label>
-                        <div class="input-group mb-2">
-                            <span class="input-group-text bg-light text-muted small py-1 px-2.5">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
-                                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
-                                </svg>
-                            </span>
-                            <input type="text" id="user_search" class="form-control form-control-sm" placeholder="Type to search users by name..." style="height: 38px;">
-                        </div>
-                        <select id="to_user_id" class="form-select @error('to_user_id') is-invalid @enderror" name="to_user_id">
-                            <option value="">Select User (Any staff can accept)</option>
-                            @foreach($users as $u)
-                                <option value="{{ $u->id }}" {{ old('to_user_id') == $u->id ? 'selected' : '' }}>{{ $u->name }} ({{ $u->user_type }})</option>
-                            @endforeach
-                        </select>
-                        @error('to_user_id')
-                            <span class="invalid-feedback" role="alert">
-                                <strong>{{ $message }}</strong>
-                            </span>
-                        @enderror
-                    </div>
-                </div>
+
 
                 <div class="row row-cols-1 row-cols-md-3 g-3 mb-3">
                     <!-- Category 1 -->
@@ -167,7 +143,14 @@
                     </div>
                 </div>
 
-                <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">
+                @php
+                    $oldIntendedUser = null;
+                    if (old('to_user_id')) {
+                        $oldIntendedUser = $users->firstWhere('id', old('to_user_id'));
+                    }
+                @endphp
+
+                <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
                     <!-- Division -->
                     <div>
                         <label for="division_id" class="form-label fw-semibold text-dark small">Division</label>
@@ -198,6 +181,27 @@
                                 <strong>{{ $message }}</strong>
                             </span>
                         @enderror
+                    </div>
+
+                    <!-- Intended User (Optional) - Autocomplete -->
+                    <div class="position-relative">
+                        <label for="user_search" class="form-label fw-semibold text-dark small">Intended User (Optional)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted small py-1 px-2.5" style="border-right: 0;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+                                </svg>
+                            </span>
+                            <input type="text" id="user_search" class="form-control @error('to_user_id') is-invalid @enderror" placeholder="Type to search users..." autocomplete="off" value="{{ $oldIntendedUser ? $oldIntendedUser->name : '' }}" style="border-left: 0; border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem;">
+                            <input type="hidden" id="to_user_id" name="to_user_id" value="{{ old('to_user_id') }}">
+                            @error('to_user_id')
+                                <span class="invalid-feedback" role="alert">
+                                    <strong>{{ $message }}</strong>
+                                </span>
+                            @enderror
+                        </div>
+                        <ul id="autocomplete-results" class="dropdown-menu w-100 shadow border-0 py-0" style="max-height: 250px; overflow-y: auto; z-index: 1000; font-size: 0.9rem; position: absolute; top: 100%; left: 0; display: none;">
+                        </ul>
                     </div>
                 </div>
 
@@ -508,33 +512,68 @@
             });
         }
 
-        // --- LIVE SEARCH AND DYNAMIC FILTERING LOGIC ---
+        // --- AUTOCOMPLETE INTENDED USER LOGIC ---
         const divisionSelect = document.getElementById('division_id');
         const departmentSelect = document.getElementById('department_id');
         const userSearchInput = document.getElementById('user_search');
-        const toUserSelect = document.getElementById('to_user_id');
+        const toUserIdInput = document.getElementById('to_user_id');
+        const autocompleteResults = document.getElementById('autocomplete-results');
 
         let allUsers = @json($users); // Seeded with initial users from backend
-        let searchQuery = '';
 
-        function renderUsers() {
-            const selectedVal = toUserSelect.value;
-            let options = `<option value="">Select User (Any staff can accept)</option>`;
-            
+        function renderAutocomplete() {
+            const query = userSearchInput.value.trim().toLowerCase();
+            if (!query) {
+                showResults(allUsers);
+                return;
+            }
+
             const filtered = allUsers.filter(u => {
-                const nameMatches = u.name.toLowerCase().includes(searchQuery.toLowerCase());
-                return nameMatches;
+                return u.name.toLowerCase().includes(query);
             });
 
-            filtered.forEach(u => {
-                const isSelected = selectedVal == u.id ? 'selected' : '';
-                options += `<option value="${u.id}" ${isSelected}>${u.name} (${u.user_type})</option>`;
-            });
-
-            toUserSelect.innerHTML = options;
+            showResults(filtered);
         }
 
-        function fetchAndFilterUsers() {
+        function showResults(usersList) {
+            if (usersList.length === 0) {
+                autocompleteResults.innerHTML = '<li class="dropdown-item text-muted disabled py-2" style="min-height: auto;">No users found</li>';
+                autocompleteResults.style.display = 'block';
+                return;
+            }
+
+            let html = '';
+            usersList.forEach(u => {
+                html += `
+                    <li class="dropdown-item py-2 border-bottom" style="cursor: pointer; min-height: auto;" data-id="${u.id}" data-name="${escapeHtml(u.name)}">
+                        <div class="fw-semibold text-dark">${escapeHtml(u.name)}</div>
+                        <small class="text-muted" style="font-size: 0.75rem;">Type: ${escapeHtml(u.user_type)}</small>
+                    </li>
+                `;
+            });
+
+            autocompleteResults.innerHTML = html;
+            autocompleteResults.style.display = 'block';
+
+            // Click listener for each item
+            autocompleteResults.querySelectorAll('li.dropdown-item').forEach(item => {
+                if (item.classList.contains('disabled')) return;
+                item.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const name = this.getAttribute('data-name');
+                    toUserIdInput.value = id;
+                    userSearchInput.value = name;
+                    autocompleteResults.style.display = 'none';
+                });
+            });
+        }
+
+        function fetchAndFilterUsers(reset = true) {
+            if (reset) {
+                toUserIdInput.value = '';
+                userSearchInput.value = '';
+            }
+
             const divisionId = divisionSelect.value;
             const departmentId = departmentSelect.value;
 
@@ -546,18 +585,36 @@
                 .then(res => res.json())
                 .then(data => {
                     allUsers = data;
-                    renderUsers();
                 })
                 .catch(err => console.error('Error fetching users:', err));
         }
 
+        // Show suggestions on input, focus, or click
+        userSearchInput.addEventListener('input', renderAutocomplete);
+        userSearchInput.addEventListener('focus', renderAutocomplete);
+        userSearchInput.addEventListener('click', renderAutocomplete);
+
+        // Clear hidden input when search text is cleared completely
         userSearchInput.addEventListener('input', function() {
-            searchQuery = this.value;
-            renderUsers();
+            if (this.value.trim() === '') {
+                toUserIdInput.value = '';
+            }
         });
 
-        divisionSelect.addEventListener('change', fetchAndFilterUsers);
-        departmentSelect.addEventListener('change', fetchAndFilterUsers);
+        // Hide results when clicking outside the input or list
+        document.addEventListener('click', function(e) {
+            if (e.target !== userSearchInput && !autocompleteResults.contains(e.target)) {
+                autocompleteResults.style.display = 'none';
+            }
+        });
+
+        divisionSelect.addEventListener('change', () => fetchAndFilterUsers(true));
+        departmentSelect.addEventListener('change', () => fetchAndFilterUsers(true));
+
+        // On load, fetch if division/department is pre-selected
+        if (divisionSelect.value || departmentSelect.value) {
+            fetchAndFilterUsers(false);
+        }
 
         window.deleteAttachment = function(identifier) {
             if (confirm("Are you sure you want to remove this attachment?")) {

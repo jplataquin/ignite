@@ -232,6 +232,7 @@ class TicketController extends Controller
     {
         $divisionId = $request->query('division_id');
         $departmentId = $request->query('department_id');
+        $search = $request->query('q');
 
         $query = User::query();
 
@@ -241,6 +242,10 @@ class TicketController extends Controller
 
         if ($departmentId) {
             $query->where('department_id', $departmentId);
+        }
+
+        if ($search) {
+            $query->where('name', 'like', '%' . $search . '%');
         }
 
         $users = $query->orderBy('name')->get(['id', 'name', 'user_type']);
