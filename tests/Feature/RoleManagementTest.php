@@ -222,6 +222,7 @@ class RoleManagementTest extends TestCase
         // 2. Try creating allowed ticket type (should pass)
         $response = $this->actingAs($user)->post('/tickets', [
             'title' => 'Allowed Ticket',
+            'description' => 'Allowed ticket description',
             'ticket_type_id' => $allowedType->id,
             'priority_option_id' => $priorityOption->id,
             'status_id' => $status->id,
@@ -239,6 +240,7 @@ class RoleManagementTest extends TestCase
         // 3. Try creating disallowed ticket type (should fail backend validation)
         $response = $this->actingAs($user)->post('/tickets', [
             'title' => 'Disallowed Ticket',
+            'description' => 'Disallowed ticket description',
             'ticket_type_id' => $disallowedType->id,
             'priority_option_id' => $priorityOption->id,
             'status_id' => $status->id,

@@ -167,6 +167,35 @@
         </div>
     </div>
 
+    <!-- Fullscreen Image/File Preview Modal Carousel -->
+    <div class="modal fade" id="previewCarouselModal" tabindex="-1" aria-labelledby="previewCarouselModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-0">
+                <div class="modal-header border-0 p-3">
+                    <h5 class="modal-title" id="previewCarouselModalLabel">Attachment Preview</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0 d-flex align-items-center justify-content-center position-relative">
+                    <!-- Carousel -->
+                    <div id="previewCarousel" class="carousel slide w-100 h-100" data-bs-ride="false" data-bs-interval="false">
+                        <div class="carousel-inner h-100">
+                            <!-- Items will be injected dynamically via Javascript -->
+                        </div>
+                        <!-- Controls -->
+                        <button class="carousel-control-prev" type="button" data-bs-target="#previewCarousel" data-bs-slide="prev" style="width: 10%;">
+                            <span class="carousel-control-prev-icon p-3 bg-dark rounded-circle" aria-hidden="true" style="width: 2.5rem; height: 2.5rem; display: flex; align-items: center; justify-content: center;"></span>
+                            <span class="visually-hidden">Previous</span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#previewCarousel" data-bs-slide="next" style="width: 10%;">
+                            <span class="carousel-control-next-icon p-3 bg-dark rounded-circle" aria-hidden="true" style="width: 2.5rem; height: 2.5rem; display: flex; align-items: center; justify-content: center;"></span>
+                            <span class="visually-hidden">Next</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @stack('scripts')
 </body>
 </html>

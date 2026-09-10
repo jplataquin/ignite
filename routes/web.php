@@ -44,6 +44,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::post('/tickets/upload-chunk', [ChunkUploadController::class, 'upload'])->name('tickets.upload-chunk');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+    Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'serveAttachment'])->name('tickets.attachments.serve');
     Route::post('/tickets/{ticket}/accept', [TicketController::class, 'accept'])->name('tickets.accept');
     Route::get('/api/categories', [TicketController::class, 'getCategories'])->name('api.categories');
     Route::get('/api/users', [TicketController::class, 'getUsers'])->name('api.users');

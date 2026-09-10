@@ -65,7 +65,7 @@ class TicketController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'description' => 'required|string',
             'ticket_type_id' => [
                 'required',
                 'exists:ticket_types,id',
@@ -280,5 +280,21 @@ class TicketController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Ticket accepted successfully.');
+    }
+
+    /**
+     * Securely serve a ticket attachment file.
+     */
+    public function serveAttachment(Ticket $ticket, Attachment $attachment)
+    {
+        if ($attachment->ticket_id !== $ticket->id) {
+            abort(404);
+        }
+
+        if (!Storage::exists($attachment->file_path)) {
+            abort(404);
+        }
+
+        return Storage::response($attachment->file_path);
     }
 }

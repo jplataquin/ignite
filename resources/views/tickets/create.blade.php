@@ -36,7 +36,7 @@
                 <!-- Description -->
                 <div class="mb-3">
                     <label for="description" class="form-label fw-semibold text-dark small">Description</label>
-                    <textarea id="description" class="form-control @error('description') is-invalid @enderror" name="description" rows="4" placeholder="Provide detailed findings or description of the issue...">{{ old('description') }}</textarea>
+                    <textarea id="description" class="form-control @error('description') is-invalid @enderror" name="description" rows="4" placeholder="Provide detailed findings or description of the issue..." required>{{ old('description') }}</textarea>
                     @error('description')
                         <span class="invalid-feedback" role="alert">
                             <strong>{{ $message }}</strong>
@@ -408,10 +408,8 @@
 
                     <!-- Note Input (Visible on complete) -->
                     <div id="note-container-${identifier}" class="mt-2 d-none">
-                        <div class="input-group input-group-sm">
-                            <span class="input-group-text bg-light text-muted small">File Note</span>
-                            <input type="text" id="note-${identifier}" class="form-control" placeholder="Enter an optional note/description for this file...">
-                        </div>
+                        <label for="note-${identifier}" class="form-label text-muted small fw-semibold mb-1">File Note (Optional)</label>
+                        <textarea id="note-${identifier}" class="form-control form-control-sm" rows="2" placeholder="Enter an optional note/description for this file..."></textarea>
                     </div>
                 </div>
             `;
@@ -421,9 +419,11 @@
             // Populate preview container
             const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(file.name.split('.').pop().toLowerCase());
             const previewContainer = document.getElementById(`preview-${identifier}`);
+            let previewUrl = '';
             if (isImage) {
                 const imgUrl = URL.createObjectURL(file);
                 previewContainer.innerHTML = `<img src="${imgUrl}" class="w-100 h-100" style="object-fit: cover;">`;
+                previewUrl = imgUrl;
             } else {
                 previewContainer.innerHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-file-earmark-text text-secondary" viewBox="0 0 16 16">
@@ -432,6 +432,12 @@
                     </svg>
                 `;
             }
+
+            previewContainer.classList.add('previewable-attachment');
+            previewContainer.style.cursor = 'pointer';
+            previewContainer.dataset.url = previewUrl;
+            previewContainer.dataset.name = file.name;
+            previewContainer.dataset.mime = file.type;
 
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
             uploadNextChunk(file, identifier, 1, totalChunks);
