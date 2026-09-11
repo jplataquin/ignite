@@ -590,18 +590,40 @@
             <form action="{{ route('tickets.reassign-review', $ticket) }}" method="POST">
                 @csrf
                 <div class="modal-body py-3">
-                    <p class="text-muted small mb-3">Select a new assignee and provide a mandatory comment outlining what needs further work or changes.</p>
+                    <p class="text-muted small mb-3">Select a division and department to filter eligible support staff, then search and select a new assignee.</p>
+                    
+                    <!-- Division -->
                     <div class="mb-3">
-                        <label for="assignee_id" class="form-label fw-semibold text-dark small">Select New Assignee</label>
-                        <select id="assignee_id" name="assignee_id" class="form-select form-select-sm" required>
-                            <option value="">-- Choose Assignee --</option>
-                            @foreach($assignableUsers as $u)
-                                <option value="{{ $u->id }}" {{ $ticket->assigned_to === $u->id ? 'selected' : '' }}>
-                                    {{ $u->name }} ({{ $u->user_type }})
-                                </option>
+                        <label for="reassign_division_id" class="form-label fw-semibold text-dark small">Division</label>
+                        <select id="reassign_division_id" name="division_id" class="form-select form-select-sm" required>
+                            <option value="">Select Division</option>
+                            @foreach($divisions as $div)
+                                <option value="{{ $div->id }}">{{ $div->name }}</option>
                             @endforeach
                         </select>
                     </div>
+
+                    <!-- Department -->
+                    <div class="mb-3">
+                        <label for="reassign_department_id" class="form-label fw-semibold text-dark small">Department</label>
+                        <select id="reassign_department_id" name="department_id" class="form-select form-select-sm" disabled>
+                            <option value="">Select Department</option>
+                            @foreach($departments as $dept)
+                                <option value="{{ $dept->id }}" data-division-id="{{ $dept->division_id }}">{{ $dept->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Assignee Autosuggest Search -->
+                    <div class="mb-3 position-relative">
+                        <label for="reassign_user_search" class="form-label fw-semibold text-dark small">Select New Assignee</label>
+                        <input type="text" id="reassign_user_search" class="form-control form-control-sm" placeholder="Type to search users..." autocomplete="off" disabled required>
+                        <input type="hidden" id="reassign_assignee_id" name="assignee_id">
+                        <ul id="reassign-autocomplete-results" class="dropdown-menu w-100 shadow-sm" style="display: none; max-height: 200px; overflow-y: auto;">
+                            <!-- Search results will be injected here -->
+                        </ul>
+                    </div>
+
                     <div class="mb-3">
                         <label for="reassign_comment" class="form-label fw-semibold text-dark small">Reassignment Instructions / Comment</label>
                         <textarea id="reassign_comment" name="comment" class="form-control" rows="4" placeholder="Type instructions for the new assignee here..." required></textarea>
@@ -882,6 +904,143 @@
                 updateAttachmentNumbers();
             }
         };
+
+        // --- REASSIGN MODAL CASCADE & AUTOSUGGEST LOGIC ---
+        const reassignDivSelect = document.getElementById('reassign_division_id');
+        const reassignDeptSelect = document.getElementById('reassign_department_id');
+        const reassignUserSearch = document.getElementById('reassign_user_search');
+        const reassignAssigneeId = document.getElementById('reassign_assignee_id');
+        const reassignAutocompleteResults = document.getElementById('reassign-autocomplete-results');
+
+        let reassignUsers = [];
+
+        if (reassignDivSelect) {
+            // Store original department options
+            const originalDeptOptions = Array.from(reassignDeptSelect.options);
+
+            // Handle division change
+            reassignDivSelect.addEventListener('change', function () {
+                const divisionId = this.value;
+
+                // Clear and reset dependent fields
+                reassignAssigneeId.value = '';
+                reassignUserSearch.value = '';
+                reassignUserSearch.disabled = true;
+                reassignAutocompleteResults.style.display = 'none';
+
+                // Filter departments dropdown
+                reassignDeptSelect.innerHTML = '';
+                
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = 'Select Department';
+                reassignDeptSelect.appendChild(placeholder);
+
+                if (divisionId) {
+                    reassignDeptSelect.disabled = false;
+                    originalDeptOptions.forEach(opt => {
+                        if (opt.getAttribute('data-division-id') === divisionId) {
+                            reassignDeptSelect.appendChild(opt.cloneNode(true));
+                        }
+                    });
+                    
+                    fetchReassignUsers();
+                } else {
+                    reassignDeptSelect.disabled = true;
+                    reassignDeptSelect.value = '';
+                    reassignUsers = [];
+                }
+            });
+
+            // Handle department change
+            reassignDeptSelect.addEventListener('change', function () {
+                reassignAssigneeId.value = '';
+                reassignUserSearch.value = '';
+                reassignAutocompleteResults.style.display = 'none';
+                
+                if (this.value || reassignDivSelect.value) {
+                    fetchReassignUsers();
+                } else {
+                    reassignUserSearch.disabled = true;
+                    reassignUsers = [];
+                }
+            });
+
+            function fetchReassignUsers() {
+                const divId = reassignDivSelect.value;
+                const deptId = reassignDeptSelect.value;
+
+                if (!divId) {
+                    reassignUsers = [];
+                    reassignUserSearch.disabled = true;
+                    return;
+                }
+
+                let url = `/api/users?division_id=${divId}`;
+                if (deptId) {
+                    url += `&department_id=${deptId}`;
+                }
+
+                fetch(url)
+                    .then(res => res.json())
+                    .then(data => {
+                        reassignUsers = data;
+                        reassignUserSearch.disabled = false;
+                    })
+                    .catch(err => console.error('Error fetching reassign users:', err));
+            }
+
+            function renderReassignAutocomplete() {
+                const query = reassignUserSearch.value.trim().toLowerCase();
+                
+                let filtered = reassignUsers;
+                if (query) {
+                    filtered = reassignUsers.filter(u => u.name.toLowerCase().includes(query));
+                }
+
+                if (filtered.length === 0) {
+                    reassignAutocompleteResults.innerHTML = '<li class="dropdown-item text-muted disabled py-2" style="min-height: auto;">No users found</li>';
+                    reassignAutocompleteResults.style.display = 'block';
+                    return;
+                }
+
+                let html = '';
+                filtered.forEach(u => {
+                    html += `
+                        <li class="dropdown-item py-2 border-bottom" style="cursor: pointer; min-height: auto;" data-id="${u.id}" data-name="${escapeHtml(u.name)}">
+                            <div class="fw-semibold text-dark">${escapeHtml(u.name)}</div>
+                            <small class="text-muted" style="font-size: 0.75rem;">Type: ${escapeHtml(u.user_type)}</small>
+                        </li>
+                    `;
+                });
+
+                reassignAutocompleteResults.innerHTML = html;
+                reassignAutocompleteResults.style.display = 'block';
+
+                // Attach click handlers
+                reassignAutocompleteResults.querySelectorAll('li.dropdown-item').forEach(item => {
+                    if (item.classList.contains('disabled')) return;
+                    item.addEventListener('click', function () {
+                        const id = this.getAttribute('data-id');
+                        const name = this.getAttribute('data-name');
+                        reassignAssigneeId.value = id;
+                        reassignUserSearch.value = name;
+                        reassignAutocompleteResults.style.display = 'none';
+                    });
+                });
+            }
+
+            reassignUserSearch.addEventListener('input', renderReassignAutocomplete);
+            reassignUserSearch.addEventListener('focus', renderReassignAutocomplete);
+            reassignUserSearch.addEventListener('click', renderReassignAutocomplete);
+
+            // Hide results on click outside
+            document.addEventListener('click', function (e) {
+                if (e.target !== reassignUserSearch && !reassignAutocompleteResults.contains(e.target)) {
+                    reassignAutocompleteResults.style.display = 'none';
+                }
+            });
+        }
 
         function escapeHtml(text) {
             return text

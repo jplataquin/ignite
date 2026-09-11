@@ -201,12 +201,14 @@ class TicketController extends Controller
             'category1', 'category2', 'category3', 'attachments', 'comments.user', 'comments.attachments'
         ]);
 
-        $assignableUsers = collect();
+        $divisions = collect();
+        $departments = collect();
         if ($ticket->status?->slug === 'review' && $ticket->created_by === Auth::id()) {
-            $assignableUsers = \App\Models\User::where('is_approved', true)->orderBy('name')->get();
+            $divisions = \App\Models\Division::orderBy('name')->get();
+            $departments = \App\Models\Department::orderBy('name')->get();
         }
 
-        return view('tickets.show', compact('ticket', 'assignableUsers'));
+        return view('tickets.show', compact('ticket', 'divisions', 'departments'));
     }
 
     /**
