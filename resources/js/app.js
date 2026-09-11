@@ -18,6 +18,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Fetch again whenever dropdown is shown
         notificationBell.addEventListener('show.bs.dropdown', fetchNotifications);
+
+        // WebSocket Real-time Notification Listener
+        if (window.userId && window.Echo) {
+            window.Echo.private(`App.Models.User.${window.userId}`)
+                .notification((notification) => {
+                    fetchNotifications();
+                });
+        }
     }
 
     if (markAllReadBtn) {

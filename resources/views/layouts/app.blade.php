@@ -8,6 +8,13 @@
     <!-- Vite Assets -->
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
 
+    <!-- User Context for Echo -->
+    @auth
+    <script>
+        window.userId = {{ Auth::id() }};
+    </script>
+    @endauth
+
     <!-- Prevent Flash of Unstyled Content (FOUC) -->
     <style>
         body {

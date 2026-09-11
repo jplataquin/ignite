@@ -105,7 +105,14 @@ class TicketObserver
         unset($changes['updated_at']);
         
         if (count($changes) > 0) {
-            $this->dispatchNotifications($ticket, "Ticket {$ticket->ticket_number} was updated.");
+            $message = "Ticket {$ticket->ticket_number} was updated.";
+            if (isset($changes['status_id'])) {
+                $status = \App\Models\TicketStatus::find($changes['status_id']);
+                if ($status && $status->slug === 'lapsed') {
+                    $message = "Ticket {$ticket->ticket_number} has lapsed due to SLA threshold.";
+                }
+            }
+            $this->dispatchNotifications($ticket, $message);
         }
 
         if (!empty($ticket->temp_system_comment)) {

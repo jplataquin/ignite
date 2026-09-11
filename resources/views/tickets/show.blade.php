@@ -401,7 +401,7 @@
     <div class="col-12 col-lg-4">
         <!-- Assignee & Owner Card -->
         <div class="card fd-card p-4 shadow-sm mb-4">
-            <h5 class="fw-bold text-dark mb-3">Actors</h5>
+            <h5 class="fw-bold text-dark mb-3">Actions</h5>
             <div class="mb-3">
                 <span class="text-muted small d-block mb-1">Assigned Support Staff</span>
                 @if($ticket->assignee)

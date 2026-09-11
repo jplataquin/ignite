@@ -207,4 +207,51 @@ class NotificationManagementTest extends TestCase
         $notification = $intendedUser->fresh()->unreadNotifications->first();
         $this->assertEquals(\App\Notifications\TicketUpdatedNotification::class, $notification->type);
     }
+
+    /**
+     * User receives notification when a comment is added to their ticket.
+     */
+    public function test_creator_receives_notification_on_ticket_comment(): void
+    {
+        [$user, $ticket] = $this->createTestData(); // $user is the creator of $ticket and logged in
+
+        $otherUser = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
+
+        // Put $otherUser as the acting user
+        $this->actingAs($otherUser);
+
+        // Add a comment
+        $this->post("/tickets/{$ticket->id}/comments", [
+            'content' => 'This is a new test comment.',
+        ])->assertRedirect();
+
+        // Creator should receive a notification
+        $this->assertEquals(1, $user->fresh()->unreadNotifications->count());
+        $notification = $user->fresh()->unreadNotifications->first();
+        $this->assertEquals("New comment on Ticket {$ticket->ticket_number} by {$otherUser->name}.", $notification->data['message']);
+    }
+
+    /**
+     * Users receive a specific notification when SLA threshold is exceeded and ticket is marked as lapsed.
+     */
+    public function test_notification_on_sla_lapsed(): void
+    {
+        [$user, $ticket] = $this->createTestData(); // $user is the creator
+
+        $lapsedStatus = TicketStatus::create([
+            'name' => 'Lapsed',
+            'slug' => 'lapsed',
+            'color_code' => '#FF0000',
+        ]);
+
+        // Logout current user to simulate system cron/CLI execution
+        \Illuminate\Support\Facades\Auth::logout();
+
+        $ticket->status_id = $lapsedStatus->id;
+        $ticket->save();
+
+        $this->assertEquals(1, $user->fresh()->unreadNotifications->count());
+        $notification = $user->fresh()->unreadNotifications->first();
+        $this->assertEquals("Ticket {$ticket->ticket_number} has lapsed due to SLA threshold.", $notification->data['message']);
+    }
 }

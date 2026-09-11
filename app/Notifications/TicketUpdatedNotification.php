@@ -5,6 +5,7 @@ namespace App\Notifications;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
 use App\Models\Ticket;
 
@@ -31,7 +32,7 @@ class TicketUpdatedNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database']; // Can add 'mail' later
+        return ['database', 'broadcast'];
     }
 
     /**
@@ -44,6 +45,18 @@ class TicketUpdatedNotification extends Notification implements ShouldQueue
                     ->line($this->message)
                     ->action('View Ticket', url('/tickets/' . $this->ticket->id))
                     ->line('Thank you for using Ignite.');
+    }
+
+    /**
+     * Get the broadcast representation of the notification.
+     */
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage([
+            'ticket_id' => $this->ticket->id,
+            'ticket_number' => $this->ticket->ticket_number,
+            'message' => $this->message,
+        ]);
     }
 
     /**
