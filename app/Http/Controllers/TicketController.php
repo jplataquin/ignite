@@ -615,7 +615,7 @@ class TicketController extends Controller
     /**
      * Reassign the ticket back to the author with status "Review".
      */
-    public function forReview(Ticket $ticket)
+    public function forReview(Request $request, Ticket $ticket)
     {
         $user = Auth::user();
         if (!$user) {
@@ -632,16 +632,30 @@ class TicketController extends Controller
             return redirect()->back()->with('error', 'Only assigned tickets can be submitted for review.');
         }
 
+        $validated = $request->validate([
+            'message' => 'required|string|min:1',
+        ]);
+
         $reviewStatus = TicketStatus::where('slug', 'review')->first();
         if (!$reviewStatus) {
             return redirect()->back()->with('error', 'Review status not found.');
         }
 
-        $ticket->update([
-            'assigned_to' => $ticket->created_by, // Assign back to the author
-            'status_id' => $reviewStatus->id,
-        ]);
+        return DB::transaction(function () use ($validated, $ticket, $reviewStatus, $user) {
+            $ticket->update([
+                'assigned_to' => $ticket->created_by, // Assign back to the author
+                'status_id' => $reviewStatus->id,
+            ]);
 
-        return redirect()->back()->with('success', 'Ticket has been successfully submitted for review and assigned back to the author.');
+            // Create comment with the review message
+            TicketComment::create([
+                'ticket_id' => $ticket->id,
+                'user_id' => $user->id,
+                'type' => 'comment',
+                'content' => $validated['message'],
+            ]);
+
+            return redirect()->back()->with('success', 'Ticket has been successfully submitted for review and assigned back to the author.');
+        });
     }
 }

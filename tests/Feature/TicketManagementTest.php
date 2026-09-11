@@ -1019,13 +1019,23 @@ class TicketManagementTest extends TestCase
             'category_1_id' => $category->id,
         ]);
 
-        $response = $this->actingAs($assignedUser)->post("/tickets/{$ticket->id}/for-review");
+        $response = $this->actingAs($assignedUser)->post("/tickets/{$ticket->id}/for-review", [
+            'message' => 'Please review my work on this ticket.',
+        ]);
 
         $response->assertRedirect();
         
         $ticket->refresh();
         $this->assertEquals($reviewStatus->id, $ticket->status_id);
         $this->assertEquals($author->id, $ticket->assigned_to);
+
+        // Assert review message comments was created
+        $this->assertDatabaseHas('ticket_comments', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $assignedUser->id,
+            'content' => 'Please review my work on this ticket.',
+            'type' => 'comment',
+        ]);
     }
 
     /**
@@ -1060,7 +1070,9 @@ class TicketManagementTest extends TestCase
             'category_1_id' => $category->id,
         ]);
 
-        $response = $this->actingAs($otherUser)->post("/tickets/{$ticket->id}/for-review");
+        $response = $this->actingAs($otherUser)->post("/tickets/{$ticket->id}/for-review", [
+            'message' => 'Sneaking a review message',
+        ]);
 
         $response->assertStatus(403);
         

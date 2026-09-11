@@ -47,6 +47,95 @@
     </div>
 @endif
 
+@php
+    $statusSlug = $ticket->status?->slug ?? 'open';
+    $currentStep = 1;
+    if ($statusSlug === 'assigned') {
+        $currentStep = 2;
+    } elseif ($statusSlug === 'review') {
+        $currentStep = 3;
+    } elseif (in_array($statusSlug, ['closed', 'canceled', 'lapsed'])) {
+        $currentStep = 4;
+    }
+@endphp
+
+<!-- Ticket Progress Stepper -->
+<div class="card fd-card p-4 shadow-sm mb-4">
+    <div class="position-relative py-2">
+        <!-- Connecting Line Track -->
+        <div class="progress position-absolute top-50 start-0 end-0 translate-middle-y" style="height: 4px; z-index: 0; transform: translateY(-50%) !important;">
+            <div class="progress-bar {{ $currentStep == 4 && in_array($statusSlug, ['canceled', 'lapsed']) ? 'bg-danger' : 'bg-primary' }}" role="progressbar" style="width: {{ (($currentStep - 1) / 3) * 100 }}%;" aria-valuenow="{{ (($currentStep - 1) / 3) * 100 }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        
+        <!-- Stepper Nodes -->
+        <div class="d-flex justify-content-between position-relative" style="z-index: 1;">
+            <!-- Step 1: Open -->
+            <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
+                <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 1 ? 'bg-primary border-primary text-white' : 'bg-white border-secondary text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem;">
+                    @if($currentStep > 1)
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                        </svg>
+                    @else
+                        1
+                    @endif
+                </div>
+                <span class="mt-2 small fw-bold {{ $currentStep >= 1 ? 'text-primary' : 'text-muted' }}" style="font-size: 0.78rem;">Open</span>
+            </div>
+
+            <!-- Step 2: Assigned -->
+            <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
+                <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 2 ? 'bg-primary border-primary text-white' : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $currentStep >= 2 ? '' : '#cbd5e1 !important' }};">
+                    @if($currentStep > 2)
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                        </svg>
+                    @else
+                        2
+                    @endif
+                </div>
+                <span class="mt-2 small fw-bold {{ $currentStep >= 2 ? 'text-primary' : 'text-muted' }}" style="font-size: 0.78rem;">Assigned</span>
+            </div>
+
+            <!-- Step 3: Review -->
+            <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
+                <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 3 ? 'bg-primary border-primary text-white' : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $currentStep >= 3 ? '' : '#cbd5e1 !important' }};">
+                    @if($currentStep > 3)
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                        </svg>
+                    @else
+                        3
+                    @endif
+                </div>
+                <span class="mt-2 small fw-bold {{ $currentStep >= 3 ? 'text-primary' : 'text-muted' }}" style="font-size: 0.78rem;">Review</span>
+            </div>
+
+            <!-- Step 4: Closed / Canceled -->
+            <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
+                <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 4 ? ($statusSlug === 'closed' ? 'bg-success border-success text-white' : 'bg-danger border-danger text-white') : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $currentStep >= 4 ? '' : '#cbd5e1 !important' }};">
+                    @if($currentStep == 4)
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                        </svg>
+                    @else
+                        4
+                    @endif
+                </div>
+                <span class="mt-2 small fw-bold {{ $currentStep >= 4 ? ($statusSlug === 'closed' ? 'text-success' : 'text-danger') : 'text-muted' }}" style="font-size: 0.78rem;">
+                    @if($statusSlug === 'canceled')
+                        Canceled
+                    @elseif($statusSlug === 'lapsed')
+                        Lapsed
+                    @else
+                        Closed
+                    @endif
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4 mb-4">
     <!-- Main Detail Panel -->
     <div class="col-12 col-lg-8">
@@ -326,15 +415,12 @@
                         </div>
                     </div>
                     @if($ticket->assigned_to === Auth::id() && $ticket->status?->slug === 'assigned')
-                        <form action="{{ route('tickets.for-review', $ticket) }}" method="POST" class="mt-3">
-                            @csrf
-                            <button type="submit" class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-center" style="min-height: 38px;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-send-fill me-1.5" viewBox="0 0 16 16">
-                                    <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471z"/>
-                                </svg>
-                                For Review
-                            </button>
-                        </form>
+                        <button type="button" class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-center mt-3" style="min-height: 38px;" data-bs-toggle="modal" data-bs-target="#forReviewModal">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-send-fill me-1.5" viewBox="0 0 16 16">
+                                <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471z"/>
+                            </svg>
+                            For Review
+                        </button>
                     @endif
                 @else
                     <span class="text-warning fw-semibold small d-inline-flex align-items-center mb-2">
@@ -382,6 +468,35 @@
         </div>
     </div>
 </div>
+
+@if($ticket->assignee && $ticket->assigned_to === Auth::id() && $ticket->status?->slug === 'assigned')
+<!-- For Review Message Modal -->
+<div class="modal fade" id="forReviewModal" tabindex="-1" aria-labelledby="forReviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header bg-light border-bottom-0 pb-1" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold text-dark" id="forReviewModalLabel">Submit for Review</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('tickets.for-review', $ticket) }}" method="POST">
+                @csrf
+                <div class="modal-body py-3">
+                    <p class="text-muted small mb-3">Provide a mandatory message detailing your findings, instructions, or resolution notes for the author before submitting the ticket for review.</p>
+                    
+                    <div class="mb-3">
+                        <label for="review_message" class="form-label fw-semibold text-dark small">Review Message / Findings</label>
+                        <textarea id="review_message" name="message" class="form-control" rows="4" placeholder="Type your review note here..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-1">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-3">Submit Review</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 @push('scripts')
