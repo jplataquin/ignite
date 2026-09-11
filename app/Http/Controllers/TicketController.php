@@ -280,6 +280,8 @@ class TicketController extends Controller
             'to_user_id' => 'nullable|exists:users,id',
             'attachments_json' => 'nullable|string',
             'deleted_attachments' => 'nullable|string', // JSON array of attachment IDs
+            'existing_notes' => 'nullable|array',
+            'existing_notes.*' => 'nullable|string',
         ]);
 
         $attachments = [];
@@ -311,7 +313,7 @@ class TicketController extends Controller
             }
         }
 
-        return DB::transaction(function () use ($validated, $attachments, $deletedAttachmentIds, $ticket, $user) {
+        return DB::transaction(function () use ($request, $validated, $attachments, $deletedAttachmentIds, $ticket, $user) {
             $ticket->update([
                 'title' => $validated['title'],
                 'description' => $validated['description'],
@@ -340,6 +342,22 @@ class TicketController extends Controller
                 
                 if ($attachmentsToDelete->count() > 0) {
                     $ticket->temp_system_comment = ($ticket->temp_system_comment ? $ticket->temp_system_comment . "\n" : "Ticket details updated:\n") . "- " . $attachmentsToDelete->count() . " attachment(s) removed";
+                }
+            }
+
+            // Handle existing notes updates
+            if ($request->filled('existing_notes')) {
+                foreach ($request->input('existing_notes') as $attachmentId => $note) {
+                    if (!in_array($attachmentId, $deletedAttachmentIds)) {
+                        $attachment = Attachment::where('id', $attachmentId)
+                            ->where('ticket_id', $ticket->id)
+                            ->first();
+                        
+                        if ($attachment && $attachment->note !== $note) {
+                            $attachment->update(['note' => $note]);
+                            $ticket->temp_system_comment = ($ticket->temp_system_comment ? $ticket->temp_system_comment . "\n" : "Ticket details updated:\n") . "- Attachment '{$attachment->file_name}' note updated";
+                        }
+                    }
                 }
             }
 

@@ -129,6 +129,11 @@
                                                 System Settings
                                             </a>
                                         </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link text-dark py-1.5 {{ Request::routeIs('admin.cron-logs.*') ? 'active fw-bold text-primary' : '' }}" href="{{ route('admin.cron-logs.index') }}">
+                                                Cron Job Logs
+                                            </a>
+                                        </li>
                                     </ul>
                                 </div>
                             </li>

@@ -11,6 +11,8 @@ use Carbon\Carbon;
 
 class ProcessLapsedTickets extends Command
 {
+    use LogsExecution;
+
     /**
      * The name and signature of the console command.
      *
@@ -30,55 +32,64 @@ class ProcessLapsedTickets extends Command
      */
     public function handle()
     {
-        $now = Carbon::now('UTC');
-        
-        $lapsedStatus = TicketStatus::where('slug', 'lapsed')->first();
-        if (!$lapsedStatus) {
-            $this->error('Lapsed status not found.');
-            return Command::FAILURE;
+        $this->startLogging();
+
+        try {
+            $now = Carbon::now('UTC');
+            
+            $lapsedStatus = TicketStatus::where('slug', 'lapsed')->first();
+            if (!$lapsedStatus) {
+                $this->error('Lapsed status not found.');
+                $this->finishLogging('failed', 'Lapsed status not found.');
+                return Command::FAILURE;
+            }
+
+            $closedStatuses = TicketStatus::whereIn('slug', ['closed', 'canceled'])->pluck('id')->toArray();
+
+            // Process in chunks to handle large datasets efficiently
+            Ticket::whereNotIn('status_id', $closedStatuses)
+                  ->where('status_id', '!=', $lapsedStatus->id)
+                  ->with('ticketType')
+                  ->chunkById(100, function ($tickets) use ($now, $lapsedStatus) {
+                      foreach ($tickets as $ticket) {
+                          DB::transaction(function () use ($ticket, $now, $lapsedStatus) {
+                              // Lock the row for update
+                              $lockedTicket = Ticket::where('id', $ticket->id)->lockForUpdate()->first();
+                              
+                              if (!$lockedTicket) {
+                                  return; // Ticket might have been deleted
+                              }
+
+                              $cutoff = $lockedTicket->deadline_date 
+                                          ? $lockedTicket->deadline_date 
+                                          : ($lockedTicket->ticketType && $lockedTicket->ticketType->threshold_days 
+                                                ? $lockedTicket->created_at->copy()->addDays($lockedTicket->ticketType->threshold_days) 
+                                                : null);
+                                                
+                              if ($cutoff && $now->greaterThanOrEqualTo($cutoff)) {
+                                  // It lapsed!
+                                  $lockedTicket->status_id = $lapsedStatus->id;
+                                  $lockedTicket->save();
+                                  
+                                  TicketComment::create([
+                                      'ticket_id' => $lockedTicket->id,
+                                      'user_id' => null, // System event
+                                      'type' => 'system_event',
+                                      'content' => 'SLA threshold exceeded. Ticket marked as Lapsed automatically.',
+                                  ]);
+                                  
+                                  // Observers should handle notification dispatch
+                                  $this->info("Ticket {$lockedTicket->ticket_number} marked as lapsed.");
+                              }
+                          });
+                      }
+                  });
+
+            $this->finishLogging('success');
+            return Command::SUCCESS;
+        } catch (\Throwable $e) {
+            $this->finishLogging('failed', $e->getMessage() . "\n" . $e->getTraceAsString());
+            throw $e;
         }
-
-        $closedStatuses = TicketStatus::whereIn('slug', ['closed', 'canceled'])->pluck('id')->toArray();
-
-        // Process in chunks to handle large datasets efficiently
-        Ticket::whereNotIn('status_id', $closedStatuses)
-              ->where('status_id', '!=', $lapsedStatus->id)
-              ->with('ticketType')
-              ->chunkById(100, function ($tickets) use ($now, $lapsedStatus) {
-                  foreach ($tickets as $ticket) {
-                      DB::transaction(function () use ($ticket, $now, $lapsedStatus) {
-                          // Lock the row for update
-                          $lockedTicket = Ticket::where('id', $ticket->id)->lockForUpdate()->first();
-                          
-                          if (!$lockedTicket) {
-                              return; // Ticket might have been deleted
-                          }
-
-                          $cutoff = $lockedTicket->deadline_date 
-                                      ? $lockedTicket->deadline_date 
-                                      : ($lockedTicket->ticketType && $lockedTicket->ticketType->threshold_days 
-                                            ? $lockedTicket->created_at->copy()->addDays($lockedTicket->ticketType->threshold_days) 
-                                            : null);
-                                            
-                          if ($cutoff && $now->greaterThanOrEqualTo($cutoff)) {
-                              // It lapsed!
-                              $lockedTicket->status_id = $lapsedStatus->id;
-                              $lockedTicket->save();
-                              
-                              TicketComment::create([
-                                  'ticket_id' => $lockedTicket->id,
-                                  'user_id' => null, // System event
-                                  'type' => 'system_event',
-                                  'content' => 'SLA threshold exceeded. Ticket marked as Lapsed automatically.',
-                              ]);
-                              
-                              // Observers should handle notification dispatch
-                              $this->info("Ticket {$lockedTicket->ticket_number} marked as lapsed.");
-                          }
-                      });
-                  }
-              });
-
-        return Command::SUCCESS;
     }
 }

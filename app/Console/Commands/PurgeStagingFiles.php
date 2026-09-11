@@ -8,6 +8,8 @@ use Carbon\Carbon;
 
 class PurgeStagingFiles extends Command
 {
+    use LogsExecution;
+
     /**
      * The name and signature of the console command.
      *
@@ -27,21 +29,29 @@ class PurgeStagingFiles extends Command
      */
     public function handle()
     {
-        $stagingDirs = Storage::directories('staging');
-        $now = Carbon::now();
-        $count = 0;
+        $this->startLogging();
 
-        foreach ($stagingDirs as $dir) {
-            $lastModified = Storage::lastModified($dir);
-            $modifiedDate = Carbon::createFromTimestamp($lastModified);
-            
-            if ($now->diffInHours($modifiedDate) >= 24) {
-                Storage::deleteDirectory($dir);
-                $count++;
+        try {
+            $stagingDirs = Storage::directories('staging');
+            $now = Carbon::now();
+            $count = 0;
+
+            foreach ($stagingDirs as $dir) {
+                $lastModified = Storage::lastModified($dir);
+                $modifiedDate = Carbon::createFromTimestamp($lastModified);
+                
+                if ($now->diffInHours($modifiedDate) >= 24) {
+                    Storage::deleteDirectory($dir);
+                    $count++;
+                }
             }
-        }
 
-        $this->info("Purged {$count} stale staging directories.");
-        return Command::SUCCESS;
+            $this->info("Purged {$count} stale staging directories.");
+            $this->finishLogging('success');
+            return Command::SUCCESS;
+        } catch (\Throwable $e) {
+            $this->finishLogging('failed', $e->getMessage() . "\n" . $e->getTraceAsString());
+            throw $e;
+        }
     }
 }

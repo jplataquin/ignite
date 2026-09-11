@@ -919,4 +919,71 @@ class TicketManagementTest extends TestCase
         $this->assertNotNull($comment);
         $this->assertStringContainsString("1 new attachment(s) added", $comment->content);
     }
+
+    /**
+     * Test that creator can update an existing attachment note during update.
+     */
+    public function test_creator_can_update_existing_attachment_note_during_update(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $creator->roles()->attach($role->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $role->ticketTypes()->attach($ticketType->id);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10008',
+            'title' => 'Original Title',
+            'description' => 'Original Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $attachment = \App\Models\Attachment::create([
+            'ticket_id' => $ticket->id,
+            'file_name' => 'note_test.pdf',
+            'file_path' => 'attachments/' . $ticket->id . '/note_test.pdf',
+            'file_size' => 1234,
+            'mime_type' => 'application/pdf',
+            'uploaded_by' => $creator->id,
+            'note' => 'Original Note',
+        ]);
+
+        $response = $this->actingAs($creator)->put("/tickets/{$ticket->id}", [
+            'title' => 'Original Title',
+            'description' => 'Original Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'category_1_id' => $category->id,
+            'existing_notes' => [
+                $attachment->id => 'Updated Note Content',
+            ],
+        ]);
+
+        $response->assertRedirect(route('tickets.show', $ticket));
+
+        $attachment->refresh();
+        $this->assertEquals('Updated Note Content', $attachment->note);
+
+        // Assert system comment documenting note update
+        $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
+            ->where('type', 'system_event')
+            ->first();
+
+        $this->assertNotNull($comment);
+        $this->assertStringContainsString("Attachment 'note_test.pdf' note updated", $comment->content);
+    }
 }

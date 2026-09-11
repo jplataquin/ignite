@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\DivisionController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\TicketStatusController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\CronJobLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\ChunkUploadController;
@@ -83,5 +84,9 @@ Route::middleware('auth')->group(function () {
         // System Settings Management
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
         Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
+
+        // Cron Job Logs Management
+        Route::get('/cron-logs', [CronJobLogController::class, 'index'])->name('cron-logs.index');
+        Route::post('/cron-logs/{command}/run', [CronJobLogController::class, 'run'])->name('cron-logs.run');
     });
 });
