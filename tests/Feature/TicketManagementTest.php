@@ -1080,4 +1080,201 @@ class TicketManagementTest extends TestCase
         $this->assertEquals($assignedStatus->id, $ticket->status_id);
         $this->assertEquals($assignedUser->id, $ticket->assigned_to);
     }
+
+    /**
+     * Test that the author can close a ticket that is in "Review" status.
+     */
+    public function test_author_can_close_ticket_from_review(): void
+    {
+        $author = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+
+        $reviewStatus = TicketStatus::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
+        $closedStatus = TicketStatus::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#4']);
+
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10011',
+            'title' => 'Review Ticket',
+            'description' => 'Detailed description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $reviewStatus->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $author->id,
+            'assigned_to' => $author->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($author)->post("/tickets/{$ticket->id}/close-review", [
+            'comment' => 'Resolving the ticket and closing it.',
+        ]);
+
+        $response->assertRedirect();
+        
+        $ticket->refresh();
+        $this->assertEquals($closedStatus->id, $ticket->status_id);
+        $this->assertNull($ticket->assigned_to);
+
+        $this->assertDatabaseHas('ticket_comments', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $author->id,
+            'content' => 'Resolving the ticket and closing it.',
+            'type' => 'comment',
+        ]);
+    }
+
+    /**
+     * Test that the author can cancel a ticket that is in "Review" status.
+     */
+    public function test_author_can_cancel_ticket_from_review(): void
+    {
+        $author = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+
+        $reviewStatus = TicketStatus::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
+        $canceledStatus = TicketStatus::create(['name' => 'Canceled', 'slug' => 'canceled', 'color_code' => '#5']);
+
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10012',
+            'title' => 'Review Ticket',
+            'description' => 'Detailed description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $reviewStatus->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $author->id,
+            'assigned_to' => $author->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($author)->post("/tickets/{$ticket->id}/cancel-review", [
+            'comment' => 'No longer needed.',
+        ]);
+
+        $response->assertRedirect();
+        
+        $ticket->refresh();
+        $this->assertEquals($canceledStatus->id, $ticket->status_id);
+        $this->assertNull($ticket->assigned_to);
+
+        $this->assertDatabaseHas('ticket_comments', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $author->id,
+            'content' => 'No longer needed.',
+            'type' => 'comment',
+        ]);
+    }
+
+    /**
+     * Test that the author can reassign a ticket that is in "Review" status.
+     */
+    public function test_author_can_reassign_ticket_from_review(): void
+    {
+        $author = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $newAssignee = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+
+        $reviewStatus = TicketStatus::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
+        $assignedStatus = TicketStatus::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10013',
+            'title' => 'Review Ticket',
+            'description' => 'Detailed description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $reviewStatus->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $author->id,
+            'assigned_to' => $author->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($author)->post("/tickets/{$ticket->id}/reassign-review", [
+            'comment' => 'Please redo the implementation.',
+            'assignee_id' => $newAssignee->id,
+        ]);
+
+        $response->assertRedirect();
+        
+        $ticket->refresh();
+        $this->assertEquals($assignedStatus->id, $ticket->status_id);
+        $this->assertEquals($newAssignee->id, $ticket->assigned_to);
+
+        $this->assertDatabaseHas('ticket_comments', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $author->id,
+            'content' => 'Ticket reassigned from review. Comment: Please redo the implementation.',
+            'type' => 'comment',
+        ]);
+    }
+
+    /**
+     * Test that a non-author cannot perform review actions on a ticket in review status.
+     */
+    public function test_non_author_cannot_perform_review_actions(): void
+    {
+        $author = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $otherUser = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+
+        $reviewStatus = TicketStatus::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
+
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10014',
+            'title' => 'Review Ticket',
+            'description' => 'Detailed description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $reviewStatus->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $author->id,
+            'assigned_to' => $author->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response1 = $this->actingAs($otherUser)->post("/tickets/{$ticket->id}/close-review", [
+            'comment' => 'Unauthorized close',
+        ]);
+        $response1->assertStatus(403);
+
+        $response2 = $this->actingAs($otherUser)->post("/tickets/{$ticket->id}/cancel-review", [
+            'comment' => 'Unauthorized cancel',
+        ]);
+        $response2->assertStatus(403);
+
+        $response3 = $this->actingAs($otherUser)->post("/tickets/{$ticket->id}/reassign-review", [
+            'comment' => 'Unauthorized reassign',
+            'assignee_id' => $otherUser->id,
+        ]);
+        $response3->assertStatus(403);
+    }
 }

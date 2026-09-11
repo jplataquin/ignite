@@ -200,7 +200,13 @@ class TicketController extends Controller
             'ticketType', 'status', 'division', 'department', 'creator', 'assignee', 
             'category1', 'category2', 'category3', 'attachments', 'comments.user', 'comments.attachments'
         ]);
-        return view('tickets.show', compact('ticket'));
+
+        $assignableUsers = collect();
+        if ($ticket->status?->slug === 'review' && $ticket->created_by === Auth::id()) {
+            $assignableUsers = \App\Models\User::where('is_approved', true)->orderBy('name')->get();
+        }
+
+        return view('tickets.show', compact('ticket', 'assignableUsers'));
     }
 
     /**
@@ -656,6 +662,127 @@ class TicketController extends Controller
             ]);
 
             return redirect()->back()->with('success', 'Ticket has been successfully submitted for review and assigned back to the author.');
+        });
+    }
+
+    /**
+     * Close the ticket from the review status.
+     */
+    public function closeReview(Request $request, Ticket $ticket)
+    {
+        $user = Auth::user();
+        if (!$user || $ticket->created_by !== $user->id) {
+            abort(403, 'You are not authorized to close this ticket.');
+        }
+
+        if ($ticket->status?->slug !== 'review') {
+            return redirect()->back()->with('error', 'Only tickets in review can be closed.');
+        }
+
+        $validated = $request->validate([
+            'comment' => 'required|string|min:1',
+        ]);
+
+        $closedStatus = TicketStatus::where('slug', 'closed')->first();
+        if (!$closedStatus) {
+            return redirect()->back()->with('error', 'Closed status not found.');
+        }
+
+        return DB::transaction(function () use ($validated, $ticket, $closedStatus, $user) {
+            $ticket->update([
+                'status_id' => $closedStatus->id,
+                'assigned_to' => null,
+            ]);
+
+            TicketComment::create([
+                'ticket_id' => $ticket->id,
+                'user_id' => $user->id,
+                'type' => 'comment',
+                'content' => $validated['comment'],
+            ]);
+
+            return redirect()->back()->with('success', 'Ticket closed successfully.');
+        });
+    }
+
+    /**
+     * Cancel the ticket from the review status.
+     */
+    public function cancelReview(Request $request, Ticket $ticket)
+    {
+        $user = Auth::user();
+        if (!$user || $ticket->created_by !== $user->id) {
+            abort(403, 'You are not authorized to cancel this ticket.');
+        }
+
+        if ($ticket->status?->slug !== 'review') {
+            return redirect()->back()->with('error', 'Only tickets in review can be canceled.');
+        }
+
+        $validated = $request->validate([
+            'comment' => 'required|string|min:1',
+        ]);
+
+        $canceledStatus = TicketStatus::where('slug', 'canceled')->first();
+        if (!$canceledStatus) {
+            return redirect()->back()->with('error', 'Canceled status not found.');
+        }
+
+        return DB::transaction(function () use ($validated, $ticket, $canceledStatus, $user) {
+            $ticket->update([
+                'status_id' => $canceledStatus->id,
+                'assigned_to' => null,
+            ]);
+
+            TicketComment::create([
+                'ticket_id' => $ticket->id,
+                'user_id' => $user->id,
+                'type' => 'comment',
+                'content' => $validated['comment'],
+            ]);
+
+            return redirect()->back()->with('success', 'Ticket canceled successfully.');
+        });
+    }
+
+    /**
+     * Reassign the ticket from the review status.
+     */
+    public function reassignReview(Request $request, Ticket $ticket)
+    {
+        $user = Auth::user();
+        if (!$user || $ticket->created_by !== $user->id) {
+            abort(403, 'You are not authorized to reassign this ticket.');
+        }
+
+        if ($ticket->status?->slug !== 'review') {
+            return redirect()->back()->with('error', 'Only tickets in review can be reassigned.');
+        }
+
+        $validated = $request->validate([
+            'comment' => 'required|string|min:1',
+            'assignee_id' => 'required|exists:users,id',
+        ]);
+
+        $assignedStatus = TicketStatus::where('slug', 'assigned')->first();
+        if (!$assignedStatus) {
+            return redirect()->back()->with('error', 'Assigned status not found.');
+        }
+
+        return DB::transaction(function () use ($validated, $ticket, $assignedStatus, $user) {
+            $ticket->update([
+                'status_id' => $assignedStatus->id,
+                'assigned_to' => $validated['assignee_id'],
+            ]);
+
+            TicketComment::create([
+                'ticket_id' => $ticket->id,
+                'user_id' => $user->id,
+                'type' => 'comment',
+                'content' => "Ticket reassigned from review. Comment: " . $validated['comment'],
+            ]);
+
+            return redirect()->back()->with('success', 'Ticket reassigned successfully.');
         });
     }
 }

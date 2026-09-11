@@ -451,6 +451,34 @@
                 @endif
             </div>
 
+            @if($ticket->status?->slug === 'review' && $ticket->created_by === Auth::id())
+                <div class="mt-4 border-top pt-3">
+                    <h6 class="fw-bold text-dark mb-2">Review Action Required</h6>
+                    <p class="text-muted small mb-3">As the creator, please review the resolution details and choose an action:</p>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-sm btn-success d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#closeReviewModal" style="min-height: 38px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-check-circle-fill me-1.5" viewBox="0 0 16 16">
+                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                            </svg>
+                            Close Ticket
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#cancelReviewModal" style="min-height: 38px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-x-circle-fill me-1.5" viewBox="0 0 16 16">
+                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z"/>
+                            </svg>
+                            Cancel Ticket
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#reassignReviewModal" style="min-height: 38px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-arrow-repeat me-1.5" viewBox="0 0 16 16">
+                                <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-1.1 2c.135-.786.06-1.594-.253-2.31a.25.25 0 0 1 .01-.25l1.39-2.28a.25.25 0 0 1 .459.13a6.5 6.5 0 0 1-1.606 4.71z"/>
+                                <path fill-rule="evenodd" d="M1.534 9H.5a.5.5 0 0 0 0 1h2.5a.5.5 0 0 0 .5-.5V7a.5.5 0 0 0-1 0v1.5a5.503 5.503 0 0 1 9.873-2.583a.5.5 0 1 0 .802-.6a6.5 6.5 0 0 0-11.64 3.083"/>
+                            </svg>
+                            Reassign Ticket
+                        </button>
+                    </div>
+                </div>
+            @endif
+
             <hr class="my-3 text-muted">
 
             <div>
@@ -491,6 +519,97 @@
                 <div class="modal-footer border-top-0 pt-1">
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary btn-sm px-3">Submit Review</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
+@if($ticket->status?->slug === 'review' && $ticket->created_by === Auth::id())
+<!-- Close Review Modal -->
+<div class="modal fade" id="closeReviewModal" tabindex="-1" aria-labelledby="closeReviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header bg-light border-bottom-0 pb-1" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold text-dark" id="closeReviewModalLabel">Close Ticket</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('tickets.close-review', $ticket) }}" method="POST">
+                @csrf
+                <div class="modal-body py-3">
+                    <p class="text-muted small mb-3">Provide a mandatory comment detailing the resolution and why you are closing this ticket.</p>
+                    <div class="mb-3">
+                        <label for="close_comment" class="form-label fw-semibold text-dark small">Closing Comment</label>
+                        <textarea id="close_comment" name="comment" class="form-control" rows="4" placeholder="Enter your closing notes here..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-1">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm px-3">Close Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Review Modal -->
+<div class="modal fade" id="cancelReviewModal" tabindex="-1" aria-labelledby="cancelReviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header bg-light border-bottom-0 pb-1" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold text-dark" id="cancelReviewModalLabel">Cancel Ticket</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('tickets.cancel-review', $ticket) }}" method="POST">
+                @csrf
+                <div class="modal-body py-3">
+                    <p class="text-muted small mb-3">Provide a mandatory comment explaining why you are canceling this ticket.</p>
+                    <div class="mb-3">
+                        <label for="cancel_comment" class="form-label fw-semibold text-dark small">Cancellation Reason</label>
+                        <textarea id="cancel_comment" name="comment" class="form-control" rows="4" placeholder="Enter your cancellation reason here..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-1">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm px-3">Cancel Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Reassign Review Modal -->
+<div class="modal fade" id="reassignReviewModal" tabindex="-1" aria-labelledby="reassignReviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header bg-light border-bottom-0 pb-1" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold text-dark" id="reassignReviewModalLabel">Reassign Ticket</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('tickets.reassign-review', $ticket) }}" method="POST">
+                @csrf
+                <div class="modal-body py-3">
+                    <p class="text-muted small mb-3">Select a new assignee and provide a mandatory comment outlining what needs further work or changes.</p>
+                    <div class="mb-3">
+                        <label for="assignee_id" class="form-label fw-semibold text-dark small">Select New Assignee</label>
+                        <select id="assignee_id" name="assignee_id" class="form-select form-select-sm" required>
+                            <option value="">-- Choose Assignee --</option>
+                            @foreach($assignableUsers as $u)
+                                <option value="{{ $u->id }}" {{ $ticket->assigned_to === $u->id ? 'selected' : '' }}>
+                                    {{ $u->name }} ({{ $u->user_type }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reassign_comment" class="form-label fw-semibold text-dark small">Reassignment Instructions / Comment</label>
+                        <textarea id="reassign_comment" name="comment" class="form-control" rows="4" placeholder="Type instructions for the new assignee here..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-1">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-3">Reassign Ticket</button>
                 </div>
             </form>
         </div>
