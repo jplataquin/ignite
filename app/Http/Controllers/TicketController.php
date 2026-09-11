@@ -278,22 +278,126 @@ class TicketController extends Controller
             'category_2_id' => 'nullable|exists:categories,id',
             'category_3_id' => 'nullable|exists:categories,id',
             'to_user_id' => 'nullable|exists:users,id',
+            'attachments_json' => 'nullable|string',
+            'deleted_attachments' => 'nullable|string', // JSON array of attachment IDs
         ]);
 
-        $ticket->update([
-            'title' => $validated['title'],
-            'description' => $validated['description'],
-            'ticket_type_id' => $validated['ticket_type_id'],
-            'priority_option_id' => $validated['priority_option_id'],
-            'division_id' => $validated['division_id'],
-            'department_id' => $validated['department_id'],
-            'category_1_id' => $validated['category_1_id'],
-            'category_2_id' => $validated['category_2_id'] ?? null,
-            'category_3_id' => $validated['category_3_id'] ?? null,
-            'to_user_id' => $validated['to_user_id'] ?? null,
-        ]);
+        $attachments = [];
+        if ($request->filled('attachments_json')) {
+            $attachments = json_decode($request->input('attachments_json'), true);
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($attachments)) {
+                return redirect()->back()->with('error', 'Invalid attachments data.')->withInput();
+            }
 
-        return redirect()->route('tickets.show', $ticket)->with('success', 'Ticket updated successfully.');
+            // Validate Extensions (photos, pdf, excel, documents)
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+            foreach ($attachments as $attachment) {
+                if (empty($attachment['temp_token']) || empty($attachment['total_chunks']) || empty($attachment['file_name'])) {
+                    return redirect()->back()->with('error', 'Incomplete attachment details.')->withInput();
+                }
+
+                $extension = strtolower(pathinfo($attachment['file_name'], PATHINFO_EXTENSION));
+                if (!in_array($extension, $allowedExtensions)) {
+                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are photos, pdf, excel, and documents.") ->withInput();
+                }
+            }
+        }
+
+        $deletedAttachmentIds = [];
+        if ($request->filled('deleted_attachments')) {
+            $deletedAttachmentIds = json_decode($request->input('deleted_attachments'), true);
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($deletedAttachmentIds)) {
+                return redirect()->back()->with('error', 'Invalid deleted attachments data.')->withInput();
+            }
+        }
+
+        return DB::transaction(function () use ($validated, $attachments, $deletedAttachmentIds, $ticket, $user) {
+            $ticket->update([
+                'title' => $validated['title'],
+                'description' => $validated['description'],
+                'ticket_type_id' => $validated['ticket_type_id'],
+                'priority_option_id' => $validated['priority_option_id'],
+                'division_id' => $validated['division_id'],
+                'department_id' => $validated['department_id'],
+                'category_1_id' => $validated['category_1_id'],
+                'category_2_id' => $validated['category_2_id'] ?? null,
+                'category_3_id' => $validated['category_3_id'] ?? null,
+                'to_user_id' => $validated['to_user_id'] ?? null,
+            ]);
+
+            // Handle deleted attachments
+            if (!empty($deletedAttachmentIds)) {
+                $attachmentsToDelete = Attachment::whereIn('id', $deletedAttachmentIds)
+                    ->where('ticket_id', $ticket->id)
+                    ->get();
+
+                foreach ($attachmentsToDelete as $attachment) {
+                    if (Storage::exists($attachment->file_path)) {
+                        Storage::delete($attachment->file_path);
+                    }
+                    $attachment->delete();
+                }
+                
+                if ($attachmentsToDelete->count() > 0) {
+                    $ticket->temp_system_comment = ($ticket->temp_system_comment ? $ticket->temp_system_comment . "\n" : "Ticket details updated:\n") . "- " . $attachmentsToDelete->count() . " attachment(s) removed";
+                }
+            }
+
+            // Handle new attachments
+            $newAttachmentsCount = 0;
+            foreach ($attachments as $attachment) {
+                $tempToken = $attachment['temp_token'];
+                $totalChunks = (int)$attachment['total_chunks'];
+                $stagingDir = 'staging/' . $tempToken;
+                
+                $finalFileName = $attachment['file_name'];
+                $finalPath = 'attachments/' . $ticket->id . '/' . $finalFileName;
+                
+                Storage::makeDirectory('attachments/' . $ticket->id);
+                
+                $finalContent = '';
+                for ($i = 1; $i <= $totalChunks; $i++) {
+                    $chunkPath = $stagingDir . '/' . $i . '.part';
+                    if (Storage::exists($chunkPath)) {
+                        $finalContent .= Storage::get($chunkPath);
+                        Storage::delete($chunkPath);
+                    } else {
+                        throw new \Exception('Missing chunk ' . $i);
+                    }
+                }
+                
+                Storage::put($finalPath, $finalContent);
+                Storage::deleteDirectory($stagingDir);
+
+                Attachment::create([
+                    'ticket_id' => $ticket->id,
+                    'file_name' => $finalFileName,
+                    'file_path' => $finalPath,
+                    'file_size' => Storage::size($finalPath),
+                    'mime_type' => $attachment['mime_type'] ?? 'application/octet-stream',
+                    'uploaded_by' => Auth::id() ?? 1,
+                    'note' => $attachment['note'] ?? null,
+                ]);
+                $newAttachmentsCount++;
+            }
+
+            if ($newAttachmentsCount > 0) {
+                $ticket->temp_system_comment = ($ticket->temp_system_comment ? $ticket->temp_system_comment . "\n" : "Ticket details updated:\n") . "- {$newAttachmentsCount} new attachment(s) added";
+            }
+            
+            // Create comment directly if the observer did not run
+            if (!empty($ticket->temp_system_comment)) {
+                TicketComment::create([
+                    'ticket_id' => $ticket->id,
+                    'user_id' => null, // Logged by system
+                    'type' => 'system_event',
+                    'content' => $ticket->temp_system_comment,
+                ]);
+                unset($ticket->temp_system_comment);
+            }
+
+            return redirect()->route('tickets.show', $ticket)->with('success', 'Ticket updated successfully.');
+        });
     }
 
     /**

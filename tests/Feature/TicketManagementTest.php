@@ -782,4 +782,141 @@ class TicketManagementTest extends TestCase
         $this->assertStringContainsString("Title updated from 'Original Title' to 'Updated Title'", $comment->content);
         $this->assertStringContainsString("Description updated", $comment->content);
     }
+
+    /**
+     * Test that creator can delete an existing attachment during update.
+     */
+    public function test_creator_can_delete_existing_attachment_during_update(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $creator->roles()->attach($role->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $role->ticketTypes()->attach($ticketType->id);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10006',
+            'title' => 'Original Title',
+            'description' => 'Original Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $attachment = \App\Models\Attachment::create([
+            'ticket_id' => $ticket->id,
+            'file_name' => 'original_file.pdf',
+            'file_path' => 'attachments/' . $ticket->id . '/original_file.pdf',
+            'file_size' => 1234,
+            'mime_type' => 'application/pdf',
+            'uploaded_by' => $creator->id,
+        ]);
+
+        $response = $this->actingAs($creator)->put("/tickets/{$ticket->id}", [
+            'title' => 'Original Title',
+            'description' => 'Original Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'category_1_id' => $category->id,
+            'deleted_attachments' => json_encode([$attachment->id]),
+        ]);
+
+        $response->assertRedirect(route('tickets.show', $ticket));
+
+        $this->assertDatabaseMissing('attachments', [
+            'id' => $attachment->id,
+        ]);
+
+        // Assert system comment documenting removal
+        $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
+            ->where('type', 'system_event')
+            ->first();
+
+        $this->assertNotNull($comment);
+        $this->assertStringContainsString("1 attachment(s) removed", $comment->content);
+    }
+
+    /**
+     * Test that creator can add a new attachment during update.
+     */
+    public function test_creator_can_add_new_attachment_during_update(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $creator->roles()->attach($role->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $role->ticketTypes()->attach($ticketType->id);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10007',
+            'title' => 'Original Title',
+            'description' => 'Original Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $token = 'token_edit_456';
+        \Illuminate\Support\Facades\Storage::put("staging/{$token}/1.part", "new part content");
+
+        $attachmentsJson = json_encode([
+            [
+                'temp_token' => $token,
+                'total_chunks' => 1,
+                'file_name' => 'new_uploaded_file.xlsx',
+                'mime_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'note' => 'New edit attachment note'
+            ]
+        ]);
+
+        $response = $this->actingAs($creator)->put("/tickets/{$ticket->id}", [
+            'title' => 'Original Title',
+            'description' => 'Original Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'category_1_id' => $category->id,
+            'attachments_json' => $attachmentsJson,
+        ]);
+
+        $response->assertRedirect(route('tickets.show', $ticket));
+
+        $this->assertDatabaseHas('attachments', [
+            'ticket_id' => $ticket->id,
+            'file_name' => 'new_uploaded_file.xlsx',
+            'note' => 'New edit attachment note'
+        ]);
+
+        // Assert system comment documenting addition
+        $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
+            ->where('type', 'system_event')
+            ->first();
+
+        $this->assertNotNull($comment);
+        $this->assertStringContainsString("1 new attachment(s) added", $comment->content);
+    }
 }

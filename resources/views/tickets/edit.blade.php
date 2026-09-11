@@ -45,6 +45,70 @@
                     @enderror
                 </div>
 
+                <!-- Existing Attachments -->
+                @if($ticket->attachments->count() > 0)
+                <div class="mb-4">
+                    <label class="form-label fw-semibold text-dark small">Existing Attachments</label>
+                    <div class="row row-cols-1 g-2">
+                        @foreach($ticket->attachments as $index => $attachment)
+                            <div class="d-flex align-items-center justify-content-between p-3 rounded-3 mb-2" id="existing-attachment-{{ $attachment->id }}" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0 border bg-white d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; overflow: hidden; border-radius: 8px; border-color: #cbd5e1 !important;">
+                                        @php
+                                            $isImage = str_starts_with($attachment->mime_type ?? '', 'image/') || 
+                                                       in_array(strtolower(pathinfo($attachment->file_name ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                                        @endphp
+                                        @if($isImage)
+                                            <img src="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" class="w-100 h-100" style="object-fit: cover;">
+                                        @else
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-file-earmark-text text-secondary" viewBox="0 0 16 16">
+                                                <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+                                                <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
+                                            </svg>
+                                        @endif
+                                    </div>
+                                    <div class="overflow-hidden">
+                                        <span class="d-block fw-bold text-dark text-truncate" style="max-width: 250px; font-size: 0.88rem; color: #1e293b !important;">
+                                            {{ $attachment->file_name }}
+                                        </span>
+                                        <span class="text-muted d-block mt-0.5" style="font-size: 0.72rem; color: #64748b !important;">{{ round($attachment->file_size / 1024, 1) }} KB</span>
+                                    </div>
+                                </div>
+                                
+                                <button type="button" class="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center p-0 rounded-circle" style="width: 32px; height: 32px;" onclick="removeExistingAttachment({{ $attachment->id }})" title="Remove attachment">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                        <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-1.995 0L3.83 3.5h8.34zM5 5.033V13h1V5.033zm4 0V13h1V5.033z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        @endforeach
+                    </div>
+                    <input type="hidden" name="deleted_attachments" id="deleted_attachments" value="[]">
+                </div>
+                @endif
+
+                <!-- File Drop Zone for New Attachments -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold text-dark small">Add Attachments (Photos, PDF, Excel, Documents)</label>
+                    <div id="drop-zone" class="border border-2 border-dashed rounded p-4 text-center bg-light" style="border-style: dashed !important; transition: background-color 0.2s, border-color 0.2s; cursor: pointer;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" class="bi bi-cloud-upload text-secondary mb-2" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M4.406 1.342A5.53 5.53 0 0 1 8 0c2.69 0 4.923 2 5.166 4.579C14.758 4.804 16 6.137 16 7.773 16 9.562 14.384 11 12.362 11H4.378C2.261 11 0 9.286 0 7.117c0-2.117 2.134-3.51 4.406-3.51a.54.54 0 0 1 .494.314l.056.109.057-.109a2.524 2.524 0 0 1 2.215-1.378c.84 0 1.572.41 1.996 1.053a.5.5 0 0 1-.84.54C7.79 3.593 7.218 3.25 6.64 3.25a1.524 1.524 0 0 0-1.314.806.5.5 0 0 1-.868-.04 3.411 3.411 0 0 0-3.14 2.457.5.5 0 0 1-.368.354A2.5 2.5 0 0 0 1 7.117c0 1.536 1.547 2.383 3.378 2.383h7.984c1.482 0 2.638-.973 2.638-2.227 0-1.254-1.156-2.227-2.638-2.227a.5.5 0 0 1-.482-.364 3.52 3.52 0 0 0-3.416-2.509.5.5 0 0 1-.487-.354A4.5 4.5 0 0 0 8 1a4.5 4.5 0 0 0-4.084 2.766.5.5 0 0 1-.908-.424l.053-.112z"/>
+                            <path fill-rule="evenodd" d="M7.646 5.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708l2-2z"/>
+                        </svg>
+                        <p class="mb-1 fw-semibold text-dark small">Drag & drop files here, or click to browse</p>
+                        <p class="text-muted mb-0" style="font-size: 0.75rem;">Allowed formats: .jpg, .png, .gif, .pdf, .xls, .xlsx, .doc, .docx, .txt, .csv</p>
+                        <input type="file" id="file-input" class="d-none" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.xls,.xlsx,.csv,.doc,.docx,.odt,.txt,.rtf">
+                    </div>
+
+                    <!-- Dynamic List of Upload Progresses -->
+                    <div id="upload-progress-list" class="mt-3">
+                        <!-- Progress rows will be appended here dynamically -->
+                    </div>
+
+                    <!-- Hidden Field for All Completed Attachments -->
+                    <input type="hidden" name="attachments_json" id="attachments_json">
+                </div>
+
                 <div class="row row-cols-1 row-cols-md-2 g-3 mb-3">
                     <!-- Ticket Type -->
                     <div>
@@ -296,6 +360,261 @@
                 });
         }
 
+        // --- EXISTING ATTACHMENTS REMOVAL LOGIC ---
+        let deletedAttachments = [];
+        window.removeExistingAttachment = function(id) {
+            if (confirm("Are you sure you want to remove this attachment?")) {
+                const item = document.getElementById(`existing-attachment-${id}`);
+                if (item) {
+                    item.remove();
+                }
+                deletedAttachments.push(id);
+                const input = document.getElementById('deleted_attachments');
+                if (input) {
+                    input.value = JSON.stringify(deletedAttachments);
+                }
+            }
+        };
+
+        // --- CHUNKED MULTI-FILE UPLOADER LOGIC ---
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const progressList = document.getElementById('upload-progress-list');
+        const attachmentsJsonInput = document.getElementById('attachments_json');
+        const submitBtn = document.querySelector('button[type="submit"]');
+
+        const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
+        const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+
+        let completedAttachments = [];
+        let activeUploadsCount = 0;
+
+        // Handle Click to Browse
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // Handle Drag & Drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('bg-dark', 'text-white', 'opacity-75');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('bg-dark', 'text-white', 'opacity-75');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-dark', 'text-white', 'opacity-75');
+            if (e.dataTransfer.files.length > 0) {
+                handleFiles(e.dataTransfer.files);
+            }
+        });
+
+        fileInput.addEventListener('change', function () {
+            if (this.files.length > 0) {
+                handleFiles(this.files);
+            }
+        });
+
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                const extension = file.name.split('.').pop().toLowerCase();
+                if (!ALLOWED_EXTENSIONS.includes(extension)) {
+                    alert(`File "${file.name}" is not allowed. Allowed types are photos, pdf, excel, and documents.`);
+                    return;
+                }
+                handleFile(file);
+            });
+        }
+
+        function handleFile(file) {
+            const identifier = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            // Increment active uploads and disable submit button
+            activeUploadsCount++;
+            submitBtn.disabled = true;
+
+            // Append progress row to progress list
+            const progressRowId = `progress-row-${identifier}`;
+            const rowHTML = `
+                <div id="${progressRowId}" class="p-3 mb-2 bg-white rounded border shadow-sm d-flex flex-column attachment-row" data-identifier="${identifier}">
+                    <div class="d-flex gap-3 align-items-center w-100">
+                        <!-- Icon / Thumbnail Container -->
+                        <div id="preview-${identifier}" class="flex-shrink-0 border rounded bg-light d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; overflow: hidden;">
+                            <!-- Populate via JS -->
+                        </div>
+
+                        <!-- Progress Info -->
+                        <div class="flex-grow-1 min-width-0">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-dark small fw-semibold text-truncate" style="max-width: 250px;">
+                                    <span class="badge bg-secondary me-1 attachment-number">Attachment #1</span>
+                                    ${escapeHtml(file.name)}
+                                </span>
+                                <span id="percentage-${identifier}" class="text-muted small fw-semibold">0%</span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div id="bar-${identifier}" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div id="status-${identifier}" class="text-muted mt-1" style="font-size: 0.75rem;">Preparing upload...</div>
+                        </div>
+
+                        <!-- Delete Button -->
+                        <div class="flex-shrink-0 ms-2">
+                            <button type="button" id="delete-${identifier}" class="btn btn-sm btn-outline-danger d-none d-flex align-items-center justify-content-center p-0 rounded-circle" style="width: 32px; height: 32px;" onclick="deleteAttachment('${identifier}')" title="Delete attachment">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                    <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-1.995 0L3.83 3.5h8.34zM5 5.033V13h1V5.033zm4 0V13h1V5.033z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Note Input (Visible on complete) -->
+                    <div id="note-container-${identifier}" class="mt-2 d-none">
+                        <label for="note-${identifier}" class="form-label text-muted small fw-semibold mb-1">File Note (Optional)</label>
+                        <textarea id="note-${identifier}" class="form-control form-control-sm" rows="2" placeholder="Enter an optional note/description for this file..."></textarea>
+                    </div>
+                </div>
+            `;
+            progressList.insertAdjacentHTML('beforeend', rowHTML);
+            updateAttachmentNumbers();
+
+            // Populate preview container
+            const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(file.name.split('.').pop().toLowerCase());
+            const previewContainer = document.getElementById(`preview-${identifier}`);
+            let previewUrl = '';
+            if (isImage) {
+                const imgUrl = URL.createObjectURL(file);
+                previewContainer.innerHTML = `<img src="${imgUrl}" class="w-100 h-100" style="object-fit: cover;">`;
+                previewUrl = imgUrl;
+            } else {
+                previewContainer.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-file-earmark-text text-secondary" viewBox="0 0 16 16">
+                        <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+                        <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
+                    </svg>
+                `;
+            }
+
+            previewContainer.classList.add('previewable-attachment');
+            previewContainer.style.cursor = 'pointer';
+            previewContainer.dataset.url = previewUrl;
+            previewContainer.dataset.name = file.name;
+            previewContainer.dataset.mime = file.type;
+
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            uploadNextChunk(file, identifier, 1, totalChunks);
+        }
+
+        function uploadNextChunk(file, identifier, chunkNumber, totalChunks) {
+            const start = (chunkNumber - 1) * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+
+            const formData = new FormData();
+            formData.append('file', chunk);
+            formData.append('resumableFilename', file.name);
+            formData.append('resumableIdentifier', identifier);
+            formData.append('resumableChunkNumber', chunkNumber);
+            formData.append('resumableTotalChunks', totalChunks);
+
+            const statusText = document.getElementById(`status-${identifier}`);
+            const progressBar = document.getElementById(`bar-${identifier}`);
+            const percentageLabel = document.getElementById(`percentage-${identifier}`);
+
+            if (statusText) {
+                statusText.textContent = `Uploading chunk ${chunkNumber} of ${totalChunks}...`;
+            }
+
+            fetch('/tickets/upload-chunk', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Upload error');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const percentComplete = Math.round((chunkNumber / totalChunks) * 100);
+                if (progressBar) progressBar.style.width = percentComplete + '%';
+                if (percentageLabel) percentageLabel.textContent = percentComplete + '%';
+
+                if (chunkNumber < totalChunks) {
+                    uploadNextChunk(file, identifier, chunkNumber + 1, totalChunks);
+                } else {
+                    // Upload Completed
+                    if (statusText) {
+                        statusText.innerHTML = '<span class="text-success fw-bold">✓ Upload Complete</span>';
+                    }
+                    if (progressBar) {
+                        progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                    }
+                    const deleteBtn = document.getElementById(`delete-${identifier}`);
+                    if (deleteBtn) {
+                        deleteBtn.classList.remove('d-none');
+                    }
+                    
+                    // Save to completedAttachments array
+                    completedAttachments.push({
+                        temp_token: identifier,
+                        total_chunks: totalChunks,
+                        file_name: file.name,
+                        mime_type: file.type || 'application/octet-stream',
+                        note: ''
+                    });
+
+                    // Update Hidden Input with Serialized JSON
+                    attachmentsJsonInput.value = JSON.stringify(completedAttachments);
+
+                    // Show the Note Input container
+                    const noteContainer = document.getElementById(`note-container-${identifier}`);
+                    if (noteContainer) {
+                        noteContainer.classList.remove('d-none');
+                    }
+
+                    // Attach input change listener to Note Input
+                    const noteInput = document.getElementById(`note-${identifier}`);
+                    if (noteInput) {
+                        noteInput.addEventListener('input', function() {
+                            const val = this.value;
+                            const att = completedAttachments.find(item => item.temp_token === identifier);
+                            if (att) {
+                                att.note = val;
+                                attachmentsJsonInput.value = JSON.stringify(completedAttachments);
+                            }
+                        });
+                    }
+
+                    // Decrement active uploads and check if we can re-enable the submit button
+                    activeUploadsCount--;
+                    if (activeUploadsCount === 0) {
+                        submitBtn.disabled = false;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                if (statusText) {
+                    statusText.innerHTML = '<span class="text-danger fw-bold">✗ Upload Failed. Please try again.</span>';
+                }
+                const deleteBtn = document.getElementById(`delete-${identifier}`);
+                if (deleteBtn) {
+                    deleteBtn.classList.remove('d-none');
+                }
+                
+                // Decrement active uploads and check if we can re-enable the submit button
+                activeUploadsCount--;
+                if (activeUploadsCount === 0) {
+                    submitBtn.disabled = false;
+                }
+            });
+        }
+
         // --- AUTOCOMPLETE INTENDED USER LOGIC ---
         const divisionSelect = document.getElementById('division_id');
         const departmentSelect = document.getElementById('department_id');
@@ -410,6 +729,28 @@
         if (divisionSelect.value || departmentSelect.value) {
             fetchAndFilterUsers(false);
         }
+
+        function updateAttachmentNumbers() {
+            const rows = document.querySelectorAll('#upload-progress-list .attachment-row');
+            rows.forEach((row, index) => {
+                const numberLabel = row.querySelector('.attachment-number');
+                if (numberLabel) {
+                    numberLabel.textContent = `Attachment #${index + 1}`;
+                }
+            });
+        }
+
+        window.deleteAttachment = function(identifier) {
+            if (confirm("Are you sure you want to remove this attachment?")) {
+                const row = document.getElementById(`progress-row-${identifier}`);
+                if (row) {
+                    row.remove();
+                }
+                completedAttachments = completedAttachments.filter(item => item.temp_token !== identifier);
+                attachmentsJsonInput.value = JSON.stringify(completedAttachments);
+                updateAttachmentNumbers();
+            }
+        };
 
         function escapeHtml(text) {
             return text
