@@ -986,4 +986,86 @@ class TicketManagementTest extends TestCase
         $this->assertNotNull($comment);
         $this->assertStringContainsString("Attachment 'note_test.pdf' note updated", $comment->content);
     }
+
+    /**
+     * Test that the assigned user can submit a ticket for review, assigning it back to the author with status "Review".
+     */
+    public function test_assigned_user_can_submit_ticket_for_review(): void
+    {
+        $author = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $assignedUser = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        
+        $assignedStatus = TicketStatus::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        $reviewStatus = TicketStatus::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
+        
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10009',
+            'title' => 'Assigned Ticket',
+            'description' => 'Detailed description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $assignedStatus->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $author->id,
+            'assigned_to' => $assignedUser->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($assignedUser)->post("/tickets/{$ticket->id}/for-review");
+
+        $response->assertRedirect();
+        
+        $ticket->refresh();
+        $this->assertEquals($reviewStatus->id, $ticket->status_id);
+        $this->assertEquals($author->id, $ticket->assigned_to);
+    }
+
+    /**
+     * Test that a non-assigned user cannot submit a ticket for review.
+     */
+    public function test_non_assigned_user_cannot_submit_ticket_for_review(): void
+    {
+        $author = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $assignedUser = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $otherUser = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        
+        $assignedStatus = TicketStatus::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10010',
+            'title' => 'Assigned Ticket',
+            'description' => 'Detailed description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $assignedStatus->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $author->id,
+            'assigned_to' => $assignedUser->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($otherUser)->post("/tickets/{$ticket->id}/for-review");
+
+        $response->assertStatus(403);
+        
+        $ticket->refresh();
+        $this->assertEquals($assignedStatus->id, $ticket->status_id);
+        $this->assertEquals($assignedUser->id, $ticket->assigned_to);
+    }
 }

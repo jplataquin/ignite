@@ -611,4 +611,37 @@ class TicketController extends Controller
             return redirect()->back()->with('success', 'Comment added successfully.');
         });
     }
+
+    /**
+     * Reassign the ticket back to the author with status "Review".
+     */
+    public function forReview(Ticket $ticket)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            abort(403);
+        }
+
+        // Only the assigned user can transition the ticket to review
+        if ($ticket->assigned_to !== $user->id) {
+            abort(403, 'You are not authorized to submit this ticket for review.');
+        }
+
+        // The ticket must currently be in the 'Assigned' status
+        if ($ticket->status?->slug !== 'assigned') {
+            return redirect()->back()->with('error', 'Only assigned tickets can be submitted for review.');
+        }
+
+        $reviewStatus = TicketStatus::where('slug', 'review')->first();
+        if (!$reviewStatus) {
+            return redirect()->back()->with('error', 'Review status not found.');
+        }
+
+        $ticket->update([
+            'assigned_to' => $ticket->created_by, // Assign back to the author
+            'status_id' => $reviewStatus->id,
+        ]);
+
+        return redirect()->back()->with('success', 'Ticket has been successfully submitted for review and assigned back to the author.');
+    }
 }
