@@ -198,7 +198,7 @@ class TicketController extends Controller
     {
         $ticket->load([
             'ticketType', 'status', 'division', 'department', 'creator', 'assignee', 
-            'category1', 'category2', 'category3', 'attachments', 'comments.user'
+            'category1', 'category2', 'category3', 'attachments', 'comments.user', 'comments.attachments'
         ]);
         return view('tickets.show', compact('ticket'));
     }
@@ -309,6 +309,7 @@ class TicketController extends Controller
     {
         $validated = $request->validate([
             'content' => 'required|string|min:1',
+            'attachments_json' => 'nullable|string',
         ]);
 
         $user = Auth::user();
@@ -326,13 +327,73 @@ class TicketController extends Controller
             return redirect()->back()->with('error', 'You are not authorized to comment on this ticket.');
         }
 
-        TicketComment::create([
-            'ticket_id' => $ticket->id,
-            'user_id' => $user->id,
-            'type' => 'comment',
-            'content' => $validated['content'],
-        ]);
+        $attachments = [];
+        if ($request->filled('attachments_json')) {
+            $attachments = json_decode($request->input('attachments_json'), true);
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($attachments)) {
+                return redirect()->back()->with('error', 'Invalid attachments data.')->withInput();
+            }
 
-        return redirect()->back()->with('success', 'Comment added successfully.');
+            // Validate Extensions (photos, pdf, excel, documents)
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+            foreach ($attachments as $attachment) {
+                if (empty($attachment['temp_token']) || empty($attachment['total_chunks']) || empty($attachment['file_name'])) {
+                    return redirect()->back()->with('error', 'Incomplete attachment details.')->withInput();
+                }
+
+                $extension = strtolower(pathinfo($attachment['file_name'], PATHINFO_EXTENSION));
+                if (!in_array($extension, $allowedExtensions)) {
+                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are photos, pdf, excel, and documents.")->withInput();
+                }
+            }
+        }
+
+        return DB::transaction(function () use ($validated, $ticket, $user, $attachments) {
+            $comment = TicketComment::create([
+                'ticket_id' => $ticket->id,
+                'user_id' => $user->id,
+                'type' => 'comment',
+                'content' => $validated['content'],
+            ]);
+
+            // Merge File Chunks for each attachment
+            foreach ($attachments as $attachment) {
+                $tempToken = $attachment['temp_token'];
+                $totalChunks = (int)$attachment['total_chunks'];
+                $stagingDir = 'staging/' . $tempToken;
+                
+                $finalFileName = $attachment['file_name'];
+                $finalPath = 'attachments/' . $ticket->id . '/' . $finalFileName;
+                
+                Storage::makeDirectory('attachments/' . $ticket->id);
+                
+                $finalContent = '';
+                for ($i = 1; $i <= $totalChunks; $i++) {
+                    $chunkPath = $stagingDir . '/' . $i . '.part';
+                    if (Storage::exists($chunkPath)) {
+                        $finalContent .= Storage::get($chunkPath);
+                        Storage::delete($chunkPath);
+                    } else {
+                        throw new \Exception('Missing chunk ' . $i);
+                    }
+                }
+                
+                Storage::put($finalPath, $finalContent);
+                Storage::deleteDirectory($stagingDir);
+
+                Attachment::create([
+                    'ticket_id' => $ticket->id,
+                    'comment_id' => $comment->id,
+                    'file_name' => $finalFileName,
+                    'file_path' => $finalPath,
+                    'file_size' => Storage::size($finalPath),
+                    'mime_type' => $attachment['mime_type'] ?? 'application/octet-stream',
+                    'uploaded_by' => $user->id,
+                    'note' => $attachment['note'] ?? null,
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Comment added successfully.');
+        });
     }
 }

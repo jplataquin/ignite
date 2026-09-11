@@ -10,12 +10,17 @@ class Attachment extends Model
 {
     #[Fillable]
     protected $fillable = [
-        'ticket_id', 'file_name', 'file_path', 'file_size', 'mime_type', 'uploaded_by', 'note'
+        'ticket_id', 'comment_id', 'file_name', 'file_path', 'file_size', 'mime_type', 'uploaded_by', 'note'
     ];
 
     public function ticket(): BelongsTo
     {
         return $this->belongsTo(Ticket::class);
+    }
+
+    public function comment(): BelongsTo
+    {
+        return $this->belongsTo(TicketComment::class);
     }
 
     public function uploader(): BelongsTo

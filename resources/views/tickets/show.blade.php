@@ -186,13 +186,29 @@
                 $ticket->created_by === Auth::id() || 
                 $ticket->assigned_to === Auth::id() || 
                 $ticket->to_user_id === Auth::id())
-                <form action="{{ route('tickets.comments.store', $ticket) }}" method="POST" class="mb-4">
+                <form action="{{ route('tickets.comments.store', $ticket) }}" method="POST" class="mb-4" id="comment-form">
                     @csrf
                     <div class="mb-3">
                         <textarea class="form-control form-control-sm" name="content" rows="3" placeholder="Write a comment..." required></textarea>
                     </div>
+
+                    <!-- File Drop Zone for Comment -->
+                    <div class="mb-3">
+                        <div id="comment-drop-zone" class="p-3 border border-2 border-dashed rounded text-center bg-light" style="cursor: pointer; border-color: #cbd5e1 !important; transition: all 0.2s ease;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-cloud-upload text-secondary mb-1" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M4.406 1.342A5.53 5.53 0 0 1 8 0c2.69 0 4.923 2 5.166 4.579C14.758 4.804 16 6.137 16 7.773 16 9.562 14.502 11 12.687 11H10a.5.5 0 0 1 0-1h2.688C13.979 10 15 9.124 15 8c0-1.124-1.021-2-2.312-2a.5.5 0 0 1-.5-.436C12.16 3.161 10.22 1.5 8 1.5c-1.854 0-3.43 1.15-4.113 2.872a.5.5 0 0 1-.687.238C1.83 3.993 1 5.027 1 6.51 1 8.04 2.222 9.25 3.75 9.25H6a.5.5 0 0 1 0 1H3.75C1.65 10.25 0 8.528 0 6.5c0-1.63 1.05-3.003 2.512-3.488a5.5 5.5 0 0 1 1.894-1.67z"/>
+                                <path fill-rule="evenodd" d="M7.646 5.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708z"/>
+                            </svg>
+                            <p class="mb-0 fw-semibold text-dark small" style="font-size: 0.8rem;">Drag & drop files here, or click to browse</p>
+                            <input type="file" id="comment-file-input" class="d-none" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.xls,.xlsx,.csv,.doc,.docx,.odt,.txt,.rtf">
+                        </div>
+                        <!-- Dynamic List of Comment Upload Progresses -->
+                        <div id="comment-upload-progress-list" class="mt-2"></div>
+                        <input type="hidden" name="attachments_json" id="comment_attachments_json">
+                    </div>
+
                     <div class="d-flex justify-content-end">
-                        <button type="submit" class="btn btn-primary px-4 btn-sm" style="min-height: auto;">Add Comment</button>
+                        <button type="submit" id="comment-submit-btn" class="btn btn-primary px-4 btn-sm" style="min-height: auto;">Add Comment</button>
                     </div>
                 </form>
                 <hr class="my-4 text-muted">
@@ -224,6 +240,53 @@
                                     <span class="text-muted" style="font-size: 0.75rem;">{{ $comment->created_at->diffForHumans() }}</span>
                                 </div>
                                 <p class="mb-0 text-muted small">{{ $comment->content }}</p>
+
+                                @if($comment->attachments->count() > 0)
+                                    <div class="mt-3 pt-2.5 border-top border-light-subtle" style="border-top: 1px solid #e2e8f0 !important;">
+                                        <div class="row row-cols-1 g-2">
+                                            @foreach($comment->attachments as $index => $attachment)
+                                                <div class="d-flex flex-column p-2 rounded-2" style="background-color: #f1f5f9; border: 1px solid #e2e8f0; font-size: 0.8rem;">
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <div class="d-flex align-items-center previewable-attachment" style="cursor: pointer;"
+                                                             data-url="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}"
+                                                             data-name="{{ $attachment->file_name }}"
+                                                             data-mime="{{ $attachment->mime_type }}">
+                                                            <div class="flex-shrink-0 border rounded bg-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; overflow: hidden; border-color: #cbd5e1 !important;">
+                                                                @php
+                                                                    $isImage = str_starts_with($attachment->mime_type ?? '', 'image/') ||
+                                                                               in_array(strtolower(pathinfo($attachment->file_name ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                                                                @endphp
+                                                                @if($isImage)
+                                                                    <img src="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" class="w-100 h-100" style="object-fit: cover;">
+                                                                @else
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-text text-secondary" viewBox="0 0 16 16">
+                                                                        <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+                                                                        <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
+                                                                    </svg>
+                                                                @endif
+                                                            </div>
+                                                            <div class="ms-2.5 min-width-0" style="margin-left: 10px;">
+                                                                <span class="fw-semibold text-dark text-truncate d-block" style="max-width: 200px;">{{ $attachment->file_name }}</span>
+                                                                <span class="text-muted d-block" style="font-size: 0.7rem;">{{ round($attachment->file_size / 1024, 1) }} KB</span>
+                                                            </div>
+                                                        </div>
+                                                        <a href="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" download="{{ $attachment->file_name }}" class="btn btn-sm btn-light p-0 d-flex align-items-center justify-content-center" style="width: 26px; height: 26px; border-radius: 6px; background-color: #e2e8f0; border: 1px solid #cbd5e1; color: #475569;" title="Download file">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-download" viewBox="0 0 16 16">
+                                                                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+                                                                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                                                            </svg>
+                                                        </a>
+                                                    </div>
+                                                    @if($attachment->note)
+                                                        <div class="mt-1.5 p-2 rounded bg-white text-muted" style="font-size: 0.72rem; border-left: 2.5px solid #cbd5e1; margin-top: 6px;">
+                                                            {{ $attachment->note }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                         @endif
                     </div>
@@ -298,3 +361,280 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const dropZone = document.getElementById('comment-drop-zone');
+        const fileInput = document.getElementById('comment-file-input');
+        const progressList = document.getElementById('comment-upload-progress-list');
+        const attachmentsJsonInput = document.getElementById('comment_attachments_json');
+        const submitBtn = document.getElementById('comment-submit-btn');
+
+        if (!dropZone || !fileInput) return;
+
+        const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
+        const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+
+        let completedAttachments = [];
+        let activeUploadsCount = 0;
+
+        // Handle Click to Browse
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // Handle Drag & Drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('bg-dark', 'text-white', 'opacity-75');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('bg-dark', 'text-white', 'opacity-75');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-dark', 'text-white', 'opacity-75');
+            if (e.dataTransfer.files.length > 0) {
+                handleFiles(e.dataTransfer.files);
+            }
+        });
+
+        fileInput.addEventListener('change', function () {
+            if (this.files.length > 0) {
+                handleFiles(this.files);
+            }
+        });
+
+        function handleFiles(files) {
+            Array.from(files).forEach(file => {
+                const extension = file.name.split('.').pop().toLowerCase();
+                if (!ALLOWED_EXTENSIONS.includes(extension)) {
+                    alert(`File "${file.name}" is not allowed. Allowed types are photos, pdf, excel, and documents.`);
+                    return;
+                }
+                handleFile(file);
+            });
+        }
+
+        function handleFile(file) {
+            const identifier = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            // Increment active uploads and disable submit button
+            activeUploadsCount++;
+            submitBtn.disabled = true;
+
+            // Append progress row to progress list
+            const progressRowId = `comment-progress-row-${identifier}`;
+            const rowHTML = `
+                <div id="${progressRowId}" class="p-2 mb-2 bg-white rounded border shadow-sm d-flex flex-column comment-attachment-row" data-identifier="${identifier}">
+                    <div class="d-flex gap-3 align-items-center w-100">
+                        <!-- Icon / Thumbnail Container -->
+                        <div id="comment-preview-${identifier}" class="flex-shrink-0 border rounded bg-light d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; overflow: hidden;">
+                            <!-- Populate via JS -->
+                        </div>
+
+                        <!-- Progress Info -->
+                        <div class="flex-grow-1 min-width-0">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-dark small fw-semibold text-truncate" style="max-width: 250px;">
+                                    <span class="badge bg-secondary me-1 comment-attachment-number" style="font-size: 0.65rem;">Attachment #1</span>
+                                    <span style="font-size: 0.8rem;">${escapeHtml(file.name)}</span>
+                                </span>
+                                <span id="comment-percentage-${identifier}" class="text-muted small fw-semibold" style="font-size: 0.75rem;">0%</span>
+                            </div>
+                            <div class="progress" style="height: 5px;">
+                                <div id="comment-bar-${identifier}" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div id="comment-status-${identifier}" class="text-muted mt-0.5" style="font-size: 0.7rem;">Preparing upload...</div>
+                        </div>
+
+                        <!-- Delete Button -->
+                        <div class="flex-shrink-0 ms-2">
+                            <button type="button" id="comment-delete-${identifier}" class="btn btn-sm btn-outline-danger d-none d-flex align-items-center justify-content-center p-0 rounded-circle" style="width: 28px; height: 28px;" onclick="deleteCommentAttachment('${identifier}')" title="Delete attachment">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                    <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-1.995 0L3.83 3.5h8.34zM5 5.033V13h1V5.033zm4 0V13h1V5.033z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Note Input (Visible on complete) -->
+                    <div id="comment-note-container-${identifier}" class="mt-1.5 d-none">
+                        <label for="comment-note-${identifier}" class="form-label text-muted small fw-semibold mb-1" style="font-size: 0.75rem;">File Note (Optional)</label>
+                        <textarea id="comment-note-${identifier}" class="form-control form-control-sm" rows="1" placeholder="Enter an optional note/description..." style="font-size: 0.75rem;"></textarea>
+                    </div>
+                </div>
+            `;
+            progressList.insertAdjacentHTML('beforeend', rowHTML);
+            updateAttachmentNumbers();
+
+            // Populate preview container
+            const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(file.name.split('.').pop().toLowerCase());
+            const previewContainer = document.getElementById(`comment-preview-${identifier}`);
+            let previewUrl = '';
+            if (isImage) {
+                const imgUrl = URL.createObjectURL(file);
+                previewContainer.innerHTML = `<img src="${imgUrl}" class="w-100 h-100" style="object-fit: cover;">`;
+                previewUrl = imgUrl;
+            } else {
+                previewContainer.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-file-earmark-text text-secondary" viewBox="0 0 16 16">
+                        <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+                        <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/>
+                    </svg>
+                `;
+            }
+
+            previewContainer.classList.add('previewable-attachment');
+            previewContainer.style.cursor = 'pointer';
+            previewContainer.dataset.url = previewUrl;
+            previewContainer.dataset.name = file.name;
+            previewContainer.dataset.mime = file.type;
+
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            uploadNextChunk(file, identifier, 1, totalChunks);
+        }
+
+        function uploadNextChunk(file, identifier, chunkNumber, totalChunks) {
+            const start = (chunkNumber - 1) * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+
+            const formData = new FormData();
+            formData.append('file', chunk);
+            formData.append('resumableFilename', file.name);
+            formData.append('resumableIdentifier', identifier);
+            formData.append('resumableChunkNumber', chunkNumber);
+            formData.append('resumableTotalChunks', totalChunks);
+
+            const statusText = document.getElementById(`comment-status-${identifier}`);
+            const progressBar = document.getElementById(`comment-bar-${identifier}`);
+            const percentageLabel = document.getElementById(`comment-percentage-${identifier}`);
+
+            if (statusText) {
+                statusText.textContent = `Uploading chunk ${chunkNumber} of ${totalChunks}...`;
+            }
+
+            fetch('/tickets/upload-chunk', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Upload error');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const percentComplete = Math.round((chunkNumber / totalChunks) * 100);
+                if (progressBar) progressBar.style.width = percentComplete + '%';
+                if (percentageLabel) percentageLabel.textContent = percentComplete + '%';
+
+                if (chunkNumber < totalChunks) {
+                    uploadNextChunk(file, identifier, chunkNumber + 1, totalChunks);
+                } else {
+                    // Upload Completed
+                    if (statusText) {
+                        statusText.innerHTML = '<span class="text-success fw-bold">✓ Upload Complete</span>';
+                    }
+                    if (progressBar) {
+                        progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                    }
+                    const deleteBtn = document.getElementById(`comment-delete-${identifier}`);
+                    if (deleteBtn) {
+                        deleteBtn.classList.remove('d-none');
+                    }
+                    
+                    // Save to completedAttachments array
+                    completedAttachments.push({
+                        temp_token: identifier,
+                        total_chunks: totalChunks,
+                        file_name: file.name,
+                        mime_type: file.type || 'application/octet-stream',
+                        note: ''
+                    });
+
+                    // Update Hidden Input with Serialized JSON
+                    attachmentsJsonInput.value = JSON.stringify(completedAttachments);
+
+                    // Show the Note Input container
+                    const noteContainer = document.getElementById(`comment-note-container-${identifier}`);
+                    if (noteContainer) {
+                        noteContainer.classList.remove('d-none');
+                    }
+
+                    // Attach input change listener to Note Input
+                    const noteInput = document.getElementById(`comment-note-${identifier}`);
+                    if (noteInput) {
+                        noteInput.addEventListener('input', function() {
+                            const val = this.value;
+                            const att = completedAttachments.find(item => item.temp_token === identifier);
+                            if (att) {
+                                att.note = val;
+                                attachmentsJsonInput.value = JSON.stringify(completedAttachments);
+                            }
+                        });
+                    }
+
+                    // Decrement active uploads and check if we can re-enable the submit button
+                    activeUploadsCount--;
+                    if (activeUploadsCount === 0) {
+                        submitBtn.disabled = false;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                if (statusText) {
+                    statusText.innerHTML = '<span class="text-danger fw-bold">✗ Upload Failed. Please try again.</span>';
+                }
+                const deleteBtn = document.getElementById(`comment-delete-${identifier}`);
+                if (deleteBtn) {
+                    deleteBtn.classList.remove('d-none');
+                }
+                
+                // Decrement active uploads and check if we can re-enable the submit button
+                activeUploadsCount--;
+                if (activeUploadsCount === 0) {
+                    submitBtn.disabled = false;
+                }
+            });
+        }
+
+        function updateAttachmentNumbers() {
+            const rows = document.querySelectorAll('#comment-upload-progress-list .comment-attachment-row');
+            rows.forEach((row, index) => {
+                const numberLabel = row.querySelector('.comment-attachment-number');
+                if (numberLabel) {
+                    numberLabel.textContent = `Attachment #${index + 1}`;
+                }
+            });
+        }
+
+        window.deleteCommentAttachment = function(identifier) {
+            if (confirm("Are you sure you want to remove this attachment?")) {
+                const row = document.getElementById(`comment-progress-row-${identifier}`);
+                if (row) {
+                    row.remove();
+                }
+                completedAttachments = completedAttachments.filter(item => item.temp_token !== identifier);
+                attachmentsJsonInput.value = JSON.stringify(completedAttachments);
+                updateAttachmentNumbers();
+            }
+        };
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    });
+</script>
+@endpush

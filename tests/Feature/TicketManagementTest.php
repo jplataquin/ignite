@@ -506,4 +506,67 @@ class TicketManagementTest extends TestCase
             'content' => 'Uninvolved user comment'
         ]);
     }
+
+    /**
+     * Test that involved users can comment on an open ticket with attachments.
+     */
+    public function test_users_can_comment_with_attachments(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-99882',
+            'title' => 'Ticket for comment attachment test',
+            'description' => 'Test ticket description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Stage mock chunks in storage
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $token = 'token_comment_123';
+        \Illuminate\Support\Facades\Storage::put("staging/{$token}/1.part", "comment part content");
+
+        $attachmentsJson = json_encode([
+            [
+                'temp_token' => $token,
+                'total_chunks' => 1,
+                'file_name' => 'comment_doc.pdf',
+                'mime_type' => 'application/pdf',
+                'note' => 'Comment attachment note'
+            ]
+        ]);
+
+        $response = $this->actingAs($creator)->post("/tickets/{$ticket->id}/comments", [
+            'content' => 'This is a comment with file attached',
+            'attachments_json' => $attachmentsJson
+        ]);
+
+        $response->assertRedirect();
+
+        // Assert comment was created
+        $comment = \App\Models\TicketComment::where('content', 'This is a comment with file attached')->first();
+        $this->assertNotNull($comment);
+
+        // Assert attachment was created and associated with the comment and ticket
+        $this->assertDatabaseHas('attachments', [
+            'ticket_id' => $ticket->id,
+            'comment_id' => $comment->id,
+            'file_name' => 'comment_doc.pdf',
+            'note' => 'Comment attachment note',
+            'uploaded_by' => $creator->id
+        ]);
+    }
 }
