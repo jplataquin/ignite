@@ -569,4 +569,217 @@ class TicketManagementTest extends TestCase
             'uploaded_by' => $creator->id
         ]);
     }
+
+    /**
+     * Test that ticket creator can view the edit page.
+     */
+    public function test_ticket_creator_can_view_edit_page(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $creator->roles()->attach($role->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $role->ticketTypes()->attach($ticketType->id);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10001',
+            'title' => 'Initial Title',
+            'description' => 'Initial Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($creator)->get("/tickets/{$ticket->id}/edit");
+
+        $response->assertStatus(200);
+        $response->assertSee('Edit Ticket');
+        $response->assertSee('Initial Title');
+    }
+
+    /**
+     * Test that non-creator cannot view the edit page.
+     */
+    public function test_non_ticket_creator_cannot_view_edit_page(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $otherUser = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10002',
+            'title' => 'Initial Title',
+            'description' => 'Initial Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($otherUser)->get("/tickets/{$ticket->id}/edit");
+
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Test that ticket creator can update the ticket.
+     */
+    public function test_ticket_creator_can_update_ticket(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $creator->roles()->attach($role->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $role->ticketTypes()->attach($ticketType->id);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10003',
+            'title' => 'Initial Title',
+            'description' => 'Initial Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($creator)->put("/tickets/{$ticket->id}", [
+            'title' => 'Updated Title',
+            'description' => 'Updated Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response->assertRedirect(route('tickets.show', $ticket));
+
+        $ticket->refresh();
+        $this->assertEquals('Updated Title', $ticket->title);
+        $this->assertEquals('Updated Description', $ticket->description);
+    }
+
+    /**
+     * Test that non-creator cannot update the ticket.
+     */
+    public function test_non_ticket_creator_cannot_update_ticket(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $otherUser = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10004',
+            'title' => 'Initial Title',
+            'description' => 'Initial Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($otherUser)->put("/tickets/{$ticket->id}", [
+            'title' => 'Updated Title',
+            'description' => 'Updated Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response->assertStatus(403);
+        
+        $ticket->refresh();
+        $this->assertEquals('Initial Title', $ticket->title);
+    }
+
+    /**
+     * Test that ticket update logs automated system comment of type system_event.
+     */
+    public function test_ticket_update_logs_automated_system_comment(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $creator->roles()->attach($role->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $role->ticketTypes()->attach($ticketType->id);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10005',
+            'title' => 'Original Title',
+            'description' => 'Original Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $this->actingAs($creator)->put("/tickets/{$ticket->id}", [
+            'title' => 'Updated Title',
+            'description' => 'Updated Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Assert system comment was created documenting the changes
+        $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
+            ->where('type', 'system_event')
+            ->first();
+
+        $this->assertNotNull($comment);
+        $this->assertNull($comment->user_id);
+        $this->assertStringContainsString("Ticket details updated:", $comment->content);
+        $this->assertStringContainsString("Title updated from 'Original Title' to 'Updated Title'", $comment->content);
+        $this->assertStringContainsString("Description updated", $comment->content);
+    }
 }

@@ -204,6 +204,99 @@ class TicketController extends Controller
     }
 
     /**
+     * Show the form for editing the specified ticket.
+     */
+    public function edit(Ticket $ticket)
+    {
+        $user = Auth::user();
+        if (!$user || $ticket->created_by !== $user->id) {
+            abort(403, 'You are not authorized to edit this ticket.');
+        }
+
+        if ($user->user_type === 'admin') {
+            $ticketTypes = TicketType::all();
+        } else {
+            $ticketTypes = $user->roles()
+                ->with('ticketTypes')
+                ->get()
+                ->pluck('ticketTypes')
+                ->collapse()
+                ->unique('id')
+                ->values();
+        }
+        
+        $priorities = Priority::orderBy('level')->get();
+        $statuses = TicketStatus::all();
+        $divisions = Division::all();
+        $departments = Department::all();
+        
+        // Only load categories belonging to the selected ticket type
+        $categories = Category::where('ticket_type_id', $ticket->ticket_type_id)->get();
+        
+        $users = User::orderBy('name')->get();
+
+        return view('tickets.edit', compact(
+            'ticket', 'ticketTypes', 'priorities', 'statuses', 'divisions', 'departments', 'categories', 'users'
+        ));
+    }
+
+    /**
+     * Update the specified ticket in storage.
+     */
+    public function update(Request $request, Ticket $ticket)
+    {
+        $user = Auth::user();
+        if (!$user || $ticket->created_by !== $user->id) {
+            abort(403, 'You are not authorized to edit this ticket.');
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'ticket_type_id' => [
+                'required',
+                'exists:ticket_types,id',
+                function ($attribute, $value, $fail) use ($user) {
+                    if ($user->user_type !== 'admin') {
+                        $allowedTypeIds = $user->roles()
+                            ->with('ticketTypes')
+                            ->get()
+                            ->pluck('ticketTypes')
+                            ->collapse()
+                            ->pluck('id')
+                            ->toArray();
+                        if (!in_array((int)$value, $allowedTypeIds)) {
+                            $fail('You do not have permission to use this ticket type.');
+                        }
+                    }
+                }
+            ],
+            'priority_option_id' => 'required|exists:priorities,id',
+            'division_id' => 'required|exists:divisions,id',
+            'department_id' => 'required|exists:departments,id',
+            'category_1_id' => 'required|exists:categories,id',
+            'category_2_id' => 'nullable|exists:categories,id',
+            'category_3_id' => 'nullable|exists:categories,id',
+            'to_user_id' => 'nullable|exists:users,id',
+        ]);
+
+        $ticket->update([
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'ticket_type_id' => $validated['ticket_type_id'],
+            'priority_option_id' => $validated['priority_option_id'],
+            'division_id' => $validated['division_id'],
+            'department_id' => $validated['department_id'],
+            'category_1_id' => $validated['category_1_id'],
+            'category_2_id' => $validated['category_2_id'] ?? null,
+            'category_3_id' => $validated['category_3_id'] ?? null,
+            'to_user_id' => $validated['to_user_id'] ?? null,
+        ]);
+
+        return redirect()->route('tickets.show', $ticket)->with('success', 'Ticket updated successfully.');
+    }
+
+    /**
      * Get categories based on Ticket Type or Parent Category (AJAX API).
      */
     public function getCategories(Request $request)

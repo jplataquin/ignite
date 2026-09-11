@@ -12,6 +12,8 @@ use App\Observers\TicketObserver;
 #[ObservedBy([TicketObserver::class])]
 class Ticket extends Model
 {
+    public ?string $temp_system_comment = null;
+
     #[Fillable]
     protected $fillable = [
         'ticket_number', 'title', 'description', 'ticket_type_id', 'priority_option_id', 'status_id', 
