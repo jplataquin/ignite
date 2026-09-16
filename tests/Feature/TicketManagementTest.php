@@ -942,7 +942,8 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $statusOpen = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $statusClosed = TicketStatus::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#2']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
@@ -953,12 +954,16 @@ class TicketManagementTest extends TestCase
             'description' => 'Initial Description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'status_id' => $statusOpen->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
             'category_1_id' => $category->id,
+            'assigned_to' => null,
+            'deadline_date' => null,
         ]);
+
+        $newDeadline = now()->addDays(5)->startOfMinute();
 
         $response = $this->actingAs($admin)->put("/tickets/{$ticket->id}", [
             'title' => 'Admin Updated Title',
@@ -969,6 +974,9 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'location_id' => $this->location->id,
             'category_1_id' => $category->id,
+            'status_id' => $statusClosed->id,
+            'assigned_to' => $admin->id,
+            'deadline_date' => $newDeadline->format('Y-m-d\TH:i'),
         ]);
 
         $response->assertRedirect(route('tickets.show', $ticket));
@@ -976,6 +984,27 @@ class TicketManagementTest extends TestCase
         $ticket->refresh();
         $this->assertEquals('Admin Updated Title', $ticket->title);
         $this->assertEquals('Admin Updated Description', $ticket->description);
+        $this->assertEquals($statusClosed->id, $ticket->status_id);
+        $this->assertEquals($admin->id, $ticket->assigned_to);
+        $this->assertEquals($newDeadline->format('Y-m-d H:i'), $ticket->deadline_date->format('Y-m-d H:i'));
+
+        // Assert that the system comment log was successfully recorded with the edits
+        $this->assertDatabaseHas('ticket_comments', [
+            'ticket_id' => $ticket->id,
+            'user_id' => null,
+            'type' => 'system_event',
+        ]);
+
+        $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
+            ->where('type', 'system_event')
+            ->first();
+
+        $this->assertNotNull($comment);
+        $this->assertStringContainsString('Title updated from \'Initial Title\' to \'Admin Updated Title\'', $comment->content);
+        $this->assertStringContainsString('Description updated', $comment->content);
+        $this->assertStringContainsString('Status updated from \'Open\' to \'Closed\'', $comment->content);
+        $this->assertStringContainsString("Assignee updated from 'None' to '{$admin->name}'", $comment->content);
+        $this->assertStringContainsString('Deadline SLA updated from \'None\' to', $comment->content);
     }
 
     /**

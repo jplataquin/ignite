@@ -292,6 +292,9 @@ class TicketController extends Controller
             'category_2_id' => 'nullable|exists:categories,id',
             'category_3_id' => 'nullable|exists:categories,id',
             'to_user_id' => 'nullable|exists:users,id',
+            'status_id' => 'nullable|exists:ticket_statuses,id',
+            'assigned_to' => 'nullable|exists:users,id',
+            'deadline_date' => 'nullable|date',
             'attachments_json' => 'nullable|string',
             'deleted_attachments' => 'nullable|string', // JSON array of attachment IDs
             'existing_notes' => 'nullable|array',
@@ -328,7 +331,7 @@ class TicketController extends Controller
         }
 
         return DB::transaction(function () use ($request, $validated, $attachments, $deletedAttachmentIds, $ticket, $user) {
-            $ticket->update([
+            $updateData = [
                 'title' => $validated['title'],
                 'description' => $validated['description'],
                 'ticket_type_id' => $validated['ticket_type_id'],
@@ -340,7 +343,15 @@ class TicketController extends Controller
                 'category_2_id' => $validated['category_2_id'] ?? null,
                 'category_3_id' => $validated['category_3_id'] ?? null,
                 'to_user_id' => $validated['to_user_id'] ?? null,
-            ]);
+            ];
+
+            if ($user->user_type === 'admin') {
+                $updateData['status_id'] = $validated['status_id'] ?? $ticket->status_id;
+                $updateData['assigned_to'] = $validated['assigned_to'] ?? $ticket->assigned_to;
+                $updateData['deadline_date'] = $request->filled('deadline_date') ? \Carbon\Carbon::parse($request->input('deadline_date')) : null;
+            }
+
+            $ticket->update($updateData);
 
             // Handle deleted attachments
             if (!empty($deletedAttachmentIds)) {

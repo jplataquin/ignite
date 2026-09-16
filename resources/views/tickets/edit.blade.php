@@ -279,6 +279,58 @@
                     </div>
                 </div>
 
+                @if(Auth::user() && Auth::user()->user_type === 'admin')
+                <!-- Admin Overrides -->
+                <div class="border-top pt-4 mb-4">
+                    <h5 class="fw-bold mb-1 text-dark text-danger">Admin Overrides</h5>
+                    <p class="text-muted small mb-3">As an administrator, you can directly override the ticket's current status, assign support staff, or adjust the SLA deadline.</p>
+                    
+                    <div class="row row-cols-1 row-cols-md-3 g-3">
+                        <!-- Status -->
+                        <div>
+                            <label for="status_id" class="form-label fw-semibold text-dark small">Ticket Status</label>
+                            <select id="status_id" class="form-select @error('status_id') is-invalid @enderror" name="status_id" required>
+                                @foreach($statuses as $statusOption)
+                                    <option value="{{ $statusOption->id }}" {{ old('status_id', $ticket->status_id) == $statusOption->id ? 'selected' : '' }}>{{ $statusOption->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('status_id')
+                                <span class="invalid-feedback" role="alert">
+                                    <strong>{{ $message }}</strong>
+                                </span>
+                            @enderror
+                        </div>
+
+                        <!-- Assignee -->
+                        <div>
+                            <label for="assigned_to" class="form-label fw-semibold text-dark small">Assignee (Assigned To)</label>
+                            <select id="assigned_to" class="form-select @error('assigned_to') is-invalid @enderror" name="assigned_to">
+                                <option value="">Unassigned</option>
+                                @foreach($users as $assigneeOption)
+                                    <option value="{{ $assigneeOption->id }}" {{ old('assigned_to', $ticket->assigned_to) == $assigneeOption->id ? 'selected' : '' }}>{{ $assigneeOption->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('assigned_to')
+                                <span class="invalid-feedback" role="alert">
+                                    <strong>{{ $message }}</strong>
+                                </span>
+                            @enderror
+                        </div>
+
+                        <!-- Deadline Date -->
+                        <div>
+                            <label for="deadline_date" class="form-label fw-semibold text-dark small">Deadline SLA</label>
+                            <input id="deadline_date" type="datetime-local" class="form-control @error('deadline_date') is-invalid @enderror" name="deadline_date" value="{{ old('deadline_date', $ticket->deadline_date ? $ticket->deadline_date->format('Y-m-d\TH:i') : '') }}">
+                            @error('deadline_date')
+                                <span class="invalid-feedback" role="alert">
+                                    <strong>{{ $message }}</strong>
+                                </span>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <!-- Submit and Cancel Actions -->
                 <div class="d-flex justify-content-end gap-2">
                     <a href="{{ route('tickets.show', $ticket) }}" class="btn btn-outline-secondary">Cancel</a>
