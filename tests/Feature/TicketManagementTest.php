@@ -588,6 +588,133 @@ class TicketManagementTest extends TestCase
     }
 
     /**
+     * Test that the creator of a ticket cannot accept it.
+     */
+    public function test_creator_cannot_accept_own_ticket(): void
+    {
+        $creator = User::factory()->create();
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-2026-9999',
+            'title' => 'Creator Own Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+            'to_user_id' => null,
+        ]);
+
+        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+
+        $response = $this->actingAs($creator)->post(route('tickets.accept', $ticket));
+        $response->assertRedirect();
+        $response->assertSessionHas('error', 'You cannot accept your own ticket.');
+        $ticket->refresh();
+        $this->assertNull($ticket->assigned_to);
+    }
+
+    /**
+     * Test that admins cannot assign a ticket to its creator.
+     */
+    public function test_admin_cannot_assign_ticket_to_creator(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $creator = User::factory()->create();
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-2026-8888',
+            'title' => 'Admin Assign Test',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+
+        $response = $this->actingAs($admin)->put(route('tickets.update', $ticket), [
+            'title' => 'Updated Title',
+            'description' => 'Updated Description',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'assigned_to' => $creator->id,
+        ]);
+
+        $response->assertSessionHasErrors(['assigned_to']);
+        $ticket->refresh();
+        $this->assertNull($ticket->assigned_to);
+    }
+
+    /**
+     * Test that reassignment from review cannot be assigned to the ticket's creator.
+     */
+    public function test_reassignment_from_review_cannot_be_assigned_to_creator(): void
+    {
+        $creator = User::factory()->create();
+
+        $stageReview = TicketStage::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#1']);
+        TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-2026-7777',
+            'title' => 'Review Reassign Test',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageReview->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'created_by' => $creator->id,
+            'assigned_to' => $creator->id, // Assigned back to author for review
+            'category_1_id' => $category->id,
+        ]);
+
+        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+
+        $response = $this->actingAs($creator)->post(route('tickets.reassign-review', $ticket), [
+            'comment' => 'Please redo it.',
+            'assignee_id' => $creator->id,
+        ]);
+
+        $response->assertSessionHasErrors(['assignee_id']);
+        $ticket->refresh();
+        $this->assertEquals($creator->id, $ticket->assigned_to); // remains author
+    }
+
+    /**
      * Test that users can fetch users list filtered by division and department via AJAX API.
      */
     public function test_users_can_fetch_filtered_users_via_ajax(): void

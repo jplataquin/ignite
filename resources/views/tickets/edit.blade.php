@@ -307,7 +307,9 @@
                             <select id="assigned_to" class="form-select @error('assigned_to') is-invalid @enderror" name="assigned_to">
                                 <option value="">Unassigned</option>
                                 @foreach($users as $assigneeOption)
-                                    <option value="{{ $assigneeOption->id }}" {{ old('assigned_to', $ticket->assigned_to) == $assigneeOption->id ? 'selected' : '' }}>{{ $assigneeOption->name }}</option>
+                                    @if($assigneeOption->id !== $ticket->created_by)
+                                        <option value="{{ $assigneeOption->id }}" {{ old('assigned_to', $ticket->assigned_to) == $assigneeOption->id ? 'selected' : '' }}>{{ $assigneeOption->name }}</option>
+                                    @endif
                                 @endforeach
                             </select>
                             @error('assigned_to')

@@ -294,7 +294,15 @@ class TicketController extends Controller
             'category_3_id' => 'nullable|exists:categories,id',
             'to_user_id' => 'nullable|exists:users,id',
             'stage_id' => 'nullable|exists:ticket_stages,id',
-            'assigned_to' => 'nullable|exists:users,id',
+            'assigned_to' => [
+                'nullable',
+                'exists:users,id',
+                function ($attribute, $value, $fail) use ($ticket) {
+                    if ($value == $ticket->created_by) {
+                        $fail('The ticket cannot be assigned to its creator.');
+                    }
+                }
+            ],
             'deadline_date' => 'nullable|date',
             'attachments_json' => 'nullable|string',
             'deleted_attachments' => 'nullable|string', // JSON array of attachment IDs
@@ -480,6 +488,7 @@ class TicketController extends Controller
         $divisionId = $request->query('division_id');
         $departmentId = $request->query('department_id');
         $search = $request->query('q');
+        $ticketId = $request->query('ticket_id');
 
         $query = User::query();
 
@@ -495,6 +504,13 @@ class TicketController extends Controller
             $query->where('name', 'like', '%' . $search . '%');
         }
 
+        if ($ticketId) {
+            $ticket = Ticket::find($ticketId);
+            if ($ticket) {
+                $query->where('id', '!=', $ticket->created_by);
+            }
+        }
+
         $users = $query->orderBy('name')->get(['id', 'name', 'user_type']);
 
         return response()->json($users);
@@ -508,6 +524,10 @@ class TicketController extends Controller
         $user = Auth::user();
         if (!$user) {
             abort(403);
+        }
+
+        if ($ticket->created_by === $user->id) {
+            return redirect()->back()->with('error', 'You cannot accept your own ticket.');
         }
 
         if ($ticket->assigned_to) {
@@ -784,7 +804,15 @@ class TicketController extends Controller
 
         $validated = $request->validate([
             'comment' => 'required|string|min:1',
-            'assignee_id' => 'required|exists:users,id',
+            'assignee_id' => [
+                'required',
+                'exists:users,id',
+                function ($attribute, $value, $fail) use ($ticket) {
+                    if ($value == $ticket->created_by) {
+                        $fail('The ticket cannot be assigned to its creator.');
+                    }
+                }
+            ],
         ]);
 
         $assignedStage = TicketStage::where('slug', 'assigned')->first();
