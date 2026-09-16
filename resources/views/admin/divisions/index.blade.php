@@ -44,6 +44,7 @@
                 <tr>
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small">Name</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small text-center">Departments Count</th>
+                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small text-center">Assigned Users</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small text-center">Associated Tickets</th>
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small text-end" style="width: 150px;">Actions</th>
                 </tr>
@@ -56,6 +57,9 @@
                         </td>
                         <td class="py-3 text-center fw-bold text-muted">
                             {{ $division->departments_count }}
+                        </td>
+                        <td class="py-3 text-center fw-bold text-muted">
+                            {{ $division->users_count }}
                         </td>
                         <td class="py-3 text-center fw-bold text-muted">
                             {{ $division->tickets_count }}
@@ -77,7 +81,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="text-center py-5 text-muted">No divisions found.</td>
+                        <td colspan="5" class="text-center py-5 text-muted">No divisions found.</td>
                     </tr>
                 @endforelse
             </tbody>

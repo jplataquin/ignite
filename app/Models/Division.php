@@ -23,6 +23,14 @@ class Division extends Model
     }
 
     /**
+     * Get the users assigned to the division.
+     */
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
+
+    /**
      * Get the tickets for the division.
      */
     public function tickets(): HasMany

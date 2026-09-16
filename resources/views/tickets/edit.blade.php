@@ -222,8 +222,8 @@
 
                     <!-- Department -->
                     <div>
-                        <label for="department_id" class="form-label fw-semibold text-dark small">Department</label>
-                        <select id="department_id" class="form-select @error('department_id') is-invalid @enderror" name="department_id" required>
+                        <label for="department_id" class="form-label fw-semibold text-dark small">Department (Optional)</label>
+                        <select id="department_id" class="form-select @error('department_id') is-invalid @enderror" name="department_id">
                             <option value="">Select Department</option>
                             @foreach($departments as $department)
                                 <option value="{{ $department->id }}" {{ old('department_id', $ticket->department_id) == $department->id ? 'selected' : '' }}>{{ $department->name }}</option>

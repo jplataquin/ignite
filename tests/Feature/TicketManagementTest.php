@@ -145,6 +145,44 @@ class TicketManagementTest extends TestCase
     }
 
     /**
+     * Test that users can successfully create a new ticket without a department.
+     */
+    public function test_creating_a_ticket_without_department_succeeds(): void
+    {
+        $user = User::factory()->create();
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $user->roles()->attach($role->id);
+
+        // Seed lookups
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $role->ticketTypes()->attach($type->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $response = $this->actingAs($user)->post('/tickets', [
+            'title' => 'Ticket Without Department',
+            'description' => 'No department was selected for this ticket.',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'location_id' => $location->id,
+            'category_1_id' => $category->id,
+            // department_id is omitted
+        ]);
+
+        $ticket = Ticket::where('title', 'Ticket Without Department')->first();
+
+        $this->assertNotNull($ticket);
+        $this->assertNull($ticket->department_id);
+        $response->assertRedirect(route('tickets.show', $ticket));
+    }
+
+    /**
      * Test that users can view ticket details.
      */
     public function test_users_can_view_ticket_details(): void

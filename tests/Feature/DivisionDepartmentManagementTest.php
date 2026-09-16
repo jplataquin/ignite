@@ -44,10 +44,18 @@ class DivisionDepartmentManagementTest extends TestCase
     public function test_admins_can_access_division_and_department_lists(): void
     {
         $admin = User::factory()->create(['user_type' => 'admin']);
+        $division = Division::create(['name' => 'HR Operations']);
+        
+        // Create 2 users assigned to this division
+        User::factory()->count(2)->create([
+            'division_id' => $division->id,
+        ]);
 
         $responseDiv = $this->actingAs($admin)->get('/admin/divisions');
         $responseDiv->assertStatus(200);
         $responseDiv->assertSee('Divisions');
+        $responseDiv->assertSee('Assigned Users');
+        $responseDiv->assertSee('2'); // Displays count of assigned users!
 
         $responseDept = $this->actingAs($admin)->get('/admin/departments');
         $responseDept->assertStatus(200);
