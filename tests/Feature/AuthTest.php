@@ -350,11 +350,14 @@ class AuthTest extends TestCase
      */
     public function test_admins_can_reset_user_password_forcing_next_login_reset(): void
     {
-        $admin = User::factory()->create(['user_type' => 'admin']);
+        $admin = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
+        $division = \App\Models\Division::create(['name' => 'IT Department']);
         $user = User::factory()->create([
             'user_type' => 'regular',
+            'division_id' => $division->id,
+            'is_approved' => true,
             'must_reset_password' => false,
-            'password' => Hash::make('old_password'),
+            'password' => \Illuminate\Support\Facades\Hash::make('old_password'),
         ]);
 
         // Admin resets password
@@ -362,6 +365,7 @@ class AuthTest extends TestCase
             'name' => $user->name,
             'email' => $user->email,
             'user_type' => $user->user_type,
+            'division_id' => $division->id,
             'password' => 'new_temporary_password_123',
         ]);
 
@@ -370,7 +374,10 @@ class AuthTest extends TestCase
 
         $user = $user->fresh();
         $this->assertTrue($user->must_reset_password);
-        $this->assertTrue(Hash::check('new_temporary_password_123', $user->password));
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('new_temporary_password_123', $user->password));
+
+        // Log out admin so we can test guest login
+        \Illuminate\Support\Facades\Auth::logout();
 
         // Now attempt user login with the new password (should be forced to reset)
         $loginResponse = $this->post('/login', [
