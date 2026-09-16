@@ -34,6 +34,7 @@
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Title</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Priority</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Stage</th>
+                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Status</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Assignee</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Created By</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Created At</th>
@@ -78,6 +79,17 @@
                                 </span>
                             @endif
                         </td>
+                        <td class="py-3">
+                            @if($ticket->status === 'Valid')
+                                <span class="badge bg-light text-success border border-success rounded-pill px-3 py-1.5 fw-semibold">Valid</span>
+                            @elseif($ticket->status === 'Done')
+                                <span class="badge bg-success text-white rounded-pill px-3 py-1.5 fw-semibold">Done</span>
+                            @elseif($ticket->status === 'Lapsed')
+                                <span class="badge bg-danger text-white rounded-pill px-3 py-1.5 fw-semibold">Lapsed</span>
+                            @else
+                                <span class="badge bg-secondary text-white rounded-pill px-3 py-1.5 fw-semibold">{{ $ticket->status }}</span>
+                            @endif
+                        </td>
                         <td class="py-3 text-muted">
                             @if($ticket->assignee)
                                 <div class="d-flex align-items-center">
@@ -95,7 +107,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center py-5 text-muted">
+                        <td colspan="8" class="text-center py-5 text-muted">
                             <div class="mb-3">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="44" fill="currentColor" class="bi bi-ticket-perforated text-muted opacity-50" viewBox="0 0 16 16">
                                     <path d="M4 4.85v.9h1v-.9zm7 0v.9h1v-.9zm-7 1.8v.9h1v-.9zm7 0v.9h1v-.9zm-7 1.8v.9h1v-.9zm7 0v.9h1v-.9zm-7 1.8v.9h1v-.9zm7 0v.9h1v-.9z"/>
