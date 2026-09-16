@@ -7,7 +7,7 @@ use App\Models\Department;
 use App\Models\Division;
 use App\Models\Ticket;
 use App\Models\Priority;
-use App\Models\TicketStatus;
+use App\Models\TicketStage;
 use App\Models\TicketType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,8 +25,8 @@ class DashboardTest extends TestCase
         $admin = User::factory()->create(['user_type' => 'admin']);
 
         // Seed necessary lookup values
-        $statusOpen = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
-        $statusClosed = TicketStatus::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#2']);
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageClosed = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#2']);
         
         $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
 
@@ -41,7 +41,8 @@ class DashboardTest extends TestCase
             'title' => 'Open Unassigned Critical Ticket',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityLow->id,
-            'status_id' => $statusOpen->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $admin->id,
@@ -54,7 +55,8 @@ class DashboardTest extends TestCase
             'title' => 'Open Unassigned Low Ticket',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityLow->id,
-            'status_id' => $statusOpen->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $admin->id,
@@ -68,7 +70,8 @@ class DashboardTest extends TestCase
             'title' => 'Closed Ticket',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityLow->id,
-            'status_id' => $statusClosed->id,
+            'stage_id' => $stageClosed->id,
+            'status' => 'Done',
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $admin->id,
@@ -83,7 +86,8 @@ class DashboardTest extends TestCase
             'title' => 'Lapsed SLA Ticket',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityLow->id,
-            'status_id' => $statusOpen->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Lapsed',
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $admin->id,
@@ -123,7 +127,7 @@ class DashboardTest extends TestCase
         ]);
 
         // 2. Setup Lookup dependencies
-        $statusOpen = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
@@ -134,7 +138,8 @@ class DashboardTest extends TestCase
             'title' => 'Ticket in Div A Dept A',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityLow->id,
-            'status_id' => $statusOpen->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
             'division_id' => $divisionA->id,
             'department_id' => $departmentA->id,
             'created_by' => $regularUser->id,
@@ -148,7 +153,8 @@ class DashboardTest extends TestCase
             'title' => 'Ticket in Div B Dept B',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityLow->id,
-            'status_id' => $statusOpen->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
             'division_id' => $divisionB->id,
             'department_id' => $departmentB->id,
             'created_by' => $regularUser->id,

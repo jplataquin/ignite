@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Ticket;
-use App\Models\TicketStatus;
 use App\Models\TicketComment;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -36,23 +35,13 @@ class ProcessLapsedTickets extends Command
 
         try {
             $now = Carbon::now('UTC');
-            
-            $lapsedStatus = TicketStatus::where('slug', 'lapsed')->first();
-            if (!$lapsedStatus) {
-                $this->error('Lapsed status not found.');
-                $this->finishLogging('failed', 'Lapsed status not found.');
-                return Command::FAILURE;
-            }
 
-            $closedStatuses = TicketStatus::whereIn('slug', ['closed', 'canceled'])->pluck('id')->toArray();
-
-            // Process in chunks to handle large datasets efficiently
-            Ticket::whereNotIn('status_id', $closedStatuses)
-                  ->where('status_id', '!=', $lapsedStatus->id)
+            // Find tickets with system status 'Valid' that have lapsed
+            Ticket::where('status', 'Valid')
                   ->with('ticketType')
-                  ->chunkById(100, function ($tickets) use ($now, $lapsedStatus) {
+                  ->chunkById(100, function ($tickets) use ($now) {
                       foreach ($tickets as $ticket) {
-                          DB::transaction(function () use ($ticket, $now, $lapsedStatus) {
+                          DB::transaction(function () use ($ticket, $now) {
                               // Lock the row for update
                               $lockedTicket = Ticket::where('id', $ticket->id)->lockForUpdate()->first();
                               
@@ -68,7 +57,7 @@ class ProcessLapsedTickets extends Command
                                                 
                               if ($cutoff && $now->greaterThanOrEqualTo($cutoff)) {
                                   // It lapsed!
-                                  $lockedTicket->status_id = $lapsedStatus->id;
+                                  $lockedTicket->status = 'Lapsed';
                                   $lockedTicket->save();
                                   
                                   TicketComment::create([

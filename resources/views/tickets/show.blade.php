@@ -48,13 +48,13 @@
 @endif
 
 @php
-    $statusSlug = $ticket->status?->slug ?? 'open';
+    $stageSlug = $ticket->stage?->slug ?? 'open';
     $currentStep = 1;
-    if ($statusSlug === 'assigned') {
+    if ($stageSlug === 'assigned') {
         $currentStep = 2;
-    } elseif ($statusSlug === 'review') {
+    } elseif ($stageSlug === 'review') {
         $currentStep = 3;
-    } elseif (in_array($statusSlug, ['closed', 'canceled', 'lapsed'])) {
+    } elseif (in_array($stageSlug, ['closed', 'canceled', 'lapsed'])) {
         $currentStep = 4;
     }
 @endphp
@@ -64,7 +64,7 @@
     <div class="position-relative py-2">
         <!-- Connecting Line Track -->
         <div class="progress position-absolute top-50 start-0 end-0 translate-middle-y" style="height: 4px; z-index: 0; transform: translateY(-50%) !important;">
-            <div class="progress-bar {{ $currentStep == 4 && in_array($statusSlug, ['canceled', 'lapsed']) ? 'bg-danger' : 'bg-primary' }}" role="progressbar" style="width: {{ (($currentStep - 1) / 3) * 100 }}%;" aria-valuenow="{{ (($currentStep - 1) / 3) * 100 }}" aria-valuemin="0" aria-valuemax="100"></div>
+            <div class="progress-bar {{ $currentStep == 4 && in_array($stageSlug, ['canceled', 'lapsed']) ? 'bg-danger' : 'bg-primary' }}" role="progressbar" style="width: {{ (($currentStep - 1) / 3) * 100 }}%;" aria-valuenow="{{ (($currentStep - 1) / 3) * 100 }}" aria-valuemin="0" aria-valuemax="100"></div>
         </div>
         
         <!-- Stepper Nodes -->
@@ -113,7 +113,7 @@
 
             <!-- Step 4: Closed / Canceled -->
             <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
-                <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 4 ? ($statusSlug === 'closed' ? 'bg-success border-success text-white' : 'bg-danger border-danger text-white') : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $currentStep >= 4 ? '' : '#cbd5e1 !important' }};">
+                <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 4 ? ($stageSlug === 'closed' ? 'bg-success border-success text-white' : 'bg-danger border-danger text-white') : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $currentStep >= 4 ? '' : '#cbd5e1 !important' }};">
                     @if($currentStep == 4)
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
                             <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
@@ -122,10 +122,10 @@
                         4
                     @endif
                 </div>
-                <span class="mt-2 small fw-bold {{ $currentStep >= 4 ? ($statusSlug === 'closed' ? 'text-success' : 'text-danger') : 'text-muted' }}" style="font-size: 0.78rem;">
-                    @if($statusSlug === 'canceled')
+                <span class="mt-2 small fw-bold {{ $currentStep >= 4 ? ($stageSlug === 'closed' ? 'text-success' : 'text-danger') : 'text-muted' }}" style="font-size: 0.78rem;">
+                    @if($stageSlug === 'canceled')
                         Canceled
-                    @elseif($statusSlug === 'lapsed')
+                    @elseif($stageSlug === 'lapsed')
                         Lapsed
                     @else
                         Closed
@@ -144,21 +144,30 @@
             <div class="d-flex flex-wrap gap-2 mb-4">
                 <span class="badge bg-light text-dark border px-3 py-1.5 fw-semibold">{{ $ticket->ticketType->name ?? 'N/A' }}</span>
                 
-                <!-- Status Badge -->
-                @if(($ticket->status->slug ?? '') === 'open')
-                    <span class="badge badge-open rounded-pill px-3 py-1.5 fw-semibold">Open</span>
-                @elseif(($ticket->status->slug ?? '') === 'assigned')
-                    <span class="badge badge-assigned rounded-pill px-3 py-1.5 fw-semibold">Assigned</span>
-                @elseif(($ticket->status->slug ?? '') === 'review')
-                    <span class="badge badge-review rounded-pill px-3 py-1.5 fw-semibold">Review</span>
-                @elseif(($ticket->status->slug ?? '') === 'closed')
-                    <span class="badge badge-closed rounded-pill px-3 py-1.5 fw-semibold">Closed</span>
-                @elseif(($ticket->status->slug ?? '') === 'canceled')
-                    <span class="badge badge-canceled rounded-pill px-3 py-1.5 fw-semibold">Canceled</span>
+                <!-- Stage Badge (User Defined) -->
+                @if(($ticket->stage->slug ?? '') === 'open')
+                    <span class="badge badge-open rounded-pill px-3 py-1.5 fw-semibold">Stage: Open</span>
+                @elseif(($ticket->stage->slug ?? '') === 'assigned')
+                    <span class="badge badge-assigned rounded-pill px-3 py-1.5 fw-semibold">Stage: Assigned</span>
+                @elseif(($ticket->stage->slug ?? '') === 'review')
+                    <span class="badge badge-review rounded-pill px-3 py-1.5 fw-semibold">Stage: Review</span>
+                @elseif(($ticket->stage->slug ?? '') === 'closed')
+                    <span class="badge badge-closed rounded-pill px-3 py-1.5 fw-semibold">Stage: Closed</span>
+                @elseif(($ticket->stage->slug ?? '') === 'canceled')
+                    <span class="badge badge-canceled rounded-pill px-3 py-1.5 fw-semibold">Stage: Canceled</span>
                 @else
-                    <span class="badge rounded-pill px-3 py-1.5 fw-semibold text-white" style="background-color: {{ $ticket->status->color_code ?? '#6b7280' }};">
-                        {{ $ticket->status->name ?? 'Unknown' }}
+                    <span class="badge rounded-pill px-3 py-1.5 fw-semibold text-white" style="background-color: {{ $ticket->stage->color_code ?? '#6b7280' }};">
+                        Stage: {{ $ticket->stage->name ?? 'Unknown' }}
                     </span>
+                @endif
+
+                <!-- System Status Badge -->
+                @if($ticket->status === 'Valid')
+                    <span class="badge bg-light text-success border border-success rounded-pill px-3 py-1.5 fw-semibold">Status: Valid</span>
+                @elseif($ticket->status === 'Done')
+                    <span class="badge bg-success text-white rounded-pill px-3 py-1.5 fw-semibold">Status: Done</span>
+                @elseif($ticket->status === 'Lapsed')
+                    <span class="badge bg-danger text-white rounded-pill px-3 py-1.5 fw-semibold">Status: Lapsed</span>
                 @endif
 
                 <!-- Priority Badge -->
@@ -408,7 +417,7 @@
             <h5 class="fw-bold text-dark mb-3">Actions</h5>
             <div class="mb-3">
                 @if($ticket->assignee)
-                    @if($ticket->assigned_to === Auth::id() && $ticket->status?->slug === 'assigned')
+                    @if($ticket->assigned_to === Auth::id() && $ticket->stage?->slug === 'assigned')
                         <button type="button" class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-center mt-3" style="min-height: 38px;" data-bs-toggle="modal" data-bs-target="#forReviewModal">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-send-fill me-1.5" viewBox="0 0 16 16">
                                 <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471z"/>
@@ -445,7 +454,7 @@
                 @endif
             </div>
 
-            @if($ticket->status?->slug === 'review' && $ticket->created_by === Auth::id())
+            @if($ticket->stage?->slug === 'review' && $ticket->created_by === Auth::id())
                 <div class="mt-4 border-top pt-3">
                     <h6 class="fw-bold text-dark mb-2">Review Action Required</h6>
                     <p class="text-muted small mb-3">As the creator, please review the resolution details and choose an action:</p>
@@ -491,7 +500,7 @@
     </div>
 </div>
 
-@if($ticket->assignee && $ticket->assigned_to === Auth::id() && $ticket->status?->slug === 'assigned')
+@if($ticket->assignee && $ticket->assigned_to === Auth::id() && $ticket->stage?->slug === 'assigned')
 <!-- For Review Message Modal -->
 <div class="modal fade" id="forReviewModal" tabindex="-1" aria-labelledby="forReviewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -520,7 +529,7 @@
 </div>
 @endif
 
-@if($ticket->status?->slug === 'review' && $ticket->created_by === Auth::id())
+@if($ticket->stage?->slug === 'review' && $ticket->created_by === Auth::id())
 <!-- Close Review Modal -->
 <div class="modal fade" id="closeReviewModal" tabindex="-1" aria-labelledby="closeReviewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">

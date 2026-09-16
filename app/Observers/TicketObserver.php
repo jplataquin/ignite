@@ -50,10 +50,13 @@ class TicketObserver
                     $newName = \App\Models\Priority::find($newValue)?->name ?? 'None';
                     $changeLog[] = "Priority updated from '{$oldName}' to '{$newName}'";
                     break;
-                case 'status_id':
-                    $oldName = \App\Models\TicketStatus::find($oldValue)?->name ?? 'None';
-                    $newName = \App\Models\TicketStatus::find($newValue)?->name ?? 'None';
-                    $changeLog[] = "Status updated from '{$oldName}' to '{$newName}'";
+                case 'stage_id':
+                    $oldName = \App\Models\TicketStage::find($oldValue)?->name ?? 'None';
+                    $newName = \App\Models\TicketStage::find($newValue)?->name ?? 'None';
+                    $changeLog[] = "Stage updated from '{$oldName}' to '{$newName}'";
+                    break;
+                case 'status':
+                    $changeLog[] = "System Status updated from '{$oldValue}' to '{$newValue}'";
                     break;
                 case 'division_id':
                     $oldName = \App\Models\Division::find($oldValue)?->name ?? 'None';
@@ -106,11 +109,8 @@ class TicketObserver
         
         if (count($changes) > 0) {
             $message = "Ticket {$ticket->ticket_number} was updated.";
-            if (isset($changes['status_id'])) {
-                $status = \App\Models\TicketStatus::find($changes['status_id']);
-                if ($status && $status->slug === 'lapsed') {
-                    $message = "Ticket {$ticket->ticket_number} has lapsed due to SLA threshold.";
-                }
+            if (isset($changes['status']) && $changes['status'] === 'Lapsed') {
+                $message = "Ticket {$ticket->ticket_number} has lapsed due to SLA threshold.";
             }
             $this->dispatchNotifications($ticket, $message);
         }
@@ -152,11 +152,10 @@ class TicketObserver
         
         $usersToNotify = $usersToNotify->merge($subscribers);
 
-        // 4. Intended User (If ticket is in open status)
+        // 4. Intended User (If ticket is in open stage and status is Valid)
         if ($ticket->to_user_id && $ticket->to_user_id !== $actorId) {
-            // Load status if not loaded, then verify slug is 'open'
-            $status = $ticket->relationLoaded('status') ? $ticket->status : $ticket->status()->first();
-            if ($status && $status->slug === 'open') {
+            $stage = $ticket->relationLoaded('stage') ? $ticket->stage : $ticket->stage()->first();
+            if ($ticket->status === 'Valid' && $stage && $stage->slug === 'open') {
                 $usersToNotify->push($ticket->toUser);
             }
         }

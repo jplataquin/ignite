@@ -9,7 +9,7 @@ use App\Models\Category;
 use App\Models\Department;
 use App\Models\Division;
 use App\Models\Location;
-use App\Models\TicketStatus;
+use App\Models\TicketStage;
 use App\Models\TicketType;
 use App\Models\Priority;
 use App\Models\User;
@@ -49,7 +49,7 @@ class TicketController extends Controller
         }
         
         $priorities = Priority::orderBy('level')->get();
-        $statuses = TicketStatus::all();
+        $stages = TicketStage::all();
         $divisions = Division::all();
         $departments = Department::all();
         $locations = Location::orderBy('name')->get();
@@ -57,7 +57,7 @@ class TicketController extends Controller
         $users = User::orderBy('name')->get();
 
         return view('tickets.create', compact(
-            'ticketTypes', 'priorities', 'statuses', 'divisions', 'departments', 'locations', 'categories', 'users'
+            'ticketTypes', 'priorities', 'stages', 'divisions', 'departments', 'locations', 'categories', 'users'
         ));
     }
 
@@ -89,7 +89,7 @@ class TicketController extends Controller
                 }
             ],
             'priority_option_id' => 'required|exists:priorities,id',
-            'status_id' => 'nullable|exists:ticket_statuses,id',
+            'stage_id' => 'nullable|exists:ticket_stages,id',
             'division_id' => 'required|exists:divisions,id',
             'department_id' => 'nullable|exists:departments,id',
             'location_id' => 'required|exists:locations,id',
@@ -127,15 +127,15 @@ class TicketController extends Controller
             $nextId = $latest ? $latest->id + 1 : 1;
             $ticketNumber = 'FLR-' . Carbon::now()->format('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
 
-            // Default to Open status if status_id is not specified
-            $statusId = $validated['status_id'] ?? null;
-            if (!$statusId) {
-                $openStatus = TicketStatus::where('slug', 'open')->first();
-                $statusId = $openStatus ? $openStatus->id : null;
+            // Default to Open stage if stage_id is not specified
+            $stageId = $validated['stage_id'] ?? null;
+            if (!$stageId) {
+                $openStage = TicketStage::where('slug', 'open')->first();
+                $stageId = $openStage ? $openStage->id : null;
             }
 
-            if (!$statusId) {
-                throw new \Exception('Default Open status not found in database.');
+            if (!$stageId) {
+                throw new \Exception('Default Open stage not found in database.');
             }
 
             $ticket = Ticket::create([
@@ -144,7 +144,8 @@ class TicketController extends Controller
                 'description' => $validated['description'] ?? null,
                 'ticket_type_id' => $validated['ticket_type_id'],
                 'priority_option_id' => $validated['priority_option_id'],
-                'status_id' => $statusId,
+                'stage_id' => $stageId,
+                'status' => 'Valid',
                 'division_id' => $validated['division_id'],
                 'department_id' => $validated['department_id'] ?? null,
                 'location_id' => $validated['location_id'],
@@ -201,13 +202,13 @@ class TicketController extends Controller
     public function show(Ticket $ticket)
     {
         $ticket->load([
-            'ticketType', 'status', 'division', 'department', 'location', 'creator', 'assignee', 
+            'ticketType', 'stage', 'division', 'department', 'location', 'creator', 'assignee', 
             'category1', 'category2', 'category3', 'attachments', 'comments.user', 'comments.attachments'
         ]);
 
         $divisions = collect();
         $departments = collect();
-        if ($ticket->status?->slug === 'review' && $ticket->created_by === Auth::id()) {
+        if ($ticket->stage?->slug === 'review' && $ticket->created_by === Auth::id()) {
             $divisions = \App\Models\Division::orderBy('name')->get();
             $departments = \App\Models\Department::orderBy('name')->get();
         }
@@ -238,7 +239,7 @@ class TicketController extends Controller
         }
         
         $priorities = Priority::orderBy('level')->get();
-        $statuses = TicketStatus::all();
+        $stages = TicketStage::all();
         $divisions = Division::all();
         $departments = Department::all();
         $locations = Location::orderBy('name')->get();
@@ -249,7 +250,7 @@ class TicketController extends Controller
         $users = User::orderBy('name')->get();
 
         return view('tickets.edit', compact(
-            'ticket', 'ticketTypes', 'priorities', 'statuses', 'divisions', 'departments', 'locations', 'categories', 'users'
+            'ticket', 'ticketTypes', 'priorities', 'stages', 'divisions', 'departments', 'locations', 'categories', 'users'
         ));
     }
 
@@ -292,7 +293,7 @@ class TicketController extends Controller
             'category_2_id' => 'nullable|exists:categories,id',
             'category_3_id' => 'nullable|exists:categories,id',
             'to_user_id' => 'nullable|exists:users,id',
-            'status_id' => 'nullable|exists:ticket_statuses,id',
+            'stage_id' => 'nullable|exists:ticket_stages,id',
             'assigned_to' => 'nullable|exists:users,id',
             'deadline_date' => 'nullable|date',
             'attachments_json' => 'nullable|string',
@@ -346,7 +347,7 @@ class TicketController extends Controller
             ];
 
             if ($user->user_type === 'admin') {
-                $updateData['status_id'] = $validated['status_id'] ?? $ticket->status_id;
+                $updateData['stage_id'] = $validated['stage_id'] ?? $ticket->stage_id;
                 $updateData['assigned_to'] = $validated['assigned_to'] ?? $ticket->assigned_to;
                 $updateData['deadline_date'] = $request->filled('deadline_date') ? \Carbon\Carbon::parse($request->input('deadline_date')) : null;
             }
@@ -517,11 +518,11 @@ class TicketController extends Controller
             return redirect()->back()->with('error', 'This ticket is intended for another user and can only be accepted by them.');
         }
 
-        $assignedStatus = TicketStatus::where('slug', 'assigned')->first();
+        $assignedStage = TicketStage::where('slug', 'assigned')->first();
 
         $ticket->update([
             'assigned_to' => $user->id,
-            'status_id' => $assignedStatus ? $assignedStatus->id : $ticket->status_id,
+            'stage_id' => $assignedStage ? $assignedStage->id : $ticket->stage_id,
         ]);
 
         return redirect()->back()->with('success', 'Ticket accepted successfully.');
@@ -653,8 +654,8 @@ class TicketController extends Controller
             abort(403, 'You are not authorized to submit this ticket for review.');
         }
 
-        // The ticket must currently be in the 'Assigned' status
-        if ($ticket->status?->slug !== 'assigned') {
+        // The ticket must currently be in the 'Assigned' stage
+        if ($ticket->stage?->slug !== 'assigned') {
             return redirect()->back()->with('error', 'Only assigned tickets can be submitted for review.');
         }
 
@@ -662,15 +663,15 @@ class TicketController extends Controller
             'message' => 'required|string|min:1',
         ]);
 
-        $reviewStatus = TicketStatus::where('slug', 'review')->first();
-        if (!$reviewStatus) {
-            return redirect()->back()->with('error', 'Review status not found.');
+        $reviewStage = TicketStage::where('slug', 'review')->first();
+        if (!$reviewStage) {
+            return redirect()->back()->with('error', 'Review stage not found.');
         }
 
-        return DB::transaction(function () use ($validated, $ticket, $reviewStatus, $user) {
+        return DB::transaction(function () use ($validated, $ticket, $reviewStage, $user) {
             $ticket->update([
                 'assigned_to' => $ticket->created_by, // Assign back to the author
-                'status_id' => $reviewStatus->id,
+                'stage_id' => $reviewStage->id,
             ]);
 
             // Create comment with the review message
@@ -695,7 +696,7 @@ class TicketController extends Controller
             abort(403, 'You are not authorized to close this ticket.');
         }
 
-        if ($ticket->status?->slug !== 'review') {
+        if ($ticket->stage?->slug !== 'review') {
             return redirect()->back()->with('error', 'Only tickets in review can be closed.');
         }
 
@@ -703,14 +704,15 @@ class TicketController extends Controller
             'comment' => 'required|string|min:1',
         ]);
 
-        $closedStatus = TicketStatus::where('slug', 'closed')->first();
-        if (!$closedStatus) {
-            return redirect()->back()->with('error', 'Closed status not found.');
+        $closedStage = TicketStage::where('slug', 'closed')->first();
+        if (!$closedStage) {
+            return redirect()->back()->with('error', 'Closed stage not found.');
         }
 
-        return DB::transaction(function () use ($validated, $ticket, $closedStatus, $user) {
+        return DB::transaction(function () use ($validated, $ticket, $closedStage, $user) {
             $ticket->update([
-                'status_id' => $closedStatus->id,
+                'stage_id' => $closedStage->id,
+                'status' => 'Done',
                 'assigned_to' => null,
             ]);
 
@@ -735,7 +737,7 @@ class TicketController extends Controller
             abort(403, 'You are not authorized to cancel this ticket.');
         }
 
-        if ($ticket->status?->slug !== 'review') {
+        if ($ticket->stage?->slug !== 'review') {
             return redirect()->back()->with('error', 'Only tickets in review can be canceled.');
         }
 
@@ -743,14 +745,15 @@ class TicketController extends Controller
             'comment' => 'required|string|min:1',
         ]);
 
-        $canceledStatus = TicketStatus::where('slug', 'canceled')->first();
-        if (!$canceledStatus) {
-            return redirect()->back()->with('error', 'Canceled status not found.');
+        $canceledStage = TicketStage::where('slug', 'canceled')->first();
+        if (!$canceledStage) {
+            return redirect()->back()->with('error', 'Canceled stage not found.');
         }
 
-        return DB::transaction(function () use ($validated, $ticket, $canceledStatus, $user) {
+        return DB::transaction(function () use ($validated, $ticket, $canceledStage, $user) {
             $ticket->update([
-                'status_id' => $canceledStatus->id,
+                'stage_id' => $canceledStage->id,
+                'status' => 'Done',
                 'assigned_to' => null,
             ]);
 
@@ -775,7 +778,7 @@ class TicketController extends Controller
             abort(403, 'You are not authorized to reassign this ticket.');
         }
 
-        if ($ticket->status?->slug !== 'review') {
+        if ($ticket->stage?->slug !== 'review') {
             return redirect()->back()->with('error', 'Only tickets in review can be reassigned.');
         }
 
@@ -784,14 +787,14 @@ class TicketController extends Controller
             'assignee_id' => 'required|exists:users,id',
         ]);
 
-        $assignedStatus = TicketStatus::where('slug', 'assigned')->first();
-        if (!$assignedStatus) {
-            return redirect()->back()->with('error', 'Assigned status not found.');
+        $assignedStage = TicketStage::where('slug', 'assigned')->first();
+        if (!$assignedStage) {
+            return redirect()->back()->with('error', 'Assigned stage not found.');
         }
 
-        return DB::transaction(function () use ($validated, $ticket, $assignedStatus, $user) {
+        return DB::transaction(function () use ($validated, $ticket, $assignedStage, $user) {
             $ticket->update([
-                'status_id' => $assignedStatus->id,
+                'stage_id' => $assignedStage->id,
                 'assigned_to' => $validated['assignee_id'],
             ]);
 

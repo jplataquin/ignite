@@ -23,20 +23,17 @@ class DashboardController extends Controller
             }
         }
 
-        $openTicketsCount = (clone $baseQuery)->whereHas('status', function ($query) {
-            $query->whereIn('slug', ['open', 'assigned', 'review']);
-        })->count();
+        $openTicketsCount = (clone $baseQuery)->where('status', 'Valid')->count();
 
-        $unassignedTicketsCount = (clone $baseQuery)->whereNull('assigned_to')->count();
+        $unassignedTicketsCount = (clone $baseQuery)->where('status', 'Valid')->whereNull('assigned_to')->count();
 
-        $criticalTicketsCount = (clone $baseQuery)->whereHas('priorityOption', function ($query) {
-            $query->where('level', '>=', 3)
-                  ->orWhereIn('name', ['Critical', 'critical']);
-        })->count();
+        $criticalTicketsCount = (clone $baseQuery)->where('status', 'Valid')
+            ->whereHas('priorityOption', function ($query) {
+                $query->where('level', '>=', 3)
+                      ->orWhereIn('name', ['Critical', 'critical']);
+            })->count();
 
-        $slaLapsedCount = (clone $baseQuery)->whereHas('status', function ($query) {
-            $query->whereNotIn('slug', ['closed', 'canceled']);
-        })->where('deadline_date', '<', now())->count();
+        $slaLapsedCount = (clone $baseQuery)->where('status', 'Lapsed')->count();
 
         return view('dashboard', compact(
             'openTicketsCount',

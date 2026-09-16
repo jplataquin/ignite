@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Priority;
-use App\Models\TicketStatus;
+use App\Models\TicketStage;
 use App\Models\Setting;
 use Illuminate\Database\Seeder;
 
@@ -14,16 +14,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Seed Ticket Statuses
-        $statuses = [
+        // 1. Seed Ticket Stages
+        $stages = [
             ['name' => 'Open', 'slug' => 'open', 'color_code' => '#F59E0B'],
             ['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#0284C7'],
             ['name' => 'Review', 'slug' => 'review', 'color_code' => '#8B5CF6'],
             ['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#6B7280'],
             ['name' => 'Canceled', 'slug' => 'canceled', 'color_code' => '#EF4444'],
         ];
-        foreach ($statuses as $status) {
-            TicketStatus::updateOrCreate(['slug' => $status['slug']], $status);
+        foreach ($stages as $stage) {
+            TicketStage::updateOrCreate(['slug' => $stage['slug']], $stage);
         }
 
         // 2. Seed Priority Options (Low, High, Critical)

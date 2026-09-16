@@ -8,7 +8,7 @@ use App\Models\TicketType;
 use App\Models\Division;
 use App\Models\Department;
 use App\Models\Priority;
-use App\Models\TicketStatus;
+use App\Models\TicketStage;
 use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -211,7 +211,7 @@ class RoleManagementTest extends TestCase
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
         $location = \App\Models\Location::create(['name' => 'Main Office']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#F59E0B']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#F59E0B']);
         $category = Category::create(['name' => 'Software Issue', 'ticket_type_id' => $allowedType->id]);
 
         // 1. Check create view filters list
@@ -226,7 +226,7 @@ class RoleManagementTest extends TestCase
             'description' => 'Allowed ticket description',
             'ticket_type_id' => $allowedType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'location_id' => $location->id,
@@ -245,7 +245,7 @@ class RoleManagementTest extends TestCase
             'description' => 'Disallowed ticket description',
             'ticket_type_id' => $disallowedType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'location_id' => $location->id,

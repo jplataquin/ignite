@@ -7,7 +7,7 @@ use App\Models\Department;
 use App\Models\Division;
 use App\Models\Ticket;
 use App\Models\Priority;
-use App\Models\TicketStatus;
+use App\Models\TicketStage;
 use App\Models\TicketType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -156,7 +156,7 @@ class TicketTypeManagementTest extends TestCase
         $type = TicketType::create(['name' => 'In-Use Type']);
 
         // Seed other resources to create a ticket
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
@@ -167,7 +167,7 @@ class TicketTypeManagementTest extends TestCase
             'title' => 'An active ticket',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $admin->id,

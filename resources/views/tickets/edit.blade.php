@@ -283,18 +283,18 @@
                 <!-- Admin Overrides -->
                 <div class="border-top pt-4 mb-4">
                     <h5 class="fw-bold mb-1 text-dark text-danger">Admin Overrides</h5>
-                    <p class="text-muted small mb-3">As an administrator, you can directly override the ticket's current status, assign support staff, or adjust the SLA deadline.</p>
+                    <p class="text-muted small mb-3">As an administrator, you can directly override the ticket's current stage, assign support staff, or adjust the SLA deadline.</p>
                     
                     <div class="row row-cols-1 row-cols-md-3 g-3">
-                        <!-- Status -->
+                        <!-- Stage -->
                         <div>
-                            <label for="status_id" class="form-label fw-semibold text-dark small">Ticket Status</label>
-                            <select id="status_id" class="form-select @error('status_id') is-invalid @enderror" name="status_id" required>
-                                @foreach($statuses as $statusOption)
-                                    <option value="{{ $statusOption->id }}" {{ old('status_id', $ticket->status_id) == $statusOption->id ? 'selected' : '' }}>{{ $statusOption->name }}</option>
+                            <label for="stage_id" class="form-label fw-semibold text-dark small">Ticket Stage</label>
+                            <select id="stage_id" class="form-select @error('stage_id') is-invalid @enderror" name="stage_id" required>
+                                @foreach($stages as $stageOption)
+                                    <option value="{{ $stageOption->id }}" {{ old('stage_id', $ticket->stage_id) == $stageOption->id ? 'selected' : '' }}>{{ $stageOption->name }}</option>
                                 @endforeach
                             </select>
-                            @error('status_id')
+                            @error('stage_id')
                                 <span class="invalid-feedback" role="alert">
                                     <strong>{{ $message }}</strong>
                                 </span>

@@ -8,7 +8,7 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\DivisionController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\LocationController;
-use App\Http\Controllers\Admin\TicketStatusController;
+use App\Http\Controllers\Admin\TicketStageController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\CronJobLogController;
 use App\Http\Controllers\DashboardController;
@@ -86,8 +86,8 @@ Route::middleware('auth')->group(function () {
         // Location Management
         Route::resource('locations', LocationController::class)->except(['show']);
 
-        // Status Management
-        Route::resource('ticket-statuses', TicketStatusController::class)->except(['show']);
+        // Stage Management
+        Route::resource('ticket-stages', TicketStageController::class)->except(['show']);
 
         // System Settings Management
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');

@@ -33,7 +33,7 @@
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small">Ticket Number</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Title</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Priority</th>
-                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Status</th>
+                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Stage</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Assignee</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Created By</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Created At</th>
@@ -62,19 +62,19 @@
                             @endif
                         </td>
                         <td class="py-3">
-                            @if(($ticket->status->slug ?? '') === 'open')
+                            @if(($ticket->stage->slug ?? '') === 'open')
                                 <span class="badge badge-open rounded-pill px-3 py-1.5 fw-semibold">Open</span>
-                            @elseif(($ticket->status->slug ?? '') === 'assigned')
+                            @elseif(($ticket->stage->slug ?? '') === 'assigned')
                                 <span class="badge badge-assigned rounded-pill px-3 py-1.5 fw-semibold">Assigned</span>
-                            @elseif(($ticket->status->slug ?? '') === 'review')
+                            @elseif(($ticket->stage->slug ?? '') === 'review')
                                 <span class="badge badge-review rounded-pill px-3 py-1.5 fw-semibold">Review</span>
-                            @elseif(($ticket->status->slug ?? '') === 'closed')
+                            @elseif(($ticket->stage->slug ?? '') === 'closed')
                                 <span class="badge badge-closed rounded-pill px-3 py-1.5 fw-semibold">Closed</span>
-                            @elseif(($ticket->status->slug ?? '') === 'canceled')
+                            @elseif(($ticket->stage->slug ?? '') === 'canceled')
                                 <span class="badge badge-canceled rounded-pill px-3 py-1.5 fw-semibold">Canceled</span>
                             @else
-                                <span class="badge rounded-pill px-3 py-1.5 fw-semibold text-white" style="background-color: {{ $ticket->status->color_code ?? '#6b7280' }};">
-                                    {{ $ticket->status->name ?? 'Unknown' }}
+                                <span class="badge rounded-pill px-3 py-1.5 fw-semibold text-white" style="background-color: {{ $ticket->stage->color_code ?? '#6b7280' }};">
+                                    {{ $ticket->stage->name ?? 'Unknown' }}
                                 </span>
                             @endif
                         </td>

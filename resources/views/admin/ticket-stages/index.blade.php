@@ -2,13 +2,13 @@
 
 @section('content')
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2 fw-bold text-dark">Ticket Statuses</h1>
+    <h1 class="h2 fw-bold text-dark">Ticket Stages</h1>
     <div class="btn-toolbar mb-2 mb-md-0">
-        <a href="{{ route('admin.ticket-statuses.create') }}" class="btn btn-primary d-flex align-items-center">
+        <a href="{{ route('admin.ticket-stages.create') }}" class="btn btn-primary d-flex align-items-center">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill me-2" viewBox="0 0 16 16">
                 <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3z"/>
             </svg>
-            Add Status
+            Add Stage
         </a>
     </div>
 </div>
@@ -50,30 +50,30 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($statuses as $status)
+                @forelse($stages as $stage)
                     <tr>
                         <td class="px-4 py-3 fw-bold text-dark">
-                            {{ $status->name }}
+                            {{ $stage->name }}
                         </td>
                         <td class="py-3 text-muted">
-                            <code>{{ $status->slug }}</code>
+                            <code>{{ $stage->slug }}</code>
                         </td>
                         <td class="py-3">
                             <div class="d-flex align-items-center">
-                                <span class="d-inline-block rounded-circle me-2 border" style="width: 14px; height: 14px; background-color: {{ $status->color_code }};"></span>
-                                <span class="badge bg-light text-dark border px-2.5 py-1.5 fw-semibold">{{ $status->color_code }}</span>
+                                <span class="d-inline-block rounded-circle me-2 border" style="width: 14px; height: 14px; background-color: {{ $stage->color_code }};"></span>
+                                <span class="badge bg-light text-dark border px-2.5 py-1.5 fw-semibold">{{ $stage->color_code }}</span>
                             </div>
                         </td>
                         <td class="py-3 text-center fw-bold text-muted">
-                            {{ $status->tickets_count }}
+                            {{ $stage->tickets_count }}
                         </td>
                         <td class="px-4 py-3 text-end">
                             <div class="d-inline-flex gap-1">
-                                <a href="{{ route('admin.ticket-statuses.edit', $status) }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center" style="min-height: 34px;">
+                                <a href="{{ route('admin.ticket-stages.edit', $stage) }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center" style="min-height: 34px;">
                                     Edit
                                 </a>
-                                @if(!in_array($status->slug, ['open', 'assigned', 'review', 'closed', 'canceled']))
-                                    <form action="{{ route('admin.ticket-statuses.destroy', $status) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this status?');">
+                                @if(!in_array($stage->slug, ['open', 'assigned', 'review', 'closed', 'canceled']))
+                                    <form action="{{ route('admin.ticket-stages.destroy', $stage) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this stage?');">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-danger d-flex align-items-center" style="min-height: 34px;">
@@ -81,7 +81,7 @@
                                         </button>
                                     </form>
                                 @else
-                                    <span class="btn btn-sm btn-light text-muted border-0 d-flex align-items-center disabled" style="min-height: 34px; cursor: not-allowed;" title="Core System Status">
+                                    <span class="btn btn-sm btn-light text-muted border-0 d-flex align-items-center disabled" style="min-height: 34px; cursor: not-allowed;" title="Core System Stage">
                                         System
                                     </span>
                                 @endif
@@ -90,16 +90,16 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="text-center py-5 text-muted">No statuses found.</td>
+                        <td colspan="5" class="text-center py-5 text-muted">No stages found.</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
     
-    @if($statuses->hasPages())
+    @if($stages->hasPages())
         <div class="card-footer bg-white border-top py-3 d-flex justify-content-end">
-            {{ $statuses->links() }}
+            {{ $stages->links() }}
         </div>
     @endif
 </div>

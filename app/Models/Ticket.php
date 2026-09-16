@@ -16,7 +16,7 @@ class Ticket extends Model
 
     #[Fillable]
     protected $fillable = [
-        'ticket_number', 'title', 'description', 'ticket_type_id', 'priority_option_id', 'status_id', 
+        'ticket_number', 'title', 'description', 'ticket_type_id', 'priority_option_id', 'stage_id', 'status',
         'division_id', 'department_id', 'location_id', 'created_by', 'assigned_to', 'to_user_id',
         'deadline_date', 'category_1_id', 'category_2_id', 'category_3_id'
     ];
@@ -35,9 +35,9 @@ class Ticket extends Model
         return $this->belongsTo(Priority::class, 'priority_option_id');
     }
 
-    public function status(): BelongsTo
+    public function stage(): BelongsTo
     {
-        return $this->belongsTo(TicketStatus::class);
+        return $this->belongsTo(TicketStage::class, 'stage_id');
     }
 
     public function division(): BelongsTo

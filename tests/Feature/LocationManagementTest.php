@@ -10,7 +10,7 @@ use App\Models\Division;
 use App\Models\Location;
 use App\Models\Priority;
 use App\Models\Ticket;
-use App\Models\TicketStatus;
+use App\Models\TicketStage;
 use App\Models\TicketType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -116,7 +116,7 @@ class LocationManagementTest extends TestCase
         $location = Location::create(['name' => 'Main Office']);
 
         // Seed dependencies
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $division = Division::create(['name' => 'IT']);
@@ -130,7 +130,7 @@ class LocationManagementTest extends TestCase
             'description' => 'Help needed.',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'location_id' => $location->id,

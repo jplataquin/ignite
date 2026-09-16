@@ -7,7 +7,7 @@ use App\Models\CategoryClosure;
 use App\Models\Department;
 use App\Models\Division;
 use App\Models\Ticket;
-use App\Models\TicketStatus;
+use App\Models\TicketStage;
 use App\Models\TicketType;
 use App\Models\Priority;
 use App\Models\User;
@@ -74,7 +74,7 @@ class TicketManagementTest extends TestCase
         $user->roles()->attach($role->id);
 
         // Seed lookups
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $role->ticketTypes()->attach($type->id);
@@ -89,7 +89,7 @@ class TicketManagementTest extends TestCase
             'description' => 'These are my detailed findings regarding this incident.',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'location_id' => $location->id,
@@ -115,7 +115,7 @@ class TicketManagementTest extends TestCase
         $user->roles()->attach($role->id);
 
         // Seed lookups
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $role->ticketTypes()->attach($type->id);
@@ -134,13 +134,13 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'location_id' => $location->id,
             'category_1_id' => $category->id,
-            // status_id is omitted
+            // stage_id is omitted
         ]);
 
         $ticket = Ticket::where('title', 'New Ticket Default Status')->first();
 
         $this->assertNotNull($ticket);
-        $this->assertEquals($status->id, $ticket->status_id);
+        $this->assertEquals($stage->id, $ticket->stage_id);
         $response->assertRedirect(route('tickets.show', $ticket));
     }
 
@@ -154,7 +154,7 @@ class TicketManagementTest extends TestCase
         $user->roles()->attach($role->id);
 
         // Seed lookups
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $role->ticketTypes()->attach($type->id);
@@ -168,7 +168,7 @@ class TicketManagementTest extends TestCase
             'description' => 'No department was selected for this ticket.',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'location_id' => $location->id,
             'category_1_id' => $category->id,
@@ -190,7 +190,7 @@ class TicketManagementTest extends TestCase
         $user = User::factory()->create();
 
         // Seed lookups
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $division = Division::create(['name' => 'IT']);
@@ -202,7 +202,7 @@ class TicketManagementTest extends TestCase
             'title' => 'Ticket Under Inspection',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $user->id,
@@ -256,7 +256,7 @@ class TicketManagementTest extends TestCase
         $user->roles()->attach($role->id);
         
         // Seed lookups
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $role->ticketTypes()->attach($type->id);
@@ -296,7 +296,7 @@ class TicketManagementTest extends TestCase
             'description' => 'See files attached.',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'location_id' => $location->id,
@@ -332,7 +332,7 @@ class TicketManagementTest extends TestCase
         $user->roles()->attach($role->id);
 
         // Seed lookups
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $role->ticketTypes()->attach($type->id);
@@ -362,7 +362,7 @@ class TicketManagementTest extends TestCase
             'description' => 'JFIF image test.',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'location_id' => $location->id,
@@ -393,7 +393,7 @@ class TicketManagementTest extends TestCase
         $user->roles()->attach($role->id);
 
         // Seed lookups
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $role->ticketTypes()->attach($type->id);
@@ -423,7 +423,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Should fail.',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'location_id' => $location->id,
@@ -448,7 +448,7 @@ class TicketManagementTest extends TestCase
         
         $intendedUser = User::factory()->create();
 
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $role->ticketTypes()->attach($type->id);
@@ -463,7 +463,7 @@ class TicketManagementTest extends TestCase
             'description' => 'This ticket is meant specifically for someone.',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'location_id' => $location->id,
@@ -485,8 +485,8 @@ class TicketManagementTest extends TestCase
         $intendedUser = User::factory()->create();
         $otherUser = User::factory()->create();
 
-        $statusOpen = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
-        TicketStatus::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']); // Used when accepted
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']); // Used when accepted
         
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
@@ -499,7 +499,7 @@ class TicketManagementTest extends TestCase
             'title' => 'For Intended User Only',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $statusOpen->id,
+            'stage_id' => $stageOpen->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -523,7 +523,7 @@ class TicketManagementTest extends TestCase
         $response->assertSessionHas('success');
         $ticket->refresh();
         $this->assertEquals($intendedUser->id, $ticket->assigned_to);
-        $this->assertEquals('assigned', $ticket->status->slug);
+        $this->assertEquals('assigned', $ticket->stage->slug);
     }
 
     /**
@@ -534,8 +534,8 @@ class TicketManagementTest extends TestCase
         $creator = User::factory()->create();
         $acceptor = User::factory()->create();
 
-        $statusOpen = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
-        TicketStatus::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
         
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
@@ -548,7 +548,7 @@ class TicketManagementTest extends TestCase
             'title' => 'Open To Anyone',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $statusOpen->id,
+            'stage_id' => $stageOpen->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -617,7 +617,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
@@ -628,7 +628,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Test ticket description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -680,7 +680,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
@@ -691,7 +691,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Test ticket description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -745,7 +745,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $role->ticketTypes()->attach($ticketType->id);
@@ -757,7 +757,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Initial Description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -781,7 +781,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
@@ -792,7 +792,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Initial Description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -815,7 +815,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $role->ticketTypes()->attach($ticketType->id);
@@ -827,7 +827,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Initial Description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -862,7 +862,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
@@ -873,7 +873,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Initial Description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -907,7 +907,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
@@ -918,7 +918,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Initial Description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -942,8 +942,8 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $statusOpen = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
-        $statusClosed = TicketStatus::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#2']);
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageClosed = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#2']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
@@ -954,7 +954,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Initial Description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $statusOpen->id,
+            'stage_id' => $stageOpen->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -974,7 +974,7 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'location_id' => $this->location->id,
             'category_1_id' => $category->id,
-            'status_id' => $statusClosed->id,
+            'stage_id' => $stageClosed->id,
             'assigned_to' => $admin->id,
             'deadline_date' => $newDeadline->format('Y-m-d\TH:i'),
         ]);
@@ -984,7 +984,7 @@ class TicketManagementTest extends TestCase
         $ticket->refresh();
         $this->assertEquals('Admin Updated Title', $ticket->title);
         $this->assertEquals('Admin Updated Description', $ticket->description);
-        $this->assertEquals($statusClosed->id, $ticket->status_id);
+        $this->assertEquals($stageClosed->id, $ticket->stage_id);
         $this->assertEquals($admin->id, $ticket->assigned_to);
         $this->assertEquals($newDeadline->format('Y-m-d H:i'), $ticket->deadline_date->format('Y-m-d H:i'));
 
@@ -1002,7 +1002,7 @@ class TicketManagementTest extends TestCase
         $this->assertNotNull($comment);
         $this->assertStringContainsString('Title updated from \'Initial Title\' to \'Admin Updated Title\'', $comment->content);
         $this->assertStringContainsString('Description updated', $comment->content);
-        $this->assertStringContainsString('Status updated from \'Open\' to \'Closed\'', $comment->content);
+        $this->assertStringContainsString('Stage updated from \'Open\' to \'Closed\'', $comment->content);
         $this->assertStringContainsString("Assignee updated from 'None' to '{$admin->name}'", $comment->content);
         $this->assertStringContainsString('Deadline SLA updated from \'None\' to', $comment->content);
     }
@@ -1018,7 +1018,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $role->ticketTypes()->attach($ticketType->id);
@@ -1030,7 +1030,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Original Description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -1071,7 +1071,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $role->ticketTypes()->attach($ticketType->id);
@@ -1083,7 +1083,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Original Description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -1137,7 +1137,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $role->ticketTypes()->attach($ticketType->id);
@@ -1149,7 +1149,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Original Description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -1210,7 +1210,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $role->ticketTypes()->attach($ticketType->id);
@@ -1222,7 +1222,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Original Description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
@@ -1278,8 +1278,8 @@ class TicketManagementTest extends TestCase
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
         
-        $assignedStatus = TicketStatus::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
-        $reviewStatus = TicketStatus::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
+        $assignedStage = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        $reviewStage = TicketStage::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
         
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
@@ -1291,7 +1291,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Detailed description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $assignedStatus->id,
+            'stage_id' => $assignedStage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $author->id,
@@ -1306,7 +1306,7 @@ class TicketManagementTest extends TestCase
         $response->assertRedirect();
         
         $ticket->refresh();
-        $this->assertEquals($reviewStatus->id, $ticket->status_id);
+        $this->assertEquals($reviewStage->id, $ticket->stage_id);
         $this->assertEquals($author->id, $ticket->assigned_to);
 
         // Assert review message comments was created
@@ -1330,7 +1330,7 @@ class TicketManagementTest extends TestCase
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
         
-        $assignedStatus = TicketStatus::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        $assignedStage = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
         
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
@@ -1342,7 +1342,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Detailed description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $assignedStatus->id,
+            'stage_id' => $assignedStage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $author->id,
@@ -1357,7 +1357,7 @@ class TicketManagementTest extends TestCase
         $response->assertStatus(403);
         
         $ticket->refresh();
-        $this->assertEquals($assignedStatus->id, $ticket->status_id);
+        $this->assertEquals($assignedStage->id, $ticket->stage_id);
         $this->assertEquals($assignedUser->id, $ticket->assigned_to);
     }
 
@@ -1371,8 +1371,8 @@ class TicketManagementTest extends TestCase
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
 
-        $reviewStatus = TicketStatus::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
-        $closedStatus = TicketStatus::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#4']);
+        $reviewStage = TicketStage::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
+        $closedStage = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#4']);
 
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
@@ -1384,7 +1384,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Detailed description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $reviewStatus->id,
+            'stage_id' => $reviewStage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $author->id,
@@ -1399,7 +1399,7 @@ class TicketManagementTest extends TestCase
         $response->assertRedirect();
         
         $ticket->refresh();
-        $this->assertEquals($closedStatus->id, $ticket->status_id);
+        $this->assertEquals($closedStage->id, $ticket->stage_id);
         $this->assertNull($ticket->assigned_to);
 
         $this->assertDatabaseHas('ticket_comments', [
@@ -1420,8 +1420,8 @@ class TicketManagementTest extends TestCase
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
 
-        $reviewStatus = TicketStatus::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
-        $canceledStatus = TicketStatus::create(['name' => 'Canceled', 'slug' => 'canceled', 'color_code' => '#5']);
+        $reviewStage = TicketStage::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
+        $canceledStage = TicketStage::create(['name' => 'Canceled', 'slug' => 'canceled', 'color_code' => '#5']);
 
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
@@ -1433,7 +1433,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Detailed description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $reviewStatus->id,
+            'stage_id' => $reviewStage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $author->id,
@@ -1448,7 +1448,7 @@ class TicketManagementTest extends TestCase
         $response->assertRedirect();
         
         $ticket->refresh();
-        $this->assertEquals($canceledStatus->id, $ticket->status_id);
+        $this->assertEquals($canceledStage->id, $ticket->stage_id);
         $this->assertNull($ticket->assigned_to);
 
         $this->assertDatabaseHas('ticket_comments', [
@@ -1470,8 +1470,8 @@ class TicketManagementTest extends TestCase
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
 
-        $reviewStatus = TicketStatus::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
-        $assignedStatus = TicketStatus::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        $reviewStage = TicketStage::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
+        $assignedStage = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
 
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
@@ -1483,7 +1483,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Detailed description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $reviewStatus->id,
+            'stage_id' => $reviewStage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $author->id,
@@ -1499,7 +1499,7 @@ class TicketManagementTest extends TestCase
         $response->assertRedirect();
         
         $ticket->refresh();
-        $this->assertEquals($assignedStatus->id, $ticket->status_id);
+        $this->assertEquals($assignedStage->id, $ticket->stage_id);
         $this->assertEquals($newAssignee->id, $ticket->assigned_to);
 
         $this->assertDatabaseHas('ticket_comments', [
@@ -1521,7 +1521,7 @@ class TicketManagementTest extends TestCase
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
 
-        $reviewStatus = TicketStatus::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
+        $reviewStage = TicketStage::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
 
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
@@ -1533,7 +1533,7 @@ class TicketManagementTest extends TestCase
             'description' => 'Detailed description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $reviewStatus->id,
+            'stage_id' => $reviewStage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $author->id,

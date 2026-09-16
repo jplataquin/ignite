@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Models\Ticket;
 use App\Models\Priority;
-use App\Models\TicketStatus;
+use App\Models\TicketStage;
 use App\Models\TicketType;
 use App\Models\Division;
 use App\Models\Department;
@@ -43,7 +43,7 @@ class NotificationManagementTest extends TestCase
 
         $this->actingAs($user);
 
-        $status = TicketStatus::create([
+        $stage = TicketStage::create([
             'name' => 'Open',
             'slug' => 'open',
             'is_default' => true,
@@ -71,7 +71,8 @@ class NotificationManagementTest extends TestCase
             'description' => 'Test description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
+            'status' => 'Valid',
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $user->id,
@@ -183,7 +184,7 @@ class NotificationManagementTest extends TestCase
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
         $location = \App\Models\Location::create(['name' => 'Main Office']);
-        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
@@ -193,7 +194,7 @@ class NotificationManagementTest extends TestCase
             'description' => 'Detailed test description',
             'ticket_type_id' => $ticketType->id,
             'priority_option_id' => $priorityOption->id,
-            'status_id' => $status->id,
+            'stage_id' => $stage->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
             'location_id' => $location->id,
@@ -240,18 +241,26 @@ class NotificationManagementTest extends TestCase
     {
         [$user, $ticket] = $this->createTestData(); // $user is the creator
 
-        $lapsedStatus = TicketStatus::create([
+        $lapsedStage = TicketStage::create([
             'name' => 'Lapsed',
             'slug' => 'lapsed',
             'color_code' => '#FF0000',
         ]);
 
+        // Set deadline date in the past
+        $ticket->deadline_date = now()->subDay();
+        $ticket->save();
+
         // Logout current user to simulate system cron/CLI execution
         \Illuminate\Support\Facades\Auth::logout();
 
-        $ticket->status_id = $lapsedStatus->id;
-        $ticket->save();
+        // Run the background command
+        $this->artisan('tickets:process-lapsed');
 
+        // Assert that running the background command updates the ticket's system status column to 'Lapsed'
+        $this->assertEquals('Lapsed', $ticket->fresh()->status);
+
+        // Assert notification was sent
         $this->assertEquals(1, $user->fresh()->unreadNotifications->count());
         $notification = $user->fresh()->unreadNotifications->first();
         $this->assertEquals("Ticket {$ticket->ticket_number} has lapsed due to SLA threshold.", $notification->data['message']);
