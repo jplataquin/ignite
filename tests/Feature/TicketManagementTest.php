@@ -45,10 +45,32 @@ class TicketManagementTest extends TestCase
     {
         $user = User::factory()->create();
 
+        // Seed lookups and create a ticket to ensure eager loading executes
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        Ticket::create([
+            'ticket_number' => 'TCK-123',
+            'title' => 'Test Ticket',
+            'description' => 'Test Description',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stage->id,
+            'division_id' => $division->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'created_by' => $user->id,
+            'status' => 'Valid',
+        ]);
+
         $response = $this->actingAs($user)->get('/tickets');
 
         $response->assertStatus(200);
         $response->assertSee('Tickets');
+        $response->assertSee('Test Ticket');
     }
 
     /**

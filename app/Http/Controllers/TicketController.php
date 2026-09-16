@@ -26,7 +26,7 @@ class TicketController extends Controller
      */
     public function index()
     {
-        $tickets = Ticket::with(['ticketType', 'priorityOption', 'status', 'creator', 'assignee'])->latest()->paginate(10);
+        $tickets = Ticket::with(['ticketType', 'priorityOption', 'stage', 'creator', 'assignee'])->latest()->paginate(10);
         return view('tickets.index', compact('tickets'));
     }
 

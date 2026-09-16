@@ -47,10 +47,10 @@ class TicketCommentObserver
             $usersToNotify = $usersToNotify->merge($subscribers);
         }
 
-        // 4. Intended User (If ticket is in open status)
+        // 4. Intended User (If ticket is in open stage)
         if ($ticket->to_user_id && $ticket->to_user_id !== $actorId) {
-            $status = $ticket->relationLoaded('status') ? $ticket->status : $ticket->status()->first();
-            if ($status && $status->slug === 'open') {
+            $stage = $ticket->relationLoaded('stage') ? $ticket->stage : $ticket->stage()->first();
+            if ($stage && $stage->slug === 'open') {
                 $usersToNotify->push($ticket->toUser);
             }
         }
