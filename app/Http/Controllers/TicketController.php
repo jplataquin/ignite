@@ -8,6 +8,7 @@ use App\Models\TicketComment;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\Division;
+use App\Models\Location;
 use App\Models\TicketStatus;
 use App\Models\TicketType;
 use App\Models\Priority;
@@ -51,11 +52,12 @@ class TicketController extends Controller
         $statuses = TicketStatus::all();
         $divisions = Division::all();
         $departments = Department::all();
+        $locations = Location::orderBy('name')->get();
         $categories = Category::all();
         $users = User::orderBy('name')->get();
 
         return view('tickets.create', compact(
-            'ticketTypes', 'priorities', 'statuses', 'divisions', 'departments', 'categories', 'users'
+            'ticketTypes', 'priorities', 'statuses', 'divisions', 'departments', 'locations', 'categories', 'users'
         ));
     }
 
@@ -90,6 +92,7 @@ class TicketController extends Controller
             'status_id' => 'nullable|exists:ticket_statuses,id',
             'division_id' => 'required|exists:divisions,id',
             'department_id' => 'required|exists:departments,id',
+            'location_id' => 'required|exists:locations,id',
             'category_1_id' => 'required|exists:categories,id',
             'category_2_id' => 'nullable|exists:categories,id',
             'category_3_id' => 'nullable|exists:categories,id',
@@ -144,6 +147,7 @@ class TicketController extends Controller
                 'status_id' => $statusId,
                 'division_id' => $validated['division_id'],
                 'department_id' => $validated['department_id'],
+                'location_id' => $validated['location_id'],
                 'created_by' => Auth::id() ?? 1, // Fallback to 1 for tests/system
                 'category_1_id' => $validated['category_1_id'],
                 'category_2_id' => $validated['category_2_id'] ?? null,
@@ -197,7 +201,7 @@ class TicketController extends Controller
     public function show(Ticket $ticket)
     {
         $ticket->load([
-            'ticketType', 'status', 'division', 'department', 'creator', 'assignee', 
+            'ticketType', 'status', 'division', 'department', 'location', 'creator', 'assignee', 
             'category1', 'category2', 'category3', 'attachments', 'comments.user', 'comments.attachments'
         ]);
 
@@ -237,6 +241,7 @@ class TicketController extends Controller
         $statuses = TicketStatus::all();
         $divisions = Division::all();
         $departments = Department::all();
+        $locations = Location::orderBy('name')->get();
         
         // Only load categories belonging to the selected ticket type
         $categories = Category::where('ticket_type_id', $ticket->ticket_type_id)->get();
@@ -244,7 +249,7 @@ class TicketController extends Controller
         $users = User::orderBy('name')->get();
 
         return view('tickets.edit', compact(
-            'ticket', 'ticketTypes', 'priorities', 'statuses', 'divisions', 'departments', 'categories', 'users'
+            'ticket', 'ticketTypes', 'priorities', 'statuses', 'divisions', 'departments', 'locations', 'categories', 'users'
         ));
     }
 
@@ -282,6 +287,7 @@ class TicketController extends Controller
             'priority_option_id' => 'required|exists:priorities,id',
             'division_id' => 'required|exists:divisions,id',
             'department_id' => 'required|exists:departments,id',
+            'location_id' => 'required|exists:locations,id',
             'category_1_id' => 'required|exists:categories,id',
             'category_2_id' => 'nullable|exists:categories,id',
             'category_3_id' => 'nullable|exists:categories,id',
@@ -329,6 +335,7 @@ class TicketController extends Controller
                 'priority_option_id' => $validated['priority_option_id'],
                 'division_id' => $validated['division_id'],
                 'department_id' => $validated['department_id'],
+                'location_id' => $validated['location_id'],
                 'category_1_id' => $validated['category_1_id'],
                 'category_2_id' => $validated['category_2_id'] ?? null,
                 'category_3_id' => $validated['category_3_id'] ?? null,

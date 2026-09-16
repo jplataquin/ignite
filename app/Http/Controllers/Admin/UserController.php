@@ -116,20 +116,33 @@ class UserController extends Controller
             ],
             'roles' => 'nullable|array',
             'roles.*' => 'exists:roles,id',
+            'password' => 'nullable|string|min:8',
         ]);
 
-        $user->update([
+        $updateData = [
             'name' => $validated['name'],
             'email' => $validated['email'],
             'user_type' => $validated['user_type'],
             'division_id' => $validated['division_id'] ?? null,
             'department_id' => $validated['department_id'] ?? null,
-        ]);
+        ];
+
+        if ($request->filled('password')) {
+            $updateData['password'] = Hash::make($request->input('password'));
+            $updateData['must_reset_password'] = true;
+        }
+
+        $user->update($updateData);
 
         $user->roles()->sync($request->input('roles', []));
 
+        $successMessage = "User '{$validated['name']}' updated successfully.";
+        if ($request->filled('password')) {
+            $successMessage .= " Password has been reset, and they will be forced to change it upon their next login.";
+        }
+
         return redirect()->route('admin.users.index')
-            ->with('success', "User '{$validated['name']}' updated successfully.");
+            ->with('success', $successMessage);
     }
 
     /**

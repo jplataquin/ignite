@@ -121,6 +121,22 @@
                     </div>
                 </div>
 
+                <!-- Reset Password Section -->
+                <div class="border-top pt-4 mb-4">
+                    <h6 class="fw-bold text-dark mb-2">Reset User Password (Optional)</h6>
+                    <p class="text-muted small mb-3">To reset this user's password, enter a new password below. If you set a new password, the user will be forced to define a new password of their own upon their next login.</p>
+                    
+                    <div>
+                        <label for="password" class="form-label fw-semibold text-dark small">New Password</label>
+                        <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="Leave blank to keep current password unchanged" autocomplete="new-password">
+                        @error('password')
+                            <span class="invalid-feedback" role="alert">
+                                <strong>{{ $message }}</strong>
+                            </span>
+                        @enderror
+                    </div>
+                </div>
+
                 <!-- Actions -->
                 <div class="d-flex justify-content-end gap-2 border-top pt-4">
                     <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary">Cancel</a>

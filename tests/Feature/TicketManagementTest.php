@@ -19,10 +19,13 @@ class TicketManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    private \App\Models\Location $location;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+        $this->location = \App\Models\Location::create(['name' => 'Default Location']);
     }
 
     /**
@@ -78,6 +81,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $location = \App\Models\Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         $response = $this->actingAs($user)->post('/tickets', [
@@ -88,6 +92,7 @@ class TicketManagementTest extends TestCase
             'status_id' => $status->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
+            'location_id' => $location->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -117,6 +122,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $location = \App\Models\Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         $response = $this->actingAs($user)->post('/tickets', [
@@ -126,6 +132,7 @@ class TicketManagementTest extends TestCase
             'priority_option_id' => $priorityOption->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
+            'location_id' => $location->id,
             'category_1_id' => $category->id,
             // status_id is omitted
         ]);
@@ -218,6 +225,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $location = \App\Models\Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         // Stage mock chunks in storage
@@ -253,6 +261,7 @@ class TicketManagementTest extends TestCase
             'status_id' => $status->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
+            'location_id' => $location->id,
             'category_1_id' => $category->id,
             'attachments_json' => $attachmentsJson
         ]);
@@ -293,6 +302,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $location = \App\Models\Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         $response = $this->actingAs($creator)->post('/tickets', [
@@ -303,6 +313,7 @@ class TicketManagementTest extends TestCase
             'status_id' => $status->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
+            'location_id' => $location->id,
             'category_1_id' => $category->id,
             'to_user_id' => $intendedUser->id,
         ]);
@@ -677,6 +688,7 @@ class TicketManagementTest extends TestCase
             'priority_option_id' => $priorityOption->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
+            'location_id' => $this->location->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -722,6 +734,7 @@ class TicketManagementTest extends TestCase
             'priority_option_id' => $priorityOption->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
+            'location_id' => $this->location->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -768,6 +781,7 @@ class TicketManagementTest extends TestCase
             'priority_option_id' => $priorityOption->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
+            'location_id' => $this->location->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -829,6 +843,7 @@ class TicketManagementTest extends TestCase
             'priority_option_id' => $priorityOption->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
+            'location_id' => $this->location->id,
             'category_1_id' => $category->id,
             'deleted_attachments' => json_encode([$attachment->id]),
         ]);
@@ -899,6 +914,7 @@ class TicketManagementTest extends TestCase
             'priority_option_id' => $priorityOption->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
+            'location_id' => $this->location->id,
             'category_1_id' => $category->id,
             'attachments_json' => $attachmentsJson,
         ]);
@@ -967,6 +983,7 @@ class TicketManagementTest extends TestCase
             'priority_option_id' => $priorityOption->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
+            'location_id' => $this->location->id,
             'category_1_id' => $category->id,
             'existing_notes' => [
                 $attachment->id => 'Updated Note Content',

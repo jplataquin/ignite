@@ -253,6 +253,10 @@
                     <span class="fw-semibold text-dark">{{ $ticket->department->name ?? 'N/A' }}</span>
                 </div>
                 <div>
+                    <span class="text-muted small d-block">Location</span>
+                    <span class="fw-semibold text-dark">{{ $ticket->location->name ?? 'N/A' }}</span>
+                </div>
+                <div>
                     <span class="text-muted small d-block">Category 1</span>
                     <span class="fw-semibold text-dark">{{ $ticket->category1->name ?? 'N/A' }}</span>
                 </div>

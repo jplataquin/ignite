@@ -209,6 +209,7 @@ class RoleManagementTest extends TestCase
         // Core ticket setup data
         $division = Division::create(['name' => 'Tech Division']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $location = \App\Models\Location::create(['name' => 'Main Office']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#F59E0B']);
         $category = Category::create(['name' => 'Software Issue', 'ticket_type_id' => $allowedType->id]);
@@ -228,6 +229,7 @@ class RoleManagementTest extends TestCase
             'status_id' => $status->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
+            'location_id' => $location->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -246,6 +248,7 @@ class RoleManagementTest extends TestCase
             'status_id' => $status->id,
             'division_id' => $division->id,
             'department_id' => $department->id,
+            'location_id' => $location->id,
             'category_1_id' => $category->id,
         ]);
 

@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\TicketTypeCategoryController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\DivisionController;
 use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\TicketStatusController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\CronJobLogController;
@@ -81,6 +82,9 @@ Route::middleware('auth')->group(function () {
 
         // Department Management
         Route::resource('departments', DepartmentController::class)->except(['show']);
+
+        // Location Management
+        Route::resource('locations', LocationController::class)->except(['show']);
 
         // Status Management
         Route::resource('ticket-statuses', TicketStatusController::class)->except(['show']);

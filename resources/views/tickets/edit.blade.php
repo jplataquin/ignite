@@ -196,9 +196,14 @@
                     if ($intendedUserId) {
                         $oldIntendedUser = $users->firstWhere('id', $intendedUserId);
                     }
+                    $oldLocation = null;
+                    $locationId = old('location_id', $ticket->location_id);
+                    if ($locationId) {
+                        $oldLocation = $locations->firstWhere('id', $locationId);
+                    }
                 @endphp
 
-                <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3 mb-4">
                     <!-- Division -->
                     <div>
                         <label for="division_id" class="form-label fw-semibold text-dark small">Division</label>
@@ -229,6 +234,27 @@
                                 <strong>{{ $message }}</strong>
                             </span>
                         @enderror
+                    </div>
+
+                    <!-- Location - Autocomplete -->
+                    <div class="position-relative">
+                        <label for="location_search" class="form-label fw-semibold text-dark small">Location</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted small py-1 px-2.5" style="border-right: 0;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-geo-alt-fill" viewBox="0 0 16 16">
+                                    <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/>
+                                </svg>
+                            </span>
+                            <input type="text" id="location_search" class="form-control @error('location_id') is-invalid @enderror" placeholder="Type to search location..." autocomplete="off" required value="{{ $oldLocation ? $oldLocation->name : '' }}" style="border-left: 0; border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem;">
+                            <input type="hidden" id="location_id" name="location_id" value="{{ $locationId }}">
+                            @error('location_id')
+                                <span class="invalid-feedback" role="alert">
+                                    <strong>{{ $message }}</strong>
+                                </span>
+                            @enderror
+                        </div>
+                        <ul id="location-autocomplete-results" class="dropdown-menu w-100 shadow border-0 py-0" style="max-height: 250px; overflow-y: auto; z-index: 1000; font-size: 0.9rem; position: absolute; top: 100%; left: 0; display: none;">
+                        </ul>
                     </div>
 
                     <!-- Intended User (Optional) - Autocomplete -->
@@ -735,6 +761,77 @@
         if (divisionSelect.value || departmentSelect.value) {
             fetchAndFilterUsers(false);
         }
+
+        // --- AUTOCOMPLETE LOCATION LOGIC ---
+        const locationSearchInput = document.getElementById('location_search');
+        const locationIdInput = document.getElementById('location_id');
+        const locationResults = document.getElementById('location-autocomplete-results');
+        const allLocations = @json($locations);
+
+        function renderLocationAutocomplete() {
+            const query = locationSearchInput.value.trim().toLowerCase();
+            if (!query) {
+                showLocationResults(allLocations);
+                return;
+            }
+
+            const filtered = allLocations.filter(loc => {
+                return loc.name.toLowerCase().includes(query);
+            });
+
+            showLocationResults(filtered);
+        }
+
+        function showLocationResults(locationsList) {
+            if (locationsList.length === 0) {
+                locationResults.innerHTML = '<li class="dropdown-item text-muted disabled py-2" style="min-height: auto;">No locations found</li>';
+                locationResults.style.display = 'block';
+                return;
+            }
+
+            let html = '';
+            locationsList.forEach(loc => {
+                html += `
+                    <li class="dropdown-item py-2 border-bottom" style="cursor: pointer; min-height: auto;" data-id="${loc.id}" data-name="${escapeHtml(loc.name)}">
+                        <div class="fw-semibold text-dark">${escapeHtml(loc.name)}</div>
+                    </li>
+                `;
+            });
+
+            locationResults.innerHTML = html;
+            locationResults.style.display = 'block';
+
+            // Click listener for each item
+            locationResults.querySelectorAll('li.dropdown-item').forEach(item => {
+                if (item.classList.contains('disabled')) return;
+                item.addEventListener('click', function() {
+                    const id = this.getAttribute('data-id');
+                    const name = this.getAttribute('data-name');
+                    locationIdInput.value = id;
+                    locationSearchInput.value = name;
+                    locationResults.style.display = 'none';
+                });
+            });
+        }
+
+        // Show suggestions on input, focus, or click
+        locationSearchInput.addEventListener('input', renderLocationAutocomplete);
+        locationSearchInput.addEventListener('focus', renderLocationAutocomplete);
+        locationSearchInput.addEventListener('click', renderLocationAutocomplete);
+
+        // Clear hidden input when search text is cleared completely
+        locationSearchInput.addEventListener('input', function() {
+            if (this.value.trim() === '') {
+                locationIdInput.value = '';
+            }
+        });
+
+        // Hide results when clicking outside the input or list
+        document.addEventListener('click', function(e) {
+            if (e.target !== locationSearchInput && !locationResults.contains(e.target)) {
+                locationResults.style.display = 'none';
+            }
+        });
 
         function updateAttachmentNumbers() {
             const rows = document.querySelectorAll('#upload-progress-list .attachment-row');

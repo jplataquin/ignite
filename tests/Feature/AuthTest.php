@@ -346,6 +346,43 @@ class AuthTest extends TestCase
     }
 
     /**
+     * Test that admins can reset a user's password, which forces them to input a new one upon login.
+     */
+    public function test_admins_can_reset_user_password_forcing_next_login_reset(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $user = User::factory()->create([
+            'user_type' => 'regular',
+            'must_reset_password' => false,
+            'password' => Hash::make('old_password'),
+        ]);
+
+        // Admin resets password
+        $response = $this->actingAs($admin)->put("/admin/users/{$user->id}", [
+            'name' => $user->name,
+            'email' => $user->email,
+            'user_type' => $user->user_type,
+            'password' => 'new_temporary_password_123',
+        ]);
+
+        $response->assertRedirect('/admin/users');
+        $response->assertSessionHas('success');
+
+        $user = $user->fresh();
+        $this->assertTrue($user->must_reset_password);
+        $this->assertTrue(Hash::check('new_temporary_password_123', $user->password));
+
+        // Now attempt user login with the new password (should be forced to reset)
+        $loginResponse = $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'new_temporary_password_123',
+        ]);
+
+        // Should redirect to temporary reset page
+        $loginResponse->assertRedirect(route('password.reset.temp'));
+    }
+
+    /**
      * Test that non-admins cannot update user profiles.
      */
     public function test_non_admins_cannot_update_user_profiles(): void
