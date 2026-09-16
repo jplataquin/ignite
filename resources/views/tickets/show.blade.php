@@ -407,17 +407,7 @@
         <div class="card fd-card p-4 shadow-sm mb-4">
             <h5 class="fw-bold text-dark mb-3">Actions</h5>
             <div class="mb-3">
-                <span class="text-muted small d-block mb-1">Assigned Support Staff</span>
                 @if($ticket->assignee)
-                    <div class="d-flex align-items-center">
-                        <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center fw-bold me-2" style="width: 32px; height: 32px; font-size: 0.85rem;">
-                            {{ substr($ticket->assignee->name, 0, 1) }}
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark small">{{ $ticket->assignee->name }}</div>
-                            <span class="text-muted" style="font-size: 0.75rem;">Staff Specialist</span>
-                        </div>
-                    </div>
                     @if($ticket->assigned_to === Auth::id() && $ticket->status?->slug === 'assigned')
                         <button type="button" class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-center mt-3" style="min-height: 38px;" data-bs-toggle="modal" data-bs-target="#forReviewModal">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-send-fill me-1.5" viewBox="0 0 16 16">
