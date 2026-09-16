@@ -323,6 +323,121 @@ class TicketManagementTest extends TestCase
     }
 
     /**
+     * Test that users can successfully create a ticket with a .jfif image attachment.
+     */
+    public function test_users_can_create_ticket_with_jfif_attachment(): void
+    {
+        $user = User::factory()->create();
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $user->roles()->attach($role->id);
+
+        // Seed lookups
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $role->ticketTypes()->attach($type->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Stage mock jfif chunk in storage
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $token = 'token_jfif_abc';
+        \Illuminate\Support\Facades\Storage::put("staging/{$token}/1.part", "jfif_part");
+
+        $attachmentsJson = json_encode([
+            [
+                'temp_token' => $token,
+                'total_chunks' => 1,
+                'file_name' => 'image_upload.jfif',
+                'mime_type' => 'image/jfif',
+                'note' => 'JFIF Note'
+            ]
+        ]);
+
+        $response = $this->actingAs($user)->post('/tickets', [
+            'title' => 'Ticket with JFIF file',
+            'description' => 'JFIF image test.',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $location->id,
+            'category_1_id' => $category->id,
+            'attachments_json' => $attachmentsJson
+        ]);
+
+        $ticket = Ticket::where('title', 'Ticket with JFIF file')->first();
+        $this->assertNotNull($ticket);
+
+        $response->assertRedirect(route('tickets.show', $ticket));
+
+        // Assert jfif attachment was created successfully
+        $this->assertDatabaseHas('attachments', [
+            'ticket_id' => $ticket->id,
+            'file_name' => 'image_upload.jfif',
+            'note' => 'JFIF Note'
+        ]);
+    }
+
+    /**
+     * Test that users cannot create a ticket with disallowed extensions (e.g., .exe).
+     */
+    public function test_users_cannot_create_ticket_with_disallowed_extension(): void
+    {
+        $user = User::factory()->create();
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $user->roles()->attach($role->id);
+
+        // Seed lookups
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $role->ticketTypes()->attach($type->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Stage mock exe chunk in storage
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $token = 'token_exe_abc';
+        \Illuminate\Support\Facades\Storage::put("staging/{$token}/1.part", "exe_part");
+
+        $attachmentsJson = json_encode([
+            [
+                'temp_token' => $token,
+                'total_chunks' => 1,
+                'file_name' => 'malicious.exe',
+                'mime_type' => 'application/x-msdownload',
+                'note' => 'EXE Note'
+            ]
+        ]);
+
+        $response = $this->actingAs($user)->post('/tickets', [
+            'title' => 'Ticket with EXE file',
+            'description' => 'Should fail.',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $location->id,
+            'category_1_id' => $category->id,
+            'attachments_json' => $attachmentsJson
+        ]);
+
+        $response->assertSessionHas('error');
+        $this->assertDatabaseMissing('attachments', [
+            'file_name' => 'malicious.exe'
+        ]);
+    }
+
+    /**
      * Test that users can create a ticket specifying an intended user (to_user_id).
      */
     public function test_users_can_create_ticket_with_intended_user(): void
@@ -780,6 +895,87 @@ class TicketManagementTest extends TestCase
         
         $ticket->refresh();
         $this->assertEquals('Initial Title', $ticket->title);
+    }
+
+    /**
+     * Test that administrators can view the edit page for any ticket.
+     */
+    public function test_admin_can_view_edit_page_for_any_ticket(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $admin = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10005',
+            'title' => 'Initial Title',
+            'description' => 'Initial Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($admin)->get("/tickets/{$ticket->id}/edit");
+
+        $response->assertStatus(200);
+        $response->assertSee('Edit Ticket');
+        $response->assertSee('Initial Title');
+    }
+
+    /**
+     * Test that administrators can successfully update any ticket.
+     */
+    public function test_admin_can_update_any_ticket(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $admin = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $status = TicketStatus::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10006',
+            'title' => 'Initial Title',
+            'description' => 'Initial Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'status_id' => $status->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($admin)->put("/tickets/{$ticket->id}", [
+            'title' => 'Admin Updated Title',
+            'description' => 'Admin Updated Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response->assertRedirect(route('tickets.show', $ticket));
+
+        $ticket->refresh();
+        $this->assertEquals('Admin Updated Title', $ticket->title);
+        $this->assertEquals('Admin Updated Description', $ticket->description);
     }
 
     /**

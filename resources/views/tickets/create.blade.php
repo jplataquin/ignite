@@ -53,8 +53,8 @@
                             <path fill-rule="evenodd" d="M7.646 5.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708l2-2z"/>
                         </svg>
                         <p class="mb-1 fw-semibold text-dark small">Drag & drop files here, or click to browse</p>
-                        <p class="text-muted mb-0" style="font-size: 0.75rem;">Allowed formats: .jpg, .png, .gif, .pdf, .xls, .xlsx, .doc, .docx, .txt, .csv</p>
-                        <input type="file" id="file-input" class="d-none" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.xls,.xlsx,.csv,.doc,.docx,.odt,.txt,.rtf">
+                        <p class="text-muted mb-0" style="font-size: 0.75rem;">Allowed formats: .jpg, .jfif, .png, .gif, .pdf, .xls, .xlsx, .doc, .docx, .txt, .csv</p>
+                        <input type="file" id="file-input" class="d-none" multiple accept=".jpg,.jpeg,.jfif,.png,.gif,.webp,.pdf,.xls,.xlsx,.csv,.doc,.docx,.odt,.txt,.rtf">
                     </div>
 
                     <!-- Dynamic List of Upload Progresses -->
@@ -346,7 +346,7 @@
         const submitBtn = document.querySelector('button[type="submit"]');
 
         const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
-        const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+        const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
 
         let completedAttachments = [];
         let activeUploadsCount = 0;
@@ -442,7 +442,7 @@
             updateAttachmentNumbers();
 
             // Populate preview container
-            const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(file.name.split('.').pop().toLowerCase());
+            const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp'].includes(file.name.split('.').pop().toLowerCase());
             const previewContainer = document.getElementById(`preview-${identifier}`);
             let previewUrl = '';
             if (isImage) {

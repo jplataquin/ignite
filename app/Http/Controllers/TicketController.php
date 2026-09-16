@@ -108,7 +108,7 @@ class TicketController extends Controller
             }
 
             // Validate Extensions (photos, pdf, excel, documents)
-            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+            $allowedExtensions = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
             foreach ($attachments as $attachment) {
                 if (empty($attachment['temp_token']) || empty($attachment['total_chunks']) || empty($attachment['file_name'])) {
                     return redirect()->back()->with('error', 'Incomplete attachment details.')->withInput();
@@ -221,7 +221,7 @@ class TicketController extends Controller
     public function edit(Ticket $ticket)
     {
         $user = Auth::user();
-        if (!$user || $ticket->created_by !== $user->id) {
+        if (!$user || ($user->user_type !== 'admin' && $ticket->created_by !== $user->id)) {
             abort(403, 'You are not authorized to edit this ticket.');
         }
 
@@ -259,7 +259,7 @@ class TicketController extends Controller
     public function update(Request $request, Ticket $ticket)
     {
         $user = Auth::user();
-        if (!$user || $ticket->created_by !== $user->id) {
+        if (!$user || ($user->user_type !== 'admin' && $ticket->created_by !== $user->id)) {
             abort(403, 'You are not authorized to edit this ticket.');
         }
 
@@ -306,7 +306,7 @@ class TicketController extends Controller
             }
 
             // Validate Extensions (photos, pdf, excel, documents)
-            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+            $allowedExtensions = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
             foreach ($attachments as $attachment) {
                 if (empty($attachment['temp_token']) || empty($attachment['total_chunks']) || empty($attachment['file_name'])) {
                     return redirect()->back()->with('error', 'Incomplete attachment details.')->withInput();
@@ -565,7 +565,7 @@ class TicketController extends Controller
             }
 
             // Validate Extensions (photos, pdf, excel, documents)
-            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+            $allowedExtensions = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
             foreach ($attachments as $attachment) {
                 if (empty($attachment['temp_token']) || empty($attachment['total_chunks']) || empty($attachment['file_name'])) {
                     return redirect()->back()->with('error', 'Incomplete attachment details.')->withInput();

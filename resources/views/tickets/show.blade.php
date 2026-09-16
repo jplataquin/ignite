@@ -10,7 +10,7 @@
         </a>
         <h1 class="h2 fw-bold text-dark mb-0">{{ $ticket->ticket_number }}</h1>
     </div>
-    @if(Auth::id() === $ticket->created_by)
+    @if(Auth::id() === $ticket->created_by || (Auth::user() && Auth::user()->user_type === 'admin'))
         <div>
             <a href="{{ route('tickets.edit', $ticket) }}" class="btn btn-primary d-flex align-items-center gap-2" style="min-height: 38px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
@@ -194,7 +194,7 @@
                                         <div class="flex-shrink-0 border bg-white d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; overflow: hidden; border-radius: 8px; border-color: #cbd5e1 !important;">
                                             @php
                                                 $isImage = str_starts_with($attachment->mime_type ?? '', 'image/') || 
-                                                           in_array(strtolower(pathinfo($attachment->file_name ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                                                           in_array(strtolower(pathinfo($attachment->file_name ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp']);
                                             @endphp
                                             @if($isImage)
                                                 <img src="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" class="w-100 h-100" style="object-fit: cover;">
@@ -304,7 +304,7 @@
                                 <path fill-rule="evenodd" d="M7.646 5.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708z"/>
                             </svg>
                             <p class="mb-0 fw-semibold text-dark small" style="font-size: 0.8rem;">Drag & drop files here, or click to browse</p>
-                            <input type="file" id="comment-file-input" class="d-none" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.xls,.xlsx,.csv,.doc,.docx,.odt,.txt,.rtf">
+                            <input type="file" id="comment-file-input" class="d-none" multiple accept=".jpg,.jpeg,.jfif,.png,.gif,.webp,.pdf,.xls,.xlsx,.csv,.doc,.docx,.odt,.txt,.rtf">
                         </div>
                         <!-- Dynamic List of Comment Upload Progresses -->
                         <div id="comment-upload-progress-list" class="mt-2"></div>
@@ -358,7 +358,7 @@
                                                             <div class="flex-shrink-0 border rounded bg-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; overflow: hidden; border-color: #cbd5e1 !important;">
                                                                 @php
                                                                     $isImage = str_starts_with($attachment->mime_type ?? '', 'image/') ||
-                                                                               in_array(strtolower(pathinfo($attachment->file_name ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                                                                               in_array(strtolower(pathinfo($attachment->file_name ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp']);
                                                                 @endphp
                                                                 @if($isImage)
                                                                     <img src="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" class="w-100 h-100" style="object-fit: cover;">
@@ -656,7 +656,7 @@
         if (!dropZone || !fileInput) return;
 
         const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
-        const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+        const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
 
         let completedAttachments = [];
         let activeUploadsCount = 0;
@@ -752,7 +752,7 @@
             updateAttachmentNumbers();
 
             // Populate preview container
-            const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(file.name.split('.').pop().toLowerCase());
+            const isImage = file.type.startsWith('image/') || ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp'].includes(file.name.split('.').pop().toLowerCase());
             const previewContainer = document.getElementById(`comment-preview-${identifier}`);
             let previewUrl = '';
             if (isImage) {

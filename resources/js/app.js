@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isActive = index === clickedIndex;
 
             const isImage = mime.startsWith('image/') || 
-                            ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(name.split('.').pop().toLowerCase());
+                            ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp'].includes(name.split('.').pop().toLowerCase());
 
             let itemHtml = '';
             if (isImage) {
