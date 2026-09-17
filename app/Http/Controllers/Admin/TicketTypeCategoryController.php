@@ -77,11 +77,48 @@ class TicketTypeCategoryController extends Controller
                 ->withInput();
         }
 
-        DB::transaction(function () use ($ticketType, $tree) {
-            // Delete existing categories (and cascade delete category closures)
-            Category::where('ticket_type_id', $ticketType->id)->delete();
+        $existingCategories = Category::where('ticket_type_id', $ticketType->id)->get();
+        $existingIds = $existingCategories->pluck('id')->toArray();
+        $newTreeIds = $this->collectIdsFromTree($tree);
+        $idsToDelete = array_diff($existingIds, $newTreeIds);
 
-            // Save new category tree recursively
+        if (!empty($idsToDelete)) {
+            $referencedCategory = DB::table('tickets')
+                ->where(function ($query) use ($idsToDelete) {
+                    $query->whereIn('category_1_id', $idsToDelete)
+                        ->orWhereIn('category_2_id', $idsToDelete)
+                        ->orWhereIn('category_3_id', $idsToDelete);
+                })
+                ->first();
+            
+            if ($referencedCategory) {
+                $catId = null;
+                if (in_array($referencedCategory->category_1_id, $idsToDelete)) {
+                    $catId = $referencedCategory->category_1_id;
+                } elseif (in_array($referencedCategory->category_2_id, $idsToDelete)) {
+                    $catId = $referencedCategory->category_2_id;
+                } elseif (in_array($referencedCategory->category_3_id, $idsToDelete)) {
+                    $catId = $referencedCategory->category_3_id;
+                }
+                $catName = Category::find($catId)?->name ?? 'Unknown';
+                return redirect()->back()
+                    ->with('error', "Cannot delete category '{$catName}' because it is currently assigned to one or more tickets.")
+                    ->withInput();
+            }
+        }
+
+        DB::transaction(function () use ($ticketType, $tree, $idsToDelete, $newTreeIds) {
+            // Delete categories that are no longer in the tree
+            if (!empty($idsToDelete)) {
+                Category::whereIn('id', $idsToDelete)->delete();
+            }
+
+            // Clear closures for remaining categories
+            if (!empty($newTreeIds)) {
+                CategoryClosure::whereIn('ancestor_id', $newTreeIds)->delete();
+            }
+
+            // Save/update category tree recursively
             foreach ($tree as $node) {
                 $this->saveNode($node, $ticketType->id);
             }
@@ -115,15 +152,41 @@ class TicketTypeCategoryController extends Controller
     }
 
     /**
+     * Recursively collect all existing category IDs from the tree.
+     */
+    private function collectIdsFromTree(array $nodes): array
+    {
+        $ids = [];
+        foreach ($nodes as $node) {
+            if (isset($node['id'])) {
+                $ids[] = (int) $node['id'];
+            }
+            if (isset($node['children']) && is_array($node['children'])) {
+                $ids = array_merge($ids, $this->collectIdsFromTree($node['children']));
+            }
+        }
+        return $ids;
+    }
+
+    /**
      * Recursively save category nodes and their closure records.
      */
     private function saveNode(array $node, int $ticketTypeId, array $ancestorIds = []): void
     {
-        // 1. Create Category
-        $category = Category::create([
-            'name' => trim($node['name']),
-            'ticket_type_id' => $ticketTypeId,
-        ]);
+        if (isset($node['id'])) {
+            // Update existing Category
+            $category = Category::findOrFail($node['id']);
+            $category->update([
+                'name' => trim($node['name']),
+                'ticket_type_id' => $ticketTypeId,
+            ]);
+        } else {
+            // Create new Category
+            $category = Category::create([
+                'name' => trim($node['name']),
+                'ticket_type_id' => $ticketTypeId,
+            ]);
+        }
 
         $myId = $category->id;
 

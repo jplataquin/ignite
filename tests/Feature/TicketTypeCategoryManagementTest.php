@@ -173,6 +173,139 @@ class TicketTypeCategoryManagementTest extends TestCase
             'name' => 'Level 1'
         ]);
     }
+
+    /**
+     * Test admin can update category tree when some categories are referenced by tickets.
+     */
+    public function test_admins_can_update_categories_when_referenced_by_tickets_if_not_deleted(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $ticketType = TicketType::create(['name' => 'Support Request']);
+        
+        // Create initial category
+        $category = Category::create([
+            'name' => 'Hardware',
+            'ticket_type_id' => $ticketType->id,
+        ]);
+        CategoryClosure::create([
+            'ancestor_id' => $category->id,
+            'descendant_id' => $category->id,
+            'depth' => 0,
+        ]);
+
+        // Create references
+        $priorityOption = \App\Models\Priority::create(['name' => 'Low', 'level' => 1]);
+        $stage = \App\Models\TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1', 'is_initial' => true]);
+        $division = \App\Models\Division::create(['name' => 'IT']);
+        $location = \App\Models\Location::create(['name' => 'HQ']);
+
+        \App\Models\Ticket::create([
+            'ticket_number' => 'TCK-123',
+            'title' => 'Test Ticket',
+            'description' => 'Test Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stage->id,
+            'division_id' => $division->id,
+            'location_id' => $location->id,
+            'category_1_id' => $category->id,
+            'created_by' => $admin->id,
+            'status' => 'Valid',
+        ]);
+
+        // Tree structure where 'Hardware' is updated (keeps its ID)
+        $tree = [
+            [
+                'id' => $category->id,
+                'name' => 'Hardware (Updated)',
+                'children' => []
+            ]
+        ];
+
+        $response = $this->actingAs($admin)->post("/admin/ticket-types/{$ticketType->id}/categories", [
+            'categories_json' => json_stringify($tree)
+        ]);
+
+        $response->assertRedirect('/admin/ticket-types');
+
+        // Verify the category was updated and NOT recreated with a different ID
+        $this->assertDatabaseHas('categories', [
+            'id' => $category->id,
+            'name' => 'Hardware (Updated)',
+            'ticket_type_id' => $ticketType->id
+        ]);
+    }
+
+    /**
+     * Test admin cannot update category tree if a referenced category is deleted.
+     */
+    public function test_admins_cannot_delete_categories_referenced_by_tickets(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $ticketType = TicketType::create(['name' => 'Support Request']);
+        
+        // Create initial categories
+        $category1 = Category::create([
+            'name' => 'Hardware',
+            'ticket_type_id' => $ticketType->id,
+        ]);
+        CategoryClosure::create([
+            'ancestor_id' => $category1->id,
+            'descendant_id' => $category1->id,
+            'depth' => 0,
+        ]);
+
+        $category2 = Category::create([
+            'name' => 'Software',
+            'ticket_type_id' => $ticketType->id,
+        ]);
+        CategoryClosure::create([
+            'ancestor_id' => $category2->id,
+            'descendant_id' => $category2->id,
+            'depth' => 0,
+        ]);
+
+        // Create references for category1
+        $priorityOption = \App\Models\Priority::create(['name' => 'Low', 'level' => 1]);
+        $stage = \App\Models\TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1', 'is_initial' => true]);
+        $division = \App\Models\Division::create(['name' => 'IT']);
+        $location = \App\Models\Location::create(['name' => 'HQ']);
+
+        \App\Models\Ticket::create([
+            'ticket_number' => 'TCK-123',
+            'title' => 'Test Ticket',
+            'description' => 'Test Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stage->id,
+            'division_id' => $division->id,
+            'location_id' => $location->id,
+            'category_1_id' => $category1->id,
+            'created_by' => $admin->id,
+            'status' => 'Valid',
+        ]);
+
+        // Tree structure where 'Hardware' is deleted and only 'Software' remains
+        $tree = [
+            [
+                'id' => $category2->id,
+                'name' => 'Software',
+                'children' => []
+            ]
+        ];
+
+        $response = $this->actingAs($admin)->post("/admin/ticket-types/{$ticketType->id}/categories", [
+            'categories_json' => json_stringify($tree)
+        ]);
+
+        $response->assertSessionHas('error');
+        
+        // Verify 'Hardware' is still in the database
+        $this->assertDatabaseHas('categories', [
+            'id' => $category1->id,
+            'name' => 'Hardware',
+        ]);
+    }
 }
 
 // Global helper for clean tests
