@@ -25,6 +25,57 @@
     </div>
 @endif
 
+<!-- Filters Card -->
+<div class="card fd-card mb-4">
+    <div class="card-body p-3">
+        <form method="GET" action="{{ route('tickets.index') }}" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label for="priority_id" class="form-label small fw-bold text-muted text-uppercase mb-1">Priority</label>
+                <select name="priority_id" id="priority_id" class="form-select form-select-sm">
+                    <option value="">All Priorities</option>
+                    @foreach($priorities as $priority)
+                        <option value="{{ $priority->id }}" {{ request('priority_id') == $priority->id ? 'selected' : '' }}>
+                            {{ $priority->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="stage_id" class="form-label small fw-bold text-muted text-uppercase mb-1">Stage</label>
+                <select name="stage_id" id="stage_id" class="form-select form-select-sm">
+                    <option value="">All Stages</option>
+                    @foreach($stages as $stage)
+                        <option value="{{ $stage->id }}" {{ request('stage_id') == $stage->id ? 'selected' : '' }}>
+                            {{ $stage->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="status" class="form-label small fw-bold text-muted text-uppercase mb-1">Status</label>
+                <select name="status" id="status" class="form-select form-select-sm">
+                    <option value="">All Statuses</option>
+                    @foreach($statuses as $status)
+                        <option value="{{ $status }}" {{ request('status') === $status ? 'selected' : '' }}>
+                            {{ $status }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="date_created" class="form-label small fw-bold text-muted text-uppercase mb-1">Date Created</label>
+                <input type="date" name="date_created" id="date_created" class="form-control form-control-sm" value="{{ request('date_created') }}">
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary flex-grow-1">Filter</button>
+                @if(request()->filled('priority_id') || request()->filled('stage_id') || request()->filled('status') || request()->filled('date_created'))
+                    <a href="{{ route('tickets.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                @endif
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card fd-card mb-4">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">

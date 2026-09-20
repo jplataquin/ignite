@@ -33,6 +33,18 @@
                     @enderror
                 </div>
 
+                <!-- Code -->
+                <div class="mb-3">
+                    <label for="code" class="form-label fw-semibold text-dark small">Code Identifier (First 3 Letters)</label>
+                    <input id="code" type="text" class="form-control @error('code') is-invalid @enderror" name="code" value="{{ old('code') }}" required placeholder="e.g. AUD, TCK, INC" maxlength="3" minlength="3" style="text-transform: uppercase;">
+                    <span class="text-muted small">This 3-letter prefix identifier is used when generating ticket numbers (e.g. AUD-2026-0001).</span>
+                    @error('code')
+                        <span class="invalid-feedback" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
                 <!-- Description -->
                 <div class="mb-3">
                     <label for="description" class="form-label fw-semibold text-dark small">Description</label>

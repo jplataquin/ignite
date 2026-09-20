@@ -13,6 +13,7 @@ class TicketType extends Model
     /** @var array<int, string> */
     protected $fillable = [
         'name',
+        'code',
         'description',
         'threshold_days',
         'assignment_threshold_days',

@@ -1157,6 +1157,63 @@ class TicketManagementTest extends TestCase
     }
 
     /**
+     * Test that an admin can remove the assigned user from a ticket by leaving assigned_to blank.
+     */
+    public function test_admin_can_unassign_previously_assigned_ticket_by_leaving_field_blank(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+        $admin = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
+        $agent = User::factory()->create(['user_type' => 'agent', 'is_approved' => true]);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-10007',
+            'title' => 'Initial Title',
+            'description' => 'Initial Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+            'assigned_to' => $agent->id,
+        ]);
+
+        $response = $this->actingAs($admin)->put("/tickets/{$ticket->id}", [
+            'title' => 'Initial Title',
+            'description' => 'Initial Description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'stage_id' => $stageOpen->id,
+            'assigned_to' => '', // blank/unassigned
+        ]);
+
+        $response->assertRedirect(route('tickets.show', $ticket));
+
+        $ticket->refresh();
+        $this->assertNull($ticket->assigned_to);
+
+        // Assert that the system comment log was successfully recorded with the assignee update from 'Agent' to 'None'
+        $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
+            ->where('type', 'system_event')
+            ->first();
+
+        $this->assertNotNull($comment);
+        $this->assertStringContainsString("Assignee updated from '{$agent->name}' to 'None'", $comment->content);
+    }
+
+    /**
      * Test that ticket update logs automated system comment of type system_event.
      */
     public function test_ticket_update_logs_automated_system_comment(): void
@@ -1705,5 +1762,130 @@ class TicketManagementTest extends TestCase
             'assignee_id' => $otherUser->id,
         ]);
         $response3->assertStatus(403);
+    }
+
+    /**
+     * Test that tickets can be filtered by priority, stage, status, and date created.
+     */
+    public function test_tickets_can_be_filtered(): void
+    {
+        $user = User::factory()->create();
+
+        // Seed values
+        $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
+        $priorityHigh = Priority::create(['name' => 'High', 'level' => 3]);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Ticket 1: Low, Open, Valid, Created 2 days ago
+        $ticket1 = Ticket::create([
+            'ticket_number' => 'TCK-1',
+            'title' => 'Alpha Ticket',
+            'description' => 'Test 1',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'division_id' => $division->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'created_by' => $user->id,
+            'status' => 'Valid',
+        ]);
+        $ticket1->created_at = \Carbon\Carbon::now()->subDays(2);
+        $ticket1->save();
+
+        // Ticket 2: High, Assigned, Done, Created today
+        $ticket2 = Ticket::create([
+            'ticket_number' => 'TCK-2',
+            'title' => 'Beta Ticket',
+            'description' => 'Test 2',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityHigh->id,
+            'stage_id' => $stageAssigned->id,
+            'division_id' => $division->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'created_by' => $user->id,
+            'status' => 'Done',
+        ]);
+        $ticket2->created_at = \Carbon\Carbon::now();
+        $ticket2->save();
+
+        // 1. Filter by Priority = High
+        $response = $this->actingAs($user)->get("/tickets?priority_id={$priorityHigh->id}");
+        $response->assertStatus(200);
+        $response->assertSee('Beta Ticket');
+        $response->assertDontSee('Alpha Ticket');
+
+        // 2. Filter by Stage = Open
+        $response = $this->actingAs($user)->get("/tickets?stage_id={$stageOpen->id}");
+        $response->assertStatus(200);
+        $response->assertSee('Alpha Ticket');
+        $response->assertDontSee('Beta Ticket');
+
+        // 3. Filter by Status = Done
+        $response = $this->actingAs($user)->get("/tickets?status=Done");
+        $response->assertStatus(200);
+        $response->assertSee('Beta Ticket');
+        $response->assertDontSee('Alpha Ticket');
+
+        // 4. Filter by Date Created = Today
+        $todayStr = \Carbon\Carbon::now()->toDateString();
+        $response = $this->actingAs($user)->get("/tickets?date_created={$todayStr}");
+        $response->assertStatus(200);
+        $response->assertSee('Beta Ticket');
+        $response->assertDontSee('Alpha Ticket');
+
+        // 5. Combine multiple filters (High, Done) -> Beta Ticket
+        $response = $this->actingAs($user)->get("/tickets?priority_id={$priorityHigh->id}&status=Done");
+        $response->assertStatus(200);
+        $response->assertSee('Beta Ticket');
+        $response->assertDontSee('Alpha Ticket');
+
+        // 6. Combine filters that return nothing (Low, Done) -> No tickets
+        $response = $this->actingAs($user)->get("/tickets?priority_id={$priorityLow->id}&status=Done");
+        $response->assertStatus(200);
+        $response->assertDontSee('Alpha Ticket');
+        $response->assertDontSee('Beta Ticket');
+    }
+
+    /**
+     * Test that ticket numbers are generated with the ticket type's custom code prefix.
+     */
+    public function test_ticket_number_generation_uses_custom_ticket_type_code(): void
+    {
+        $user = User::factory()->create();
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $user->roles()->attach($role->id);
+
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Audit Request', 'code' => 'AUD']);
+        $role->ticketTypes()->attach($type->id);
+
+        $division = Division::create(['name' => 'IT']);
+        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $response = $this->actingAs($user)->post('/tickets', [
+            'title' => 'Audit of System Log',
+            'description' => 'We need to perform audit',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stage->id,
+            'division_id' => $division->id,
+            'location_id' => $location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $ticket = Ticket::where('title', 'Audit of System Log')->first();
+
+        $this->assertNotNull($ticket);
+        $this->assertStringStartsWith('AUD-', $ticket->ticket_number);
     }
 }

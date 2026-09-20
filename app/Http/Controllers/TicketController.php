@@ -24,10 +24,33 @@ class TicketController extends Controller
     /**
      * Display a listing of the tickets.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $tickets = Ticket::with(['ticketType', 'priorityOption', 'stage', 'creator', 'assignee'])->latest()->paginate(10);
-        return view('tickets.index', compact('tickets'));
+        $query = Ticket::with(['ticketType', 'priorityOption', 'stage', 'creator', 'assignee']);
+
+        if ($request->filled('priority_id')) {
+            $query->where('priority_option_id', $request->input('priority_id'));
+        }
+
+        if ($request->filled('stage_id')) {
+            $query->where('stage_id', $request->input('stage_id'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('date_created')) {
+            $query->whereDate('created_at', $request->input('date_created'));
+        }
+
+        $tickets = $query->latest()->paginate(10)->withQueryString();
+
+        $priorities = Priority::orderBy('level')->get();
+        $stages = TicketStage::all();
+        $statuses = ['Valid', 'Done', 'Lapsed'];
+
+        return view('tickets.index', compact('tickets', 'priorities', 'stages', 'statuses'));
     }
 
     /**
@@ -125,7 +148,10 @@ class TicketController extends Controller
             // Generate ticket number with lock
             $latest = Ticket::lockForUpdate()->latest('id')->first();
             $nextId = $latest ? $latest->id + 1 : 1;
-            $ticketNumber = 'FLR-' . Carbon::now()->format('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            
+            $ticketType = TicketType::find($validated['ticket_type_id']);
+            $prefix = ($ticketType && !empty($ticketType->code)) ? $ticketType->code : 'FLR';
+            $ticketNumber = $prefix . '-' . Carbon::now()->format('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
 
             // Default to Open stage if stage_id is not specified
             $stageId = $validated['stage_id'] ?? null;
@@ -356,7 +382,7 @@ class TicketController extends Controller
 
             if ($user->user_type === 'admin') {
                 $updateData['stage_id'] = $validated['stage_id'] ?? $ticket->stage_id;
-                $updateData['assigned_to'] = $validated['assigned_to'] ?? $ticket->assigned_to;
+                $updateData['assigned_to'] = array_key_exists('assigned_to', $validated) ? $validated['assigned_to'] : $ticket->assigned_to;
                 $updateData['deadline_date'] = $request->filled('deadline_date') ? \Carbon\Carbon::parse($request->input('deadline_date')) : null;
             }
 

@@ -43,6 +43,7 @@
             <thead class="table-light">
                 <tr>
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small">Name</th>
+                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small" style="width: 100px;">Code</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Description</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small" style="width: 250px;">SLA Thresholds (Days)</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small text-center">Active Tickets</th>
@@ -54,6 +55,9 @@
                     <tr>
                         <td class="px-4 py-3 fw-bold text-dark">
                             {{ $type->name }}
+                        </td>
+                        <td class="py-3">
+                            <span class="badge bg-dark text-white rounded px-2 py-1.5 fw-bold">{{ $type->code ?: 'FLR' }}</span>
                         </td>
                         <td class="py-3 text-muted">
                             {{ $type->description ?: 'No description provided.' }}

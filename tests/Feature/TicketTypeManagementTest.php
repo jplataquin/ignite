@@ -80,6 +80,7 @@ class TicketTypeManagementTest extends TestCase
 
         $response = $this->actingAs($admin)->post('/admin/ticket-types', [
             'name' => 'Urgent Request',
+            'code' => 'URG',
             'description' => 'For extreme requests',
             'threshold_days' => 2,
             'assignment_threshold_days' => 3,
@@ -88,6 +89,7 @@ class TicketTypeManagementTest extends TestCase
         $response->assertRedirect('/admin/ticket-types');
         $this->assertDatabaseHas('ticket_types', [
             'name' => 'Urgent Request',
+            'code' => 'URG',
             'description' => 'For extreme requests',
             'threshold_days' => 2,
             'assignment_threshold_days' => 3,
@@ -100,7 +102,7 @@ class TicketTypeManagementTest extends TestCase
     public function test_admins_can_view_ticket_type_edit_screen(): void
     {
         $admin = User::factory()->create(['user_type' => 'admin']);
-        $type = TicketType::create(['name' => 'Original Type']);
+        $type = TicketType::create(['name' => 'Original Type', 'code' => 'ORG']);
 
         $response = $this->actingAs($admin)->get("/admin/ticket-types/{$type->id}/edit");
 
@@ -114,10 +116,11 @@ class TicketTypeManagementTest extends TestCase
     public function test_admins_can_update_ticket_type(): void
     {
         $admin = User::factory()->create(['user_type' => 'admin']);
-        $type = TicketType::create(['name' => 'Old Type']);
+        $type = TicketType::create(['name' => 'Old Type', 'code' => 'OLD']);
 
         $response = $this->actingAs($admin)->put("/admin/ticket-types/{$type->id}", [
             'name' => 'New Name',
+            'code' => 'NEW',
             'description' => 'Updated Description',
             'threshold_days' => 5,
             'assignment_threshold_days' => 4,
@@ -127,6 +130,7 @@ class TicketTypeManagementTest extends TestCase
         $this->assertDatabaseHas('ticket_types', [
             'id' => $type->id,
             'name' => 'New Name',
+            'code' => 'NEW',
             'description' => 'Updated Description',
             'threshold_days' => 5,
             'assignment_threshold_days' => 4,
