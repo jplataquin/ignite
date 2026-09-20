@@ -184,4 +184,37 @@ class TicketTypeManagementTest extends TestCase
         $response->assertSessionHas('error');
         $this->assertDatabaseHas('ticket_types', ['id' => $type->id]);
     }
+
+    /**
+     * Test that different ticket types can have repeating codes.
+     */
+    public function test_ticket_type_codes_can_be_repeated(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        // First ticket type with 'AUD'
+        $response1 = $this->actingAs($admin)->post('/admin/ticket-types', [
+            'name' => 'Internal Audit',
+            'code' => 'AUD',
+            'description' => 'First audit type',
+        ]);
+        $response1->assertRedirect('/admin/ticket-types');
+
+        // Second ticket type also with 'AUD'
+        $response2 = $this->actingAs($admin)->post('/admin/ticket-types', [
+            'name' => 'External Audit',
+            'code' => 'AUD',
+            'description' => 'Second audit type',
+        ]);
+        $response2->assertRedirect('/admin/ticket-types');
+
+        $this->assertDatabaseHas('ticket_types', [
+            'name' => 'Internal Audit',
+            'code' => 'AUD',
+        ]);
+        $this->assertDatabaseHas('ticket_types', [
+            'name' => 'External Audit',
+            'code' => 'AUD',
+        ]);
+    }
 }

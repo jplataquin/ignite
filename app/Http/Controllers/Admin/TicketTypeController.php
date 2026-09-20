@@ -32,7 +32,7 @@ class TicketTypeController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:ticket_types,name',
-            'code' => 'required|string|size:3|regex:/^[A-Za-z]{3}$/|unique:ticket_types,code',
+            'code' => 'required|string|size:3|regex:/^[A-Za-z]{3}$/',
             'description' => 'nullable|string',
             'threshold_days' => 'nullable|integer|min:1',
             'assignment_threshold_days' => 'nullable|integer|min:1',
@@ -61,7 +61,7 @@ class TicketTypeController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:ticket_types,name,' . $ticketType->id,
-            'code' => 'required|string|size:3|regex:/^[A-Za-z]{3}$/|unique:ticket_types,code,' . $ticketType->id,
+            'code' => 'required|string|size:3|regex:/^[A-Za-z]{3}$/',
             'description' => 'nullable|string',
             'threshold_days' => 'nullable|integer|min:1',
             'assignment_threshold_days' => 'nullable|integer|min:1',
