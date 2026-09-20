@@ -99,4 +99,26 @@ class Ticket extends Model
     {
         return $this->hasMany(TicketComment::class);
     }
+
+    /**
+     * Get the dynamically formatted ticket number with the ticket type's code prefix.
+     */
+    public function getTicketNumberAttribute($value)
+    {
+        if (empty($value)) {
+            return $value;
+        }
+
+        $ticketType = $this->ticketType;
+        if ($ticketType && !empty($ticketType->code)) {
+            $prefix = $ticketType->code;
+            $parts = explode('-', $value);
+            if (count($parts) >= 2) {
+                array_shift($parts); // Remove old prefix
+                return $prefix . '-' . implode('-', $parts);
+            }
+        }
+
+        return $value;
+    }
 }
