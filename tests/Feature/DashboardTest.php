@@ -255,4 +255,19 @@ class DashboardTest extends TestCase
 
         $response->assertSee('HR Division &gt; Recruitment Dept', false);
     }
+
+    /**
+     * Test that the dashboard SLA Lapsed card links to the filtered ticket list.
+     */
+    public function test_dashboard_sla_lapsed_card_links_to_tickets_index_filtered_by_lapsed_status(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        $response = $this->actingAs($admin)->get('/');
+        $response->assertStatus(200);
+
+        // Check that the response contains the link with correct status parameter
+        $expectedUrl = route('tickets.index', ['status' => 'Lapsed']);
+        $response->assertSee(htmlentities($expectedUrl), false);
+    }
 }
