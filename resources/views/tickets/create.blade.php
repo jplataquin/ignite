@@ -245,8 +245,6 @@
 </div>
 
 <script type="module">
-    import { encode } from 'https://unpkg.com/@jsquash/webp@1.3.1/dist/index.js';
-
     document.addEventListener('DOMContentLoaded', function () {
         
         const ticketTypeSelect = document.getElementById('ticket_type_id');
@@ -351,29 +349,61 @@
                 return file;
             }
 
+            // 1. Try WebAssembly WebP encoding first (WASM approach)
             try {
-                // Create an ImageBitmap to read the file
-                const bitmap = await createImageBitmap(file);
+                // Dynamically import the WASM WebP encoder to catch network/CORS blocks gracefully
+                const webpModule = await import('https://unpkg.com/@jsquash/webp/index.js?module');
+                const encode = webpModule.encode;
                 
-                // Draw to an off-screen canvas to extract raw ImageData
-                const canvas = document.createElement('canvas');
-                canvas.width = bitmap.width;
-                canvas.height = bitmap.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(bitmap, 0, 0);
-                
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                
-                // Encode using Squoosh/jSquash WASM WebP Encoder
-                const webpBuffer = await encode(imageData, { quality: 80 });
-                
-                // Convert the resulting array buffer back to a File object
-                const webpBlob = new Blob([webpBuffer], { type: 'image/webp' });
-                
-                const webpFileName = file.name.replace(/\.[^.]+$/, '') + '.webp';
-                return new File([webpBlob], webpFileName, { type: 'image/webp' });
+                if (typeof encode === 'function') {
+                    const bitmap = await createImageBitmap(file);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = bitmap.width;
+                    canvas.height = bitmap.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(bitmap, 0, 0);
+                    
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const webpBuffer = await encode(imageData, { quality: 80 });
+                    
+                    const webpBlob = new Blob([webpBuffer], { type: 'image/webp' });
+                    const webpFileName = file.name.replace(/\.[^.]+$/, '') + '.webp';
+                    return new File([webpBlob], webpFileName, { type: 'image/webp' });
+                }
             } catch (err) {
-                console.error('WASM WebP conversion failed, falling back to original file:', err);
+                console.warn('WASM WebP conversion failed or blocked by network, using native Canvas fallback:', err);
+            }
+
+            // 2. Fall back to native browser Canvas WebP converter (Robust, CORS-free fallback)
+            try {
+                return await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const img = new Image();
+                        img.onload = function () {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            
+                            canvas.toBlob((blob) => {
+                                if (blob) {
+                                    const webpFileName = file.name.replace(/\.[^.]+$/, '') + '.webp';
+                                    resolve(new File([blob], webpFileName, { type: 'image/webp' }));
+                                } else {
+                                    reject(new Error('Canvas WebP blob creation failed'));
+                                }
+                            }, 'image/webp', 0.8);
+                        };
+                        img.onerror = () => reject(new Error('Image loading failed'));
+                        img.src = e.target.result;
+                    };
+                    reader.onerror = () => reject(new Error('FileReader failed'));
+                    reader.readAsDataURL(file);
+                });
+            } catch (fallbackErr) {
+                console.error('All WebP conversion attempts failed, using original file:', fallbackErr);
                 return file;
             }
         }
