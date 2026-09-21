@@ -285,7 +285,13 @@
                 @endif
                 <div>
                     <span class="text-muted small d-block">Deadline SLA</span>
-                    <span class="fw-semibold text-dark">{{ $ticket->deadline_date ? $ticket->deadline_date->format('M d, Y H:i') : 'No SLA Threshold Set' }}</span>
+                    @if($ticket->deadline_date)
+                        <span class="fw-semibold text-dark">{{ $ticket->deadline_date->format('M d, Y H:i') }}</span>
+                    @elseif($ticket->calculated_deadline)
+                        <span class="fw-semibold text-muted" style="font-size: 0.95rem;"><i>{{ $ticket->calculated_deadline->format('M d, Y H:i') }} (Calculated)</i></span>
+                    @else
+                        <span class="fw-semibold text-dark">No SLA Threshold Set</span>
+                    @endif
                 </div>
             </div>
         </div>

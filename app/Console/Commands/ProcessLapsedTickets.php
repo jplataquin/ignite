@@ -49,11 +49,7 @@ class ProcessLapsedTickets extends Command
                                   return; // Ticket might have been deleted
                               }
 
-                              $cutoff = $lockedTicket->deadline_date 
-                                          ? $lockedTicket->deadline_date 
-                                          : ($lockedTicket->ticketType && $lockedTicket->ticketType->threshold_days 
-                                                ? $lockedTicket->created_at->copy()->addDays($lockedTicket->ticketType->threshold_days) 
-                                                : null);
+                              $cutoff = $lockedTicket->calculated_deadline;
                                                 
                               if ($cutoff && $now->greaterThanOrEqualTo($cutoff)) {
                                   // It lapsed!

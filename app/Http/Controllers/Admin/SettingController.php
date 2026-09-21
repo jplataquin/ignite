@@ -22,9 +22,6 @@ class SettingController extends Controller
             'sla_days_low' => '5',
             'sla_days_high' => '3',
             'sla_days_critical' => '1',
-            'sla_days_assign_low' => '2',
-            'sla_days_assign_high' => '1',
-            'sla_days_assign_critical' => '0',
         ];
 
         foreach ($defaults as $key => $val) {
@@ -45,9 +42,6 @@ class SettingController extends Controller
             'sla_days_low' => 'required|integer|min:0',
             'sla_days_high' => 'required|integer|min:0',
             'sla_days_critical' => 'required|integer|min:0',
-            'sla_days_assign_low' => 'required|integer|min:0',
-            'sla_days_assign_high' => 'required|integer|min:0',
-            'sla_days_assign_critical' => 'required|integer|min:0',
         ]);
 
         foreach ($validated as $key => $value) {
@@ -55,6 +49,6 @@ class SettingController extends Controller
         }
 
         return redirect()->route('admin.settings.index')
-            ->with('success', 'System SLA and Assignment configurations updated successfully.');
+            ->with('success', 'System SLA configurations updated successfully.');
     }
 }

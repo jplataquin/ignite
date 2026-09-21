@@ -2085,4 +2085,87 @@ class TicketManagementTest extends TestCase
         $response->assertDontSee('<th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Division</th>', false);
         $response->assertDontSee('<th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Department</th>', false);
     }
+
+    /**
+     * Test that calculated SLA deadline uses setting days based on ticket priority.
+     */
+    public function test_ticket_calculated_deadline_uses_priority_sla_days_from_settings(): void
+    {
+        $user = User::factory()->create();
+
+        // Ensure settings are seeded/configured
+        \App\Models\Setting::updateOrCreate(['key' => 'sla_days_critical'], ['value' => '1']);
+        \App\Models\Setting::updateOrCreate(['key' => 'sla_days_high'], ['value' => '3']);
+        \App\Models\Setting::updateOrCreate(['key' => 'sla_days_low'], ['value' => '5']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityCritical = Priority::create(['name' => 'Critical', 'level' => 3]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-SLA-TEST',
+            'title' => 'Critical SLA Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityCritical->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'deadline_date' => null, // Explicitly null to test computed attribute
+        ]);
+
+        // Explicitly override created_at to control math
+        $ticket->created_at = \Carbon\Carbon::parse('2026-09-21 12:00:00');
+        $ticket->save();
+
+        $expectedDeadline = \Carbon\Carbon::parse('2026-09-22 12:00:00');
+        
+        $this->assertEquals($expectedDeadline->format('Y-m-d H:i:s'), $ticket->calculated_deadline->format('Y-m-d H:i:s'));
+    }
+
+    /**
+     * Test that process-lapsed command runs correctly using calculated fallback deadline.
+     */
+    public function test_process_lapsed_tickets_uses_calculated_deadline_fallback(): void
+    {
+        $user = User::factory()->create();
+
+        \App\Models\Setting::updateOrCreate(['key' => 'sla_days_critical'], ['value' => '1']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityCritical = Priority::create(['name' => 'Critical', 'level' => 3]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-SLA-LAPSED',
+            'title' => 'Critical SLA Lapsed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityCritical->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'deadline_date' => null, // null to test fallback
+        ]);
+
+        // Put created_at 2 days ago (cutoff is 1 day ago)
+        $ticket->created_at = now()->subDays(2);
+        $ticket->save();
+
+        $this->artisan('tickets:process-lapsed');
+
+        $this->assertEquals('Lapsed', $ticket->fresh()->status);
+    }
 }

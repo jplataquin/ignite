@@ -60,9 +60,6 @@ class SystemSettingsManagementTest extends TestCase
         Setting::create(['key' => 'sla_days_low', 'value' => '5']);
         Setting::create(['key' => 'sla_days_high', 'value' => '3']);
         Setting::create(['key' => 'sla_days_critical', 'value' => '1']);
-        Setting::create(['key' => 'sla_days_assign_low', 'value' => '2']);
-        Setting::create(['key' => 'sla_days_assign_high', 'value' => '1']);
-        Setting::create(['key' => 'sla_days_assign_critical', 'value' => '0']);
 
         $response = $this->actingAs($admin)->get('/admin/settings');
 
@@ -84,9 +81,6 @@ class SystemSettingsManagementTest extends TestCase
             'sla_days_low' => '15',
             'sla_days_high' => '10',
             'sla_days_critical' => '5',
-            'sla_days_assign_low' => '6',
-            'sla_days_assign_high' => '4',
-            'sla_days_assign_critical' => '2',
         ]);
 
         $response->assertRedirect('/admin/settings');
@@ -95,9 +89,6 @@ class SystemSettingsManagementTest extends TestCase
         $this->assertDatabaseHas('settings', ['key' => 'sla_days_low', 'value' => '15']);
         $this->assertDatabaseHas('settings', ['key' => 'sla_days_high', 'value' => '10']);
         $this->assertDatabaseHas('settings', ['key' => 'sla_days_critical', 'value' => '5']);
-        $this->assertDatabaseHas('settings', ['key' => 'sla_days_assign_low', 'value' => '6']);
-        $this->assertDatabaseHas('settings', ['key' => 'sla_days_assign_high', 'value' => '4']);
-        $this->assertDatabaseHas('settings', ['key' => 'sla_days_assign_critical', 'value' => '2']);
     }
 
     /**
@@ -118,9 +109,6 @@ class SystemSettingsManagementTest extends TestCase
             'sla_days_low' => -5,
             'sla_days_high' => 'not-an-integer',
             'sla_days_critical' => 1,
-            'sla_days_assign_low' => 2,
-            'sla_days_assign_high' => 1,
-            'sla_days_assign_critical' => 0,
         ]);
         $response->assertSessionHasErrors(['sla_days_low', 'sla_days_high']);
     }

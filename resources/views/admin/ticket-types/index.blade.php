@@ -45,7 +45,7 @@
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small">Name</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small" style="width: 100px;">Code</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Description</th>
-                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small" style="width: 250px;">SLA Thresholds (Days)</th>
+                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small" style="width: 250px;">SLA Resolution (Days)</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small text-center">Active Tickets</th>
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small text-end" style="width: 150px;">Actions</th>
                 </tr>
@@ -63,24 +63,11 @@
                             {{ $type->description ?: 'No description provided.' }}
                         </td>
                         <td class="py-3">
-                            <div class="d-flex flex-column gap-1.5">
-                                <div class="d-flex align-items-center gap-1.5">
-                                    <span class="text-muted small fw-semibold" style="width: 75px;">Resolution:</span>
-                                    @if($type->threshold_days)
-                                        <span class="badge bg-secondary rounded-pill px-2 py-1 fw-semibold">{{ $type->threshold_days }} Days</span>
-                                    @else
-                                        <span class="text-muted small">None</span>
-                                    @endif
-                                </div>
-                                <div class="d-flex align-items-center gap-1.5">
-                                    <span class="text-muted small fw-semibold" style="width: 75px;">Assignment:</span>
-                                    @if($type->assignment_threshold_days)
-                                        <span class="badge bg-info rounded-pill px-2 py-1 fw-semibold text-white">{{ $type->assignment_threshold_days }} Days</span>
-                                    @else
-                                        <span class="text-muted small">None</span>
-                                    @endif
-                                </div>
-                            </div>
+                            @if($type->threshold_days)
+                                <span class="badge bg-secondary rounded-pill px-2 py-1 fw-semibold">{{ $type->threshold_days }} Days</span>
+                            @else
+                                <span class="text-muted small">None</span>
+                            @endif
                         </td>
                         <td class="py-3 text-center fw-bold text-muted">
                             {{ $type->tickets_count }}

@@ -35,7 +35,6 @@ class TicketTypeController extends Controller
             'code' => 'required|string|size:3|regex:/^[A-Za-z]{3}$/',
             'description' => 'nullable|string',
             'threshold_days' => 'nullable|integer|min:1',
-            'assignment_threshold_days' => 'nullable|integer|min:1',
         ]);
 
         $validated['code'] = strtoupper($validated['code']);
@@ -64,7 +63,6 @@ class TicketTypeController extends Controller
             'code' => 'required|string|size:3|regex:/^[A-Za-z]{3}$/',
             'description' => 'nullable|string',
             'threshold_days' => 'nullable|integer|min:1',
-            'assignment_threshold_days' => 'nullable|integer|min:1',
         ]);
 
         $validated['code'] = strtoupper($validated['code']);

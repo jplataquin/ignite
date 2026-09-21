@@ -83,7 +83,6 @@ class TicketTypeManagementTest extends TestCase
             'code' => 'URG',
             'description' => 'For extreme requests',
             'threshold_days' => 2,
-            'assignment_threshold_days' => 3,
         ]);
 
         $response->assertRedirect('/admin/ticket-types');
@@ -92,7 +91,6 @@ class TicketTypeManagementTest extends TestCase
             'code' => 'URG',
             'description' => 'For extreme requests',
             'threshold_days' => 2,
-            'assignment_threshold_days' => 3,
         ]);
     }
 
@@ -123,7 +121,6 @@ class TicketTypeManagementTest extends TestCase
             'code' => 'NEW',
             'description' => 'Updated Description',
             'threshold_days' => 5,
-            'assignment_threshold_days' => 4,
         ]);
 
         $response->assertRedirect('/admin/ticket-types');
@@ -133,7 +130,6 @@ class TicketTypeManagementTest extends TestCase
             'code' => 'NEW',
             'description' => 'Updated Description',
             'threshold_days' => 5,
-            'assignment_threshold_days' => 4,
         ]);
     }
 

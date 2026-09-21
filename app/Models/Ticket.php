@@ -121,4 +121,32 @@ class Ticket extends Model
 
         return $value;
     }
+
+    /**
+     * Get the calculated deadline based on date created and priority SLA days.
+     */
+    public function getCalculatedDeadlineAttribute()
+    {
+        if ($this->deadline_date) {
+            return $this->deadline_date;
+        }
+
+        if (!$this->created_at || !$this->priorityOption) {
+            return null;
+        }
+
+        $priorityName = strtolower($this->priorityOption->name);
+        if (!in_array($priorityName, ['low', 'high', 'critical'])) {
+            return null;
+        }
+
+        $settingKey = "sla_days_{$priorityName}";
+        $days = \App\Models\Setting::where('key', $settingKey)->value('value');
+
+        if (is_numeric($days)) {
+            return $this->created_at->copy()->addDays((int) $days);
+        }
+
+        return null;
+    }
 }

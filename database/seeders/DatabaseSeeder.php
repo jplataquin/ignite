@@ -41,9 +41,6 @@ class DatabaseSeeder extends Seeder
             'sla_days_low' => '5',
             'sla_days_high' => '3',
             'sla_days_critical' => '1',
-            'sla_days_assign_low' => '2',
-            'sla_days_assign_high' => '1',
-            'sla_days_assign_critical' => '0',
         ];
         foreach ($settings as $key => $value) {
             Setting::updateOrCreate(['key' => $key], ['value' => $value]);
