@@ -154,9 +154,9 @@
                     }
                 @endphp
 
-                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3 mb-4">
+                <div class="row mb-4">
                     <!-- Division -->
-                    <div>
+                    <div class="col-4">
                         <label for="division_id" class="form-label fw-semibold text-dark small">Division</label>
                         <select id="division_id" class="form-select @error('division_id') is-invalid @enderror" name="division_id" required>
                             <option value="">Select Division</option>
@@ -172,7 +172,7 @@
                     </div>
 
                     <!-- Department -->
-                    <div>
+                    <div class="col-4">
                         <label for="department_id" class="form-label fw-semibold text-dark small">Department (Optional)</label>
                         <select id="department_id" class="form-select @error('department_id') is-invalid @enderror" name="department_id">
                             <option value="">Select Department</option>
@@ -188,7 +188,7 @@
                     </div>
 
                     <!-- Location - Autocomplete -->
-                    <div class="position-relative">
+                    <div class="col-4">
                         <label for="location_search" class="form-label fw-semibold text-dark small">Location</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light text-muted small py-1 px-2.5" style="border-right: 0;">
@@ -211,7 +211,7 @@
                  
                 </div>
 
-                <div class="row">
+                <div class="row mb-4">
                        <!-- Intended User (Optional) - Autocomplete -->
                     <div class="col-12">
                         <label for="user_search" class="form-label fw-semibold text-dark small">Intended User (Optional)</label>
