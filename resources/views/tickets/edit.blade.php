@@ -342,6 +342,8 @@
 </div>
 
 <script type="module">
+    import { encode } from 'https://esm.sh/@jsquash/webp@1.3.1';
+
     document.addEventListener('DOMContentLoaded', function () {
         const ticketTypeSelect = document.getElementById('ticket_type_id');
         const category1Select = document.getElementById('category_1_id');
@@ -461,8 +463,6 @@
         };
 
         // --- CHUNKED MULTI-FILE UPLOADER LOGIC ---
-        import { encode } from 'https://esm.sh/@jsquash/webp@1.3.1';
-
         async function convertToWebP(file) {
             if (file.type === 'image/webp' || file.name.endsWith('.webp')) {
                 return file;

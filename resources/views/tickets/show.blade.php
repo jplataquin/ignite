@@ -658,6 +658,8 @@
 
 @push('scripts')
 <script type="module">
+    import { encode } from 'https://esm.sh/@jsquash/webp@1.3.1';
+
     document.addEventListener('DOMContentLoaded', function () {
         const dropZone = document.getElementById('comment-drop-zone');
         const fileInput = document.getElementById('comment-file-input');
@@ -666,8 +668,6 @@
         const submitBtn = document.getElementById('comment-submit-btn');
 
         // --- CHUNKED MULTI-FILE UPLOADER LOGIC ---
-        import { encode } from 'https://esm.sh/@jsquash/webp@1.3.1';
-
         async function convertToWebP(file) {
             if (file.type === 'image/webp' || file.name.endsWith('.webp')) {
                 return file;
