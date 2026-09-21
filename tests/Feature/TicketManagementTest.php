@@ -2168,4 +2168,109 @@ class TicketManagementTest extends TestCase
 
         $this->assertEquals('Lapsed', $ticket->fresh()->status);
     }
+
+    /**
+     * Test that administrators can see and search/filter by Intended User on the index.
+     */
+    public function test_admin_can_see_and_filter_by_intended_user_on_index(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $user1 = User::factory()->create(['name' => 'John Doe']);
+        $user2 = User::factory()->create(['name' => 'Alice Smith']);
+
+        $division = Division::create(['name' => 'IT Department']);
+        $department = Department::create(['name' => 'Assistance', 'division_id' => $division->id]);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Ticket 1: Intended for John Doe
+        Ticket::create([
+            'ticket_number' => 'FLR-INT-001',
+            'title' => 'Johns Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'to_user_id' => $user1->id,
+        ]);
+
+        // Ticket 2: Intended for Alice Smith
+        Ticket::create([
+            'ticket_number' => 'FLR-INT-002',
+            'title' => 'Alices Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'to_user_id' => $user2->id,
+        ]);
+
+        // Visit tickets index as admin
+        $response = $this->actingAs($admin)->get('/tickets');
+        $response->assertStatus(200);
+
+        // Assert that Intended User column header and names are visible
+        $response->assertSee('Intended User');
+        $response->assertSee('John Doe');
+        $response->assertSee('Alice Smith');
+
+        // Filter search by "Smith"
+        $responseFiltered = $this->actingAs($admin)->get('/tickets?to_user_search=Smith');
+        $responseFiltered->assertStatus(200);
+        $responseFiltered->assertSee('Alices Ticket');
+        $responseFiltered->assertDontSee('Johns Ticket');
+    }
+
+    /**
+     * Test that regular users cannot see the Intended User column or search filter.
+     */
+    public function test_regular_user_cannot_see_intended_user_filters_on_index(): void
+    {
+        $regularUser = User::factory()->create(['user_type' => 'regular']);
+        $intendedUser = User::factory()->create(['name' => 'Secret Intended User']);
+
+        $division = Division::create(['name' => 'IT Department']);
+        $department = Department::create(['name' => 'Assistance', 'division_id' => $division->id]);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        Ticket::create([
+            'ticket_number' => 'FLR-INT-003',
+            'title' => 'Regular Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $regularUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'to_user_id' => $intendedUser->id,
+        ]);
+
+        // Visit tickets index as regular user
+        $response = $this->actingAs($regularUser)->get('/tickets');
+        $response->assertStatus(200);
+
+        // Assert that Intended User column and text are NOT visible
+        $response->assertDontSee('Secret Intended User');
+        $response->assertDontSee('<th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Intended User</th>', false);
+    }
 }

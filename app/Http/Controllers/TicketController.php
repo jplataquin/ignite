@@ -27,7 +27,7 @@ class TicketController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $query = Ticket::with(['ticketType', 'priorityOption', 'stage', 'creator', 'assignee']);
+        $query = Ticket::with(['ticketType', 'priorityOption', 'stage', 'creator', 'assignee', 'toUser']);
 
         if ($request->filled('priority_id')) {
             $query->where('priority_option_id', $request->input('priority_id'));
@@ -52,6 +52,12 @@ class TicketController extends Controller
             }
             if ($request->filled('department_id')) {
                 $query->where('department_id', $request->input('department_id'));
+            }
+            if ($request->filled('to_user_search')) {
+                $search = $request->input('to_user_search');
+                $query->whereHas('toUser', function ($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%');
+                });
             }
         }
 
