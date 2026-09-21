@@ -208,8 +208,12 @@
                         </ul>
                     </div>
 
-                    <!-- Intended User (Optional) - Autocomplete -->
-                    <div class="position-relative">
+                 
+                </div>
+
+                <div class="row">
+                       <!-- Intended User (Optional) - Autocomplete -->
+                    <div class="col-12">
                         <label for="user_search" class="form-label fw-semibold text-dark small">Intended User (Optional)</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light text-muted small py-1 px-2.5" style="border-right: 0;">
@@ -229,7 +233,6 @@
                         </ul>
                     </div>
                 </div>
-
                 <!-- Submit and Cancel Actions -->
                 <div class="d-flex justify-content-end gap-2">
                     <a href="{{ route('tickets.index') }}" class="btn btn-outline-secondary">Cancel</a>
