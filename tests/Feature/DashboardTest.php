@@ -174,4 +174,53 @@ class DashboardTest extends TestCase
         $response->assertSee('Unassigned Queue');
         $response->assertSee('<h2 class="mt-3 mb-0 fw-bold">1</h2>', false); // Unassigned Queue Count
     }
+
+    /**
+     * Test that the dashboard Open Tickets card links to the filtered ticket list.
+     */
+    public function test_dashboard_open_ticket_card_links_to_tickets_index_filtered_by_open_stage(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+
+        $response = $this->actingAs($admin)->get('/');
+        $response->assertStatus(200);
+
+        // Check that the response contains the link with correct stage_id parameter
+        $expectedUrl = route('tickets.index', ['stage_id' => $stageOpen->id]);
+        $response->assertSee(htmlentities($expectedUrl), false);
+    }
+
+    /**
+     * Test that the header displays System Admin for an admin user.
+     */
+    public function test_header_displays_system_admin_for_admin_user(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        $response = $this->actingAs($admin)->get('/');
+        $response->assertStatus(200);
+
+        $response->assertSee('System Admin');
+    }
+
+    /**
+     * Test that the header displays Division and Department for a regular user.
+     */
+    public function test_header_displays_division_and_department_for_regular_user(): void
+    {
+        $division = Division::create(['name' => 'HR Division']);
+        $department = Department::create(['name' => 'Recruitment Dept', 'division_id' => $division->id]);
+
+        $regularUser = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+        ]);
+
+        $response = $this->actingAs($regularUser)->get('/');
+        $response->assertStatus(200);
+
+        $response->assertSee('HR Division &gt; Recruitment Dept', false);
+    }
 }

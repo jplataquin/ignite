@@ -39,9 +39,20 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             
-            <a class="navbar-brand text-white fw-bold" href="#">
-                <span class="text-danger">Ignite</span>
-            </a>
+            <div class="d-flex align-items-center">
+                <a class="navbar-brand text-white fw-bold me-3" href="#">
+                    <span class="text-danger">Ignite</span>
+                </a>
+                @auth
+                    @if(Auth::user()->user_type === 'admin')
+                        <span class="navbar-text text-white fw-semibold small px-2.5 py-1 rounded" style="font-size: 0.8rem; background-color: rgba(220, 53, 69, 0.2); color: #ff8585 !important; border: 1px solid rgba(220, 53, 69, 0.4);">System Admin</span>
+                    @else
+                        <span class="navbar-text text-white-50 fw-semibold small px-2.5 py-1 rounded" style="font-size: 0.8rem; border: 1px solid rgba(255, 255, 255, 0.25); color: rgba(255, 255, 255, 0.75) !important;">
+                            {{ Auth::user()->division?->name ?? 'No Division' }} &gt; {{ Auth::user()->department?->name ?? 'No Department' }}
+                        </span>
+                    @endif
+                @endauth
+            </div>
 
             <!-- Notification Bell Hub -->
             <div class="dropdown d-flex align-items-center ms-auto">
