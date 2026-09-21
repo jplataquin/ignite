@@ -323,8 +323,8 @@ class TicketController extends Controller
             'assigned_to' => [
                 'nullable',
                 'exists:users,id',
-                function ($attribute, $value, $fail) use ($ticket) {
-                    if ($value == $ticket->created_by) {
+                function ($attribute, $value, $fail) use ($ticket, $user) {
+                    if ($user->user_type !== 'admin' && $value == $ticket->created_by) {
                         $fail('The ticket cannot be assigned to its creator.');
                     }
                 }

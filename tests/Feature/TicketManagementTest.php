@@ -627,9 +627,48 @@ class TicketManagementTest extends TestCase
     }
 
     /**
-     * Test that admins cannot assign a ticket to its creator.
+     * Test that an admin who is the creator of a ticket cannot accept it via the accept action.
      */
-    public function test_admin_cannot_assign_ticket_to_creator(): void
+    public function test_admin_creator_cannot_accept_own_ticket(): void
+    {
+        $adminCreator = User::factory()->create(['user_type' => 'admin']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-2026-9998',
+            'title' => 'Admin Creator Own Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'created_by' => $adminCreator->id,
+            'category_1_id' => $category->id,
+            'to_user_id' => null,
+        ]);
+
+        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+
+        $response = $this->actingAs($adminCreator)->post(route('tickets.accept', $ticket));
+        $response->assertRedirect();
+        $response->assertSessionHas('error', 'You cannot accept your own ticket.');
+        $ticket->refresh();
+        $this->assertNull($ticket->assigned_to);
+    }
+
+    /**
+     * Test that admins can assign a ticket to its creator.
+     */
+    public function test_admin_can_assign_ticket_to_creator(): void
     {
         $admin = User::factory()->create(['user_type' => 'admin']);
         $creator = User::factory()->create();
@@ -668,9 +707,9 @@ class TicketManagementTest extends TestCase
             'assigned_to' => $creator->id,
         ]);
 
-        $response->assertSessionHasErrors(['assigned_to']);
+        $response->assertRedirect(route('tickets.show', $ticket));
         $ticket->refresh();
-        $this->assertNull($ticket->assigned_to);
+        $this->assertEquals($creator->id, $ticket->assigned_to);
     }
 
     /**
@@ -1887,5 +1926,53 @@ class TicketManagementTest extends TestCase
 
         $this->assertNotNull($ticket);
         $this->assertStringStartsWith('AUD-', $ticket->ticket_number);
+    }
+
+    /**
+     * Test that ticket numbers dynamically update when the ticket type's code is edited.
+     */
+    public function test_ticket_numbers_dynamically_update_when_ticket_type_code_is_edited(): void
+    {
+        $user = User::factory()->create();
+
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Support Request', 'code' => 'SUP']);
+
+        $division = Division::create(['name' => 'IT']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'SUP-2026-0001',
+            'title' => 'My Test Ticket',
+            'description' => 'A description',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stage->id,
+            'division_id' => $division->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'created_by' => $user->id,
+            'status' => 'Valid',
+        ]);
+
+        // Access model property directly - should be SUP-2026-0001
+        $this->assertEquals('SUP-2026-0001', $ticket->ticket_number);
+
+        // Edit the ticket type's code to 'AUD'
+        $type->code = 'AUD';
+        $type->save();
+
+        // Clear relation cache to ensure relationship is reloaded
+        $ticket->unsetRelation('ticketType');
+
+        // Access model property directly - should now be AUD-2026-0001
+        $this->assertEquals('AUD-2026-0001', $ticket->ticket_number);
+
+        // Access via index request
+        $response = $this->actingAs($user)->get('/tickets');
+        $response->assertStatus(200);
+        $response->assertSee('AUD-2026-0001');
+        $response->assertDontSee('SUP-2026-0001');
     }
 }
