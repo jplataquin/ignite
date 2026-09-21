@@ -658,7 +658,7 @@
 
 @push('scripts')
 <script type="module">
-    import { encode } from 'https://esm.sh/@jsquash/webp@1.3.1';
+    import { encode } from 'https://unpkg.com/@jsquash/webp@1.3.1/dist/index.js';
 
     document.addEventListener('DOMContentLoaded', function () {
         const dropZone = document.getElementById('comment-drop-zone');
