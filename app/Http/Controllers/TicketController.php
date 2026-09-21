@@ -149,8 +149,8 @@ class TicketController extends Controller
                 return redirect()->back()->with('error', 'Invalid attachments data.')->withInput();
             }
 
-            // Validate Extensions (photos, pdf, excel, documents)
-            $allowedExtensions = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+            // Validate Extensions (WebP, PDF, Excel, and Word documents)
+            $allowedExtensions = ['webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx'];
             foreach ($attachments as $attachment) {
                 if (empty($attachment['temp_token']) || empty($attachment['total_chunks']) || empty($attachment['file_name'])) {
                     return redirect()->back()->with('error', 'Incomplete attachment details.')->withInput();
@@ -158,7 +158,7 @@ class TicketController extends Controller
 
                 $extension = strtolower(pathinfo($attachment['file_name'], PATHINFO_EXTENSION));
                 if (!in_array($extension, $allowedExtensions)) {
-                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are photos, pdf, excel, and documents.") ->withInput();
+                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are WebP, PDF, Excel, and Word documents.") ->withInput();
                 }
             }
         }
@@ -362,8 +362,8 @@ class TicketController extends Controller
                 return redirect()->back()->with('error', 'Invalid attachments data.')->withInput();
             }
 
-            // Validate Extensions (photos, pdf, excel, documents)
-            $allowedExtensions = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+            // Validate Extensions (WebP, PDF, Excel, and Word documents)
+            $allowedExtensions = ['webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx'];
             foreach ($attachments as $attachment) {
                 if (empty($attachment['temp_token']) || empty($attachment['total_chunks']) || empty($attachment['file_name'])) {
                     return redirect()->back()->with('error', 'Incomplete attachment details.')->withInput();
@@ -371,7 +371,7 @@ class TicketController extends Controller
 
                 $extension = strtolower(pathinfo($attachment['file_name'], PATHINFO_EXTENSION));
                 if (!in_array($extension, $allowedExtensions)) {
-                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are photos, pdf, excel, and documents.") ->withInput();
+                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are WebP, PDF, Excel, and Word documents.") ->withInput();
                 }
             }
         }
@@ -641,8 +641,8 @@ class TicketController extends Controller
                 return redirect()->back()->with('error', 'Invalid attachments data.')->withInput();
             }
 
-            // Validate Extensions (photos, pdf, excel, documents)
-            $allowedExtensions = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+            // Validate Extensions (WebP, PDF, Excel, and Word documents)
+            $allowedExtensions = ['webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx'];
             foreach ($attachments as $attachment) {
                 if (empty($attachment['temp_token']) || empty($attachment['total_chunks']) || empty($attachment['file_name'])) {
                     return redirect()->back()->with('error', 'Incomplete attachment details.')->withInput();
@@ -650,7 +650,7 @@ class TicketController extends Controller
 
                 $extension = strtolower(pathinfo($attachment['file_name'], PATHINFO_EXTENSION));
                 if (!in_array($extension, $allowedExtensions)) {
-                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are photos, pdf, excel, and documents.")->withInput();
+                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are WebP, PDF, Excel, and Word documents.")->withInput();
                 }
             }
         }

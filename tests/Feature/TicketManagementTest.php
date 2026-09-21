@@ -307,8 +307,8 @@ class TicketManagementTest extends TestCase
             [
                 'temp_token' => $token2,
                 'total_chunks' => 1,
-                'file_name' => 'photo.jpg',
-                'mime_type' => 'image/jpeg',
+                'file_name' => 'photo.webp',
+                'mime_type' => 'image/webp',
                 'note' => 'Second attachment note'
             ]
         ]);
@@ -339,15 +339,15 @@ class TicketManagementTest extends TestCase
         ]);
         $this->assertDatabaseHas('attachments', [
             'ticket_id' => $ticket->id,
-            'file_name' => 'photo.jpg',
+            'file_name' => 'photo.webp',
             'note' => 'Second attachment note'
         ]);
     }
 
     /**
-     * Test that users can successfully create a ticket with a .jfif image attachment.
+     * Test that users can successfully create a ticket with a .webp image attachment.
      */
-    public function test_users_can_create_ticket_with_jfif_attachment(): void
+    public function test_users_can_create_ticket_with_webp_attachment(): void
     {
         $user = User::factory()->create();
         $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
@@ -364,24 +364,24 @@ class TicketManagementTest extends TestCase
         $location = \App\Models\Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
-        // Stage mock jfif chunk in storage
+        // Stage mock webp chunk in storage
         \Illuminate\Support\Facades\Storage::fake('local');
-        $token = 'token_jfif_abc';
-        \Illuminate\Support\Facades\Storage::put("staging/{$token}/1.part", "jfif_part");
+        $token = 'token_webp_abc';
+        \Illuminate\Support\Facades\Storage::put("staging/{$token}/1.part", "webp_part");
 
         $attachmentsJson = json_encode([
             [
                 'temp_token' => $token,
                 'total_chunks' => 1,
-                'file_name' => 'image_upload.jfif',
-                'mime_type' => 'image/jfif',
-                'note' => 'JFIF Note'
+                'file_name' => 'image_upload.webp',
+                'mime_type' => 'image/webp',
+                'note' => 'WEBP Note'
             ]
         ]);
 
         $response = $this->actingAs($user)->post('/tickets', [
-            'title' => 'Ticket with JFIF file',
-            'description' => 'JFIF image test.',
+            'title' => 'Ticket with WEBP file',
+            'description' => 'WEBP image test.',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityOption->id,
             'stage_id' => $stage->id,
@@ -392,16 +392,16 @@ class TicketManagementTest extends TestCase
             'attachments_json' => $attachmentsJson
         ]);
 
-        $ticket = Ticket::where('title', 'Ticket with JFIF file')->first();
+        $ticket = Ticket::where('title', 'Ticket with WEBP file')->first();
         $this->assertNotNull($ticket);
 
         $response->assertRedirect(route('tickets.show', $ticket));
 
-        // Assert jfif attachment was created successfully
+        // Assert webp attachment was created successfully
         $this->assertDatabaseHas('attachments', [
             'ticket_id' => $ticket->id,
-            'file_name' => 'image_upload.jfif',
-            'note' => 'JFIF Note'
+            'file_name' => 'image_upload.webp',
+            'note' => 'WEBP Note'
         ]);
     }
 

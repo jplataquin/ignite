@@ -53,8 +53,8 @@
                             <path fill-rule="evenodd" d="M7.646 5.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708l2-2z"/>
                         </svg>
                         <p class="mb-1 fw-semibold text-dark small">Drag & drop files here, or click to browse</p>
-                        <p class="text-muted mb-0" style="font-size: 0.75rem;">Allowed formats: .jpg, .jfif, .png, .gif, .pdf, .xls, .xlsx, .doc, .docx, .txt, .csv</p>
-                        <input type="file" id="file-input" class="d-none" multiple accept=".jpg,.jpeg,.jfif,.png,.gif,.webp,.pdf,.xls,.xlsx,.csv,.doc,.docx,.odt,.txt,.rtf">
+                        <p class="text-muted mb-0" style="font-size: 0.75rem;">Allowed formats: .webp, .pdf, .doc, .docx, .xls, .xlsx, .csv (Images will be automatically converted to WebP on the client side)</p>
+                        <input type="file" id="file-input" class="d-none" multiple accept=".jpg,.jpeg,.jfif,.png,.gif,.webp,.pdf,.xls,.xlsx,.csv,.doc,.docx">
                     </div>
 
                     <!-- Dynamic List of Upload Progresses -->
@@ -240,7 +240,7 @@
     </div>
 </div>
 
-<script>
+<script type="module">
     document.addEventListener('DOMContentLoaded', function () {
         const ticketTypeSelect = document.getElementById('ticket_type_id');
         const category1Select = document.getElementById('category_1_id');
@@ -339,6 +339,40 @@
         }
 
         // --- CHUNKED MULTI-FILE UPLOADER LOGIC ---
+        import { encode } from 'https://esm.sh/@jsquash/webp@1.3.1';
+
+        async function convertToWebP(file) {
+            if (file.type === 'image/webp' || file.name.endsWith('.webp')) {
+                return file;
+            }
+
+            try {
+                // Create an ImageBitmap to read the file
+                const bitmap = await createImageBitmap(file);
+                
+                // Draw to an off-screen canvas to extract raw ImageData
+                const canvas = document.createElement('canvas');
+                canvas.width = bitmap.width;
+                canvas.height = bitmap.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(bitmap, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // Encode using Squoosh/jSquash WASM WebP Encoder
+                const webpBuffer = await encode(imageData, { quality: 80 });
+                
+                // Convert the resulting array buffer back to a File object
+                const webpBlob = new Blob([webpBuffer], { type: 'image/webp' });
+                
+                const webpFileName = file.name.replace(/\.[^.]+$/, '') + '.webp';
+                return new File([webpBlob], webpFileName, { type: 'image/webp' });
+            } catch (err) {
+                console.error('WASM WebP conversion failed, falling back to original file:', err);
+                return file;
+            }
+        }
+
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
         const progressList = document.getElementById('upload-progress-list');
@@ -346,7 +380,7 @@
         const submitBtn = document.querySelector('button[type="submit"]');
 
         const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks
-        const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+        const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx'];
 
         let completedAttachments = [];
         let activeUploadsCount = 0;
@@ -378,15 +412,22 @@
             }
         });
 
-        function handleFiles(files) {
-            Array.from(files).forEach(file => {
-                const extension = file.name.split('.').pop().toLowerCase();
+        async function handleFiles(files) {
+            for (const file of Array.from(files)) {
+                let extension = file.name.split('.').pop().toLowerCase();
                 if (!ALLOWED_EXTENSIONS.includes(extension)) {
-                    alert(`File "${file.name}" is not allowed. Allowed types are photos, pdf, excel, and documents.`);
+                    alert(`File "${file.name}" is not allowed. Allowed types are webp, pdf, excel, and documents.`);
                     return;
                 }
-                handleFile(file);
-            });
+
+                // If it's an image, convert to webp using WebAssembly!
+                let fileToUpload = file;
+                if (file.type.startsWith('image/') || ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp'].includes(extension)) {
+                    fileToUpload = await convertToWebP(file);
+                }
+
+                handleFile(fileToUpload);
+            }
         }
 
         function handleFile(file) {

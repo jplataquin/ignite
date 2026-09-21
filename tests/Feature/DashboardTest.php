@@ -26,6 +26,7 @@ class DashboardTest extends TestCase
 
         // Seed necessary lookup values
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#3']);
         $stageClosed = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#2']);
         
         $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
@@ -52,15 +53,15 @@ class DashboardTest extends TestCase
 
         Ticket::create([
             'ticket_number' => 'FLR-2026-0002',
-            'title' => 'Open Unassigned Low Ticket',
+            'title' => 'Open Assigned Low Ticket',
             'ticket_type_id' => $type->id,
             'priority_option_id' => $priorityLow->id,
-            'stage_id' => $stageOpen->id,
+            'stage_id' => $stageAssigned->id,
             'status' => 'Valid',
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $admin->id,
-            'assigned_to' => null,
+            'assigned_to' => $admin->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -102,9 +103,9 @@ class DashboardTest extends TestCase
         $response->assertStatus(200);
 
         // Global stats assert
-        // Open: 3, Unassigned: 2, Critical: 0, SLA Lapsed: 1
-        $response->assertSee('3'); // Open Tickets count
-        $response->assertSee('2'); // Unassigned count
+        // Open: 2, Assigned: 1, Critical: 0, SLA Lapsed: 1
+        $response->assertSee('2'); // Open Tickets count
+        $response->assertSee('1'); // Assigned count
         $response->assertSee('1'); // SLA Lapsed count
     }
 
@@ -128,6 +129,7 @@ class DashboardTest extends TestCase
 
         // 2. Setup Lookup dependencies
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
         $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
@@ -144,6 +146,20 @@ class DashboardTest extends TestCase
             'department_id' => $departmentA->id,
             'created_by' => $regularUser->id,
             'assigned_to' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0003',
+            'title' => 'Assigned Ticket in Div A Dept A',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageAssigned->id,
+            'status' => 'Valid',
+            'division_id' => $divisionA->id,
+            'department_id' => $departmentA->id,
+            'created_by' => $regularUser->id,
+            'assigned_to' => $regularUser->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -167,12 +183,28 @@ class DashboardTest extends TestCase
 
         $response->assertStatus(200);
 
-        // They should only see stats for Division A / Department A (1 open ticket, 1 unassigned)
+        // They should only see stats for Division A / Department A (2 open tickets, 1 assigned)
         // Check the actual open tickets counter content
         $response->assertSee('Open Tickets');
-        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold">1</h2>', false); // Open Tickets Count
-        $response->assertSee('Unassigned Queue');
-        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold">1</h2>', false); // Unassigned Queue Count
+        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">2</h2>', false); // Open Tickets Count
+        $response->assertSee('Assigned Tickets');
+        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">1</h2>', false); // Assigned Tickets Count
+    }
+
+    /**
+     * Test that the dashboard Assigned Tickets card links to the filtered ticket list.
+     */
+    public function test_dashboard_assigned_ticket_card_links_to_tickets_index_filtered_by_assigned_stage(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#1']);
+
+        $response = $this->actingAs($admin)->get('/');
+        $response->assertStatus(200);
+
+        // Check that the response contains the link with correct stage_id parameter
+        $expectedUrl = route('tickets.index', ['stage_id' => $stageAssigned->id]);
+        $response->assertSee(htmlentities($expectedUrl), false);
     }
 
     /**

@@ -25,10 +25,10 @@ class ChunkUploadController extends Controller
         $identifier = $request->input('resumableIdentifier');
         $chunkNumber = (int)$request->input('resumableChunkNumber');
 
-        // Validate File Extension/MIME Type (Allowed: photos, pdf, excel, documents)
+        // Validate File Extension/MIME Type (Allowed: WebP, PDF, Excel, and Word documents)
         $filename = $request->input('resumableFilename');
         $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        $allowedExtensions = ['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'odt', 'txt', 'rtf'];
+        $allowedExtensions = ['webp', 'pdf', 'xls', 'xlsx', 'csv', 'doc', 'docx'];
         if (!in_array($extension, $allowedExtensions)) {
             return response()->json(['error' => 'File type not allowed.'], 422);
         }
