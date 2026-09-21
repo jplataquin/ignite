@@ -155,6 +155,7 @@
                 @endphp
 
                 <div class="row mb-4">
+                    
                     <!-- Division -->
                     <div class="col-4">
                         <label for="division_id" class="form-label fw-semibold text-dark small">Division</label>
