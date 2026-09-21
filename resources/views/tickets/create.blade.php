@@ -248,6 +248,7 @@
     import { encode } from 'https://unpkg.com/@jsquash/webp@1.3.1/dist/index.js';
 
     document.addEventListener('DOMContentLoaded', function () {
+        
         const ticketTypeSelect = document.getElementById('ticket_type_id');
         const category1Select = document.getElementById('category_1_id');
         const category2Select = document.getElementById('category_2_id');
