@@ -1975,4 +1975,114 @@ class TicketManagementTest extends TestCase
         $response->assertSee('AUD-2026-0001');
         $response->assertDontSee('SUP-2026-0001');
     }
+
+    /**
+     * Test that administrators can see and filter by division and department on index.
+     */
+    public function test_admin_can_see_and_filter_by_division_and_department_on_index(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        
+        $divisionA = Division::create(['name' => 'Division Alpha']);
+        $departmentA = Department::create(['name' => 'Department Alpha', 'division_id' => $divisionA->id]);
+        
+        $divisionB = Division::create(['name' => 'Division Beta']);
+        $departmentB = Department::create(['name' => 'Department Beta', 'division_id' => $divisionB->id]);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Ticket A
+        Ticket::create([
+            'ticket_number' => 'FLR-1001',
+            'title' => 'Alpha Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $divisionA->id,
+            'department_id' => $departmentA->id,
+            'created_by' => $admin->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket B
+        Ticket::create([
+            'ticket_number' => 'FLR-1002',
+            'title' => 'Beta Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $divisionB->id,
+            'department_id' => $departmentB->id,
+            'created_by' => $admin->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Visit tickets index as admin
+        $response = $this->actingAs($admin)->get('/tickets');
+        $response->assertStatus(200);
+
+        // Assert that Division and Department headers are visible
+        $response->assertSee('Division');
+        $response->assertSee('Department');
+        $response->assertSee('Division Alpha');
+        $response->assertSee('Division Beta');
+        $response->assertSee('Department Alpha');
+        $response->assertSee('Department Beta');
+
+        // Filter by Division Beta
+        $responseFiltered = $this->actingAs($admin)->get('/tickets?division_id=' . $divisionB->id);
+        $responseFiltered->assertStatus(200);
+        $responseFiltered->assertSee('Beta Ticket');
+        $responseFiltered->assertDontSee('Alpha Ticket');
+    }
+
+    /**
+     * Test that regular users cannot see division and department columns or filters.
+     */
+    public function test_regular_user_cannot_see_division_and_department_filters_on_index(): void
+    {
+        $regularUser = User::factory()->create(['user_type' => 'regular']);
+        
+        $division = Division::create(['name' => 'Division Secret']);
+        $department = Department::create(['name' => 'Department Secret', 'division_id' => $division->id]);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        Ticket::create([
+            'ticket_number' => 'FLR-1003',
+            'title' => 'Regular View Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $regularUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Visit tickets index as regular user
+        $response = $this->actingAs($regularUser)->get('/tickets');
+        $response->assertStatus(200);
+
+        // Assert that Division and Department columns / filters are NOT visible
+        $response->assertDontSee('Division Secret');
+        $response->assertDontSee('Department Secret');
+        
+        // Also the actual column headers shouldn't be there as text headers
+        // Since we check the specific headers, we can assert we don't see them
+        $response->assertDontSee('<th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Division</th>', false);
+        $response->assertDontSee('<th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Department</th>', false);
+    }
 }

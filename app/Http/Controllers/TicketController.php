@@ -26,6 +26,7 @@ class TicketController extends Controller
      */
     public function index(Request $request)
     {
+        $user = Auth::user();
         $query = Ticket::with(['ticketType', 'priorityOption', 'stage', 'creator', 'assignee']);
 
         if ($request->filled('priority_id')) {
@@ -44,13 +45,31 @@ class TicketController extends Controller
             $query->whereDate('created_at', $request->input('date_created'));
         }
 
+        // Exclusive filters for admin
+        if ($user && $user->user_type === 'admin') {
+            if ($request->filled('division_id')) {
+                $query->where('division_id', $request->input('division_id'));
+            }
+            if ($request->filled('department_id')) {
+                $query->where('department_id', $request->input('department_id'));
+            }
+        }
+
         $tickets = $query->latest()->paginate(10)->withQueryString();
 
         $priorities = Priority::orderBy('level')->get();
         $stages = TicketStage::all();
         $statuses = ['Valid', 'Done', 'Lapsed'];
 
-        return view('tickets.index', compact('tickets', 'priorities', 'stages', 'statuses'));
+        $divisions = collect();
+        $departments = collect();
+
+        if ($user && $user->user_type === 'admin') {
+            $divisions = Division::orderBy('name')->get();
+            $departments = Department::orderBy('name')->get();
+        }
+
+        return view('tickets.index', compact('tickets', 'priorities', 'stages', 'statuses', 'divisions', 'departments'));
     }
 
     /**

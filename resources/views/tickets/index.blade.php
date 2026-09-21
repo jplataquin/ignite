@@ -29,7 +29,7 @@
 <div class="card fd-card mb-4">
     <div class="card-body p-3">
         <form method="GET" action="{{ route('tickets.index') }}" class="row g-2 align-items-end">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="priority_id" class="form-label small fw-bold text-muted text-uppercase mb-1">Priority</label>
                 <select name="priority_id" id="priority_id" class="form-select form-select-sm">
                     <option value="">All Priorities</option>
@@ -40,7 +40,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="stage_id" class="form-label small fw-bold text-muted text-uppercase mb-1">Stage</label>
                 <select name="stage_id" id="stage_id" class="form-select form-select-sm">
                     <option value="">All Stages</option>
@@ -62,13 +62,37 @@
                     @endforeach
                 </select>
             </div>
+            @if(Auth::user() && Auth::user()->user_type === 'admin')
+                <div class="col-md-2">
+                    <label for="division_id" class="form-label small fw-bold text-muted text-uppercase mb-1">Division</label>
+                    <select name="division_id" id="division_id" class="form-select form-select-sm">
+                        <option value="">All Divisions</option>
+                        @foreach($divisions as $division)
+                            <option value="{{ $division->id }}" {{ request('division_id') == $division->id ? 'selected' : '' }}>
+                                {{ $division->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="department_id" class="form-label small fw-bold text-muted text-uppercase mb-1">Department</label>
+                    <select name="department_id" id="department_id" class="form-select form-select-sm">
+                        <option value="">All Departments</option>
+                        @foreach($departments as $department)
+                            <option value="{{ $department->id }}" {{ request('department_id') == $department->id ? 'selected' : '' }}>
+                                {{ $department->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
             <div class="col-md-2">
                 <label for="date_created" class="form-label small fw-bold text-muted text-uppercase mb-1">Date Created</label>
                 <input type="date" name="date_created" id="date_created" class="form-control form-control-sm" value="{{ request('date_created') }}">
             </div>
-            <div class="col-md-2 d-flex gap-2">
+            <div class="col-md-2 d-flex gap-2 ms-auto">
                 <button type="submit" class="btn btn-sm btn-primary flex-grow-1">Filter</button>
-                @if(request()->filled('priority_id') || request()->filled('stage_id') || request()->filled('status') || request()->filled('date_created'))
+                @if(request()->filled('priority_id') || request()->filled('stage_id') || request()->filled('status') || request()->filled('date_created') || request()->filled('division_id') || request()->filled('department_id'))
                     <a href="{{ route('tickets.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
                 @endif
             </div>
@@ -86,6 +110,10 @@
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Priority</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Stage</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Status</th>
+                    @if(Auth::user() && Auth::user()->user_type === 'admin')
+                        <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Division</th>
+                        <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Department</th>
+                    @endif
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Assignee</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Created By</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Created At</th>
@@ -141,6 +169,10 @@
                                 <span class="badge bg-secondary text-white rounded-pill px-3 py-1.5 fw-semibold">{{ $ticket->status }}</span>
                             @endif
                         </td>
+                        @if(Auth::user() && Auth::user()->user_type === 'admin')
+                            <td class="py-3 text-muted small">{{ $ticket->division->name ?? 'N/A' }}</td>
+                            <td class="py-3 text-muted small">{{ $ticket->department->name ?? 'N/A' }}</td>
+                        @endif
                         <td class="py-3 text-muted">
                             @if($ticket->assignee)
                                 <div class="d-flex align-items-center">
@@ -158,7 +190,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="text-center py-5 text-muted">
+                        <td colspan="{{ Auth::user() && Auth::user()->user_type === 'admin' ? 10 : 8 }}" class="text-center py-5 text-muted">
                             <div class="mb-3">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="44" fill="currentColor" class="bi bi-ticket-perforated text-muted opacity-50" viewBox="0 0 16 16">
                                     <path d="M4 4.85v.9h1v-.9zm7 0v.9h1v-.9zm-7 1.8v.9h1v-.9zm7 0v.9h1v-.9zm-7 1.8v.9h1v-.9zm7 0v.9h1v-.9zm-7 1.8v.9h1v-.9zm7 0v.9h1v-.9z"/>
