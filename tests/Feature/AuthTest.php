@@ -454,4 +454,73 @@ class AuthTest extends TestCase
             }
         );
     }
+
+    /**
+     * Test that administrators can impersonate a regular user.
+     */
+    public function test_admin_can_impersonate_regular_user(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
+        $regularUser = User::factory()->create(['user_type' => 'regular', 'is_approved' => true]);
+
+        $response = $this->actingAs($admin)->post("/admin/users/{$regularUser->id}/impersonate");
+
+        $response->assertRedirect(route('dashboard'));
+        $response->assertSessionHas('success');
+        $this->assertEquals($regularUser->id, \Illuminate\Support\Facades\Auth::id());
+        $this->assertEquals($admin->id, session('impersonated_by'));
+    }
+
+    /**
+     * Test that an impersonating session can switch back to the admin.
+     */
+    public function test_impersonated_user_can_leave_impersonation(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
+        $regularUser = User::factory()->create(['user_type' => 'regular', 'is_approved' => true]);
+
+        // Start impersonation
+        $this->actingAs($admin)->post("/admin/users/{$regularUser->id}/impersonate");
+        
+        $this->assertEquals($regularUser->id, \Illuminate\Support\Facades\Auth::id());
+
+        // Leave impersonation
+        $response = $this->post('/impersonate/leave');
+
+        $response->assertRedirect(route('admin.users.index'));
+        $response->assertSessionHas('success');
+        $this->assertEquals($admin->id, \Illuminate\Support\Facades\Auth::id());
+        $this->assertFalse(session()->has('impersonated_by'));
+    }
+
+    /**
+     * Test that administrators cannot impersonate another admin.
+     */
+    public function test_admin_cannot_impersonate_another_admin(): void
+    {
+        $admin1 = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
+        $admin2 = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
+
+        $response = $this->actingAs($admin1)->post("/admin/users/{$admin2->id}/impersonate");
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error', 'Administrators cannot be impersonated.');
+        $this->assertEquals($admin1->id, \Illuminate\Support\Facades\Auth::id());
+        $this->assertFalse(session()->has('impersonated_by'));
+    }
+
+    /**
+     * Test that non-admin users cannot impersonate anyone.
+     */
+    public function test_non_admin_cannot_impersonate_anyone(): void
+    {
+        $regularUser1 = User::factory()->create(['user_type' => 'regular', 'is_approved' => true]);
+        $regularUser2 = User::factory()->create(['user_type' => 'regular', 'is_approved' => true]);
+
+        $response = $this->actingAs($regularUser1)->post("/admin/users/{$regularUser2->id}/impersonate");
+
+        $response->assertStatus(403);
+        $this->assertEquals($regularUser1->id, \Illuminate\Support\Facades\Auth::id());
+        $this->assertFalse(session()->has('impersonated_by'));
+    }
 }

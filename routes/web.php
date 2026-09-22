@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::post('/impersonate/leave', [AuthController::class, 'leaveImpersonation'])->name('impersonate.leave');
 
     // Notification Routes
     Route::get('/api/notifications', [NotificationController::class, 'index'])->name('notifications.index');
@@ -68,6 +69,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::post('/users/{user}/approve', [UserController::class, 'approve'])->name('users.approve');
         Route::post('/users/{user}/reject', [UserController::class, 'reject'])->name('users.reject');
+        Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate'])->name('users.impersonate');
 
         // Ticket Type Management
         Route::resource('ticket-types', TicketTypeController::class)->except(['show']);

@@ -160,4 +160,26 @@ class AuthController extends Controller
 
         return redirect()->route('login');
     }
+
+    /**
+     * Revert impersonation back to the administrator.
+     */
+    public function leaveImpersonation(Request $request)
+    {
+        if (!$request->session()->has('impersonated_by')) {
+            abort(403, 'You are not currently impersonating any user.');
+        }
+
+        $adminId = $request->session()->pull('impersonated_by');
+        $admin = \App\Models\User::find($adminId);
+
+        if (!$admin || $admin->user_type !== 'admin') {
+            abort(403, 'Invalid administrator account.');
+        }
+
+        Auth::login($admin);
+
+        return redirect()->route('admin.users.index')
+            ->with('success', "Returned to administrator account '{$admin->name}'.");
+    }
 }

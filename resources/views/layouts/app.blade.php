@@ -31,6 +31,24 @@
     </noscript>
 </head>
 <body>
+    <!-- Impersonation Warning Banner -->
+    @if(session()->has('impersonated_by'))
+        <div class="bg-warning text-dark py-2.5 px-4 text-center d-flex align-items-center justify-content-between border-bottom border-warning-subtle" style="font-size: 0.9rem; font-weight: 500; z-index: 2000; position: relative;">
+            <div class="d-flex align-items-center mx-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-triangle-fill me-2 text-dark animate-pulse" viewBox="0 0 16 16">
+                    <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+                </svg>
+                <span>You are currently impersonating <strong>{{ Auth::user()->name }}</strong>. Actions taken will reflect this account.</span>
+                <form method="POST" action="{{ route('impersonate.leave') }}" class="ms-3 d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-xs btn-dark text-white fw-bold px-3 py-1 rounded shadow-sm" style="font-size: 0.75rem; min-height: auto;">
+                        Switch Back
+                    </button>
+                </form>
+            </div>
+        </div>
+    @endif
+
     <!-- Header -->
     <header class="navbar navbar-expand-lg fd-header navbar-dark shadow-sm">
         <div class="container-fluid">

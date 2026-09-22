@@ -9,6 +9,7 @@ use App\Models\Division;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends Controller
 {
@@ -166,5 +167,27 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.index')
             ->with('success', "User '{$name}' has been rejected and their account deleted.");
+    }
+
+    /**
+     * Impersonate the specified user.
+     */
+    public function impersonate(User $user)
+    {
+        $admin = Auth::user();
+        
+        if (!$admin || $admin->user_type !== 'admin') {
+            abort(403, 'Only administrators can impersonate other users.');
+        }
+
+        if ($user->user_type === 'admin') {
+            return redirect()->back()->with('error', 'Administrators cannot be impersonated.');
+        }
+
+        session()->put('impersonated_by', $admin->id);
+        Auth::login($user);
+
+        return redirect()->route('dashboard')
+            ->with('success', "You are now logged in as '{$user->name}'.");
     }
 }
