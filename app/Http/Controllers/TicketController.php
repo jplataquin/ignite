@@ -43,6 +43,19 @@ class TicketController extends Controller
             });
         }
 
+        $tab = $request->input('tab', 'all');
+        if ($tab === 'my_tickets') {
+            $query->where(function ($q) use ($user) {
+                $q->orWhere('assigned_id', $user->id);
+                $q->orWhere(function ($sub) use ($user) {
+                    $sub->where('created_by', $user->id)
+                        ->whereHas('stage', function ($sq) {
+                            $sq->where('slug', 'review');
+                        });
+                });
+            });
+        }
+
         if ($request->filled('priority_id')) {
             $query->where('priority_option_id', $request->input('priority_id'));
         }

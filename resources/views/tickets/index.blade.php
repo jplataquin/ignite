@@ -29,6 +29,7 @@
 <div class="card fd-card mb-4">
     <div class="card-body p-3">
         <form method="GET" action="{{ route('tickets.index') }}" class="row g-2 align-items-end">
+            <input type="hidden" name="tab" value="{{ request('tab', 'all') }}">
             <div class="col-md-2">
                 <label for="priority_id" class="form-label small fw-bold text-muted text-uppercase mb-1">Priority</label>
                 <select name="priority_id" id="priority_id" class="form-select form-select-sm">
@@ -105,6 +106,45 @@
 </div>
 
 <div class="card fd-card mb-4">
+    <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+        <ul class="nav nav-tabs border-bottom">
+            <li class="nav-item">
+                <a class="nav-link {{ request('tab', 'all') === 'all' ? 'active fw-bold text-danger' : 'text-muted' }}" href="{{ route('tickets.index', array_merge(request()->query(), ['tab' => 'all'])) }}">
+                    All Tickets
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ request('tab') === 'my_tickets' ? 'active fw-bold text-danger' : 'text-muted' }}" href="{{ route('tickets.index', array_merge(request()->query(), ['tab' => 'my_tickets'])) }}">
+                    <span>My Tickets</span>
+                    @php
+                        $myTicketsCountQuery = \App\Models\Ticket::query();
+                        if (Auth::user()->user_type === 'regular') {
+                            $myTicketsCountQuery->where(function ($q) {
+                                if (Auth::user()->division_id) {
+                                    $q->orWhere('division_id', Auth::user()->division_id);
+                                }
+                                if (Auth::user()->department_id) {
+                                    $q->orWhere('department_id', Auth::user()->department_id);
+                                }
+                            });
+                        }
+                        $myTicketsCount = $myTicketsCountQuery->where(function ($q) {
+                            $q->orWhere('assigned_id', Auth::id());
+                            $q->orWhere(function ($sub) {
+                                $sub->where('created_by', Auth::id())
+                                    ->whereHas('stage', function ($sq) {
+                                        $sq->where('slug', 'review');
+                                    });
+                            });
+                        })->count();
+                    @endphp
+                    @if($myTicketsCount > 0)
+                        <span class="badge bg-danger rounded-pill ms-2" style="font-size: 0.75rem; padding: 0.25em 0.5em;">{{ $myTicketsCount }}</span>
+                    @endif
+                </a>
+            </li>
+        </ul>
+    </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">

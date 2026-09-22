@@ -2354,4 +2354,88 @@ class TicketManagementTest extends TestCase
         $response->assertSee('Matches Div Only');
         $response->assertDontSee('Outside Div and Dept');
     }
+
+    /**
+     * Test that the My Tickets tab filters tickets assigned to the user or requiring review.
+     */
+    public function test_my_tickets_tab_filters_assigned_or_review_tickets(): void
+    {
+        $division = Division::create(['name' => 'IT Department']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+
+        $user = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+        ]);
+        $otherUser = User::factory()->create(['user_type' => 'regular']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageReview = TicketStage::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#2']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Ticket 1: Assigned to the user
+        Ticket::create([
+            'ticket_number' => 'FLR-MY-001',
+            'title' => 'Ticket Assigned to Me',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $otherUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'assigned_id' => $user->id,
+        ]);
+
+        // Ticket 2: Created by the user & in Review stage
+        Ticket::create([
+            'ticket_number' => 'FLR-MY-002',
+            'title' => 'My Ticket in Review',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageReview->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'assigned_id' => null,
+        ]);
+
+        // Ticket 3: General unassigned ticket (visible in All, but hidden in My Tickets)
+        Ticket::create([
+            'ticket_number' => 'FLR-MY-003',
+            'title' => 'General Unassigned Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $otherUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'assigned_id' => null,
+        ]);
+
+        // 1. Visit "All Tickets" tab (default)
+        $responseAll = $this->actingAs($user)->get('/tickets?tab=all');
+        $responseAll->assertStatus(200);
+        $responseAll->assertSee('Ticket Assigned to Me');
+        $responseAll->assertSee('My Ticket in Review');
+        $responseAll->assertSee('General Unassigned Ticket');
+
+        // 2. Visit "My Tickets" tab
+        $responseMy = $this->actingAs($user)->get('/tickets?tab=my_tickets');
+        $responseMy->assertStatus(200);
+        $responseMy->assertSee('Ticket Assigned to Me');
+        $responseMy->assertSee('My Ticket in Review');
+        $responseMy->assertDontSee('General Unassigned Ticket');
+    }
 }
