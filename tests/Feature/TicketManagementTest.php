@@ -2277,4 +2277,81 @@ class TicketManagementTest extends TestCase
         // Assert that Assigned User search filter is NOT visible
         $response->assertDontSee('name="to_user_search"', false);
     }
+
+    /**
+     * Test that regular users only see tickets within their division and/or department.
+     */
+    public function test_regular_users_only_see_tickets_within_their_division_and_or_department(): void
+    {
+        $divA = Division::create(['name' => 'Division A']);
+        $divB = Division::create(['name' => 'Division B']);
+
+        $deptA = Department::create(['name' => 'Dept A', 'division_id' => $divA->id]);
+        $deptB = Department::create(['name' => 'Dept B', 'division_id' => $divB->id]);
+
+        $regularUser = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $divA->id,
+            'department_id' => $deptA->id,
+        ]);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Ticket 1: Matches both Division and Department (A and A)
+        Ticket::create([
+            'ticket_number' => 'FLR-REG-001',
+            'title' => 'Matches Div and Dept',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $divA->id,
+            'department_id' => $deptA->id,
+            'created_by' => $regularUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket 2: Outside Division and Department (B and B)
+        Ticket::create([
+            'ticket_number' => 'FLR-REG-002',
+            'title' => 'Outside Div and Dept',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $divB->id,
+            'department_id' => $deptB->id,
+            'created_by' => $regularUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket 3: Matches Division only (A and B)
+        Ticket::create([
+            'ticket_number' => 'FLR-REG-003',
+            'title' => 'Matches Div Only',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $divA->id,
+            'department_id' => $deptB->id,
+            'created_by' => $regularUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Visit tickets index as regular user
+        $response = $this->actingAs($regularUser)->get('/tickets');
+        $response->assertStatus(200);
+
+        // Verify correct tickets are shown and incorrect is hidden
+        $response->assertSee('Matches Div and Dept');
+        $response->assertSee('Matches Div Only');
+        $response->assertDontSee('Outside Div and Dept');
+    }
 }
