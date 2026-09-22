@@ -460,7 +460,7 @@ class TicketManagementTest extends TestCase
     }
 
     /**
-     * Test that users can create a ticket specifying an intended user (to_user_id).
+     * Test that users can create a ticket specifying an intended user (assigned_id).
      */
     public function test_users_can_create_ticket_with_intended_user(): void
     {
@@ -490,16 +490,16 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'location_id' => $location->id,
             'category_1_id' => $category->id,
-            'to_user_id' => $intendedUser->id,
+            'assigned_id' => $intendedUser->id,
         ]);
 
         $ticket = Ticket::where('title', 'Intended Ticket')->first();
         $this->assertNotNull($ticket);
-        $this->assertEquals($intendedUser->id, $ticket->to_user_id);
+        $this->assertEquals($intendedUser->id, $ticket->assigned_id);
     }
 
     /**
-     * Test that only the intended user can accept the ticket if to_user_id is filled.
+     * Test that only the intended user can accept the ticket if assigned_id is filled.
      */
     public function test_only_intended_user_can_accept_ticket(): void
     {
@@ -526,7 +526,7 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'created_by' => $creator->id,
             'category_1_id' => $category->id,
-            'to_user_id' => $intendedUser->id,
+            'assigned_id' => $intendedUser->id,
         ]);
 
         // Disable CSRF for requests forgery
@@ -537,24 +537,24 @@ class TicketManagementTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHas('error');
         $ticket->refresh();
-        $this->assertNull($ticket->assigned_to);
+        $this->assertNull($ticket->assigned_to); // relation assignee is null or assigned_id is original
+        $this->assertEquals($intendedUser->id, $ticket->assigned_id);
 
         // Try accepting as intended user - should succeed
         $response = $this->actingAs($intendedUser)->post(route('tickets.accept', $ticket));
         $response->assertRedirect();
         $response->assertSessionHas('success');
         $ticket->refresh();
-        $this->assertEquals($intendedUser->id, $ticket->assigned_to);
+        $this->assertEquals($intendedUser->id, $ticket->assigned_id);
         $this->assertEquals('assigned', $ticket->stage->slug);
     }
 
     /**
-     * Test that any user can accept a ticket if to_user_id is null.
+     * Test that any user can accept a ticket if assigned_id is null.
      */
     public function test_any_user_can_accept_unintended_ticket(): void
     {
         $creator = User::factory()->create();
-        $acceptor = User::factory()->create();
 
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
@@ -564,6 +564,11 @@ class TicketManagementTest extends TestCase
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        $acceptor = User::factory()->create([
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+        ]);
 
         $ticket = Ticket::create([
             'ticket_number' => 'FLR-2026-5678',
@@ -575,7 +580,7 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'created_by' => $creator->id,
             'category_1_id' => $category->id,
-            'to_user_id' => null,
+            'assigned_id' => null,
         ]);
 
         $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
@@ -584,7 +589,7 @@ class TicketManagementTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHas('success');
         $ticket->refresh();
-        $this->assertEquals($acceptor->id, $ticket->assigned_to);
+        $this->assertEquals($acceptor->id, $ticket->assigned_id);
     }
 
     /**
@@ -614,7 +619,7 @@ class TicketManagementTest extends TestCase
             'location_id' => $this->location->id,
             'created_by' => $creator->id,
             'category_1_id' => $category->id,
-            'to_user_id' => null,
+            'assigned_id' => null,
         ]);
 
         $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
@@ -623,7 +628,7 @@ class TicketManagementTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHas('error', 'You cannot accept your own ticket.');
         $ticket->refresh();
-        $this->assertNull($ticket->assigned_to);
+        $this->assertNull($ticket->assigned_id);
     }
 
     /**
@@ -653,7 +658,7 @@ class TicketManagementTest extends TestCase
             'location_id' => $this->location->id,
             'created_by' => $adminCreator->id,
             'category_1_id' => $category->id,
-            'to_user_id' => null,
+            'assigned_id' => null,
         ]);
 
         $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
@@ -662,7 +667,7 @@ class TicketManagementTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHas('error', 'You cannot accept your own ticket.');
         $ticket->refresh();
-        $this->assertNull($ticket->assigned_to);
+        $this->assertNull($ticket->assigned_id);
     }
 
     /**
@@ -704,12 +709,12 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'location_id' => $this->location->id,
             'category_1_id' => $category->id,
-            'assigned_to' => $creator->id,
+            'assigned_id' => $creator->id,
         ]);
 
         $response->assertRedirect(route('tickets.show', $ticket));
         $ticket->refresh();
-        $this->assertEquals($creator->id, $ticket->assigned_to);
+        $this->assertEquals($creator->id, $ticket->assigned_id);
     }
 
     /**
@@ -737,7 +742,7 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'location_id' => $this->location->id,
             'created_by' => $creator->id,
-            'assigned_to' => $creator->id, // Assigned back to author for review
+            'assigned_id' => $creator->id, // Assigned back to author for review
             'category_1_id' => $category->id,
         ]);
 
@@ -750,7 +755,7 @@ class TicketManagementTest extends TestCase
 
         $response->assertSessionHasErrors(['assignee_id']);
         $ticket->refresh();
-        $this->assertEquals($creator->id, $ticket->assigned_to); // remains author
+        $this->assertEquals($creator->id, $ticket->assigned_id); // remains author
     }
 
     /**
@@ -820,7 +825,7 @@ class TicketManagementTest extends TestCase
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $creator->id,
-            'assigned_to' => $agent->id,
+            'assigned_id' => $agent->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -1147,7 +1152,7 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'created_by' => $creator->id,
             'category_1_id' => $category->id,
-            'assigned_to' => null,
+            'assigned_id' => null,
             'deadline_date' => null,
         ]);
 
@@ -1163,7 +1168,7 @@ class TicketManagementTest extends TestCase
             'location_id' => $this->location->id,
             'category_1_id' => $category->id,
             'stage_id' => $stageClosed->id,
-            'assigned_to' => $admin->id,
+            'assigned_id' => $admin->id,
             'deadline_date' => $newDeadline->format('Y-m-d\TH:i'),
         ]);
 
@@ -1173,7 +1178,7 @@ class TicketManagementTest extends TestCase
         $this->assertEquals('Admin Updated Title', $ticket->title);
         $this->assertEquals('Admin Updated Description', $ticket->description);
         $this->assertEquals($stageClosed->id, $ticket->stage_id);
-        $this->assertEquals($admin->id, $ticket->assigned_to);
+        $this->assertEquals($admin->id, $ticket->assigned_id);
         $this->assertEquals($newDeadline->format('Y-m-d H:i'), $ticket->deadline_date->format('Y-m-d H:i'));
 
         // Assert that the system comment log was successfully recorded with the edits
@@ -1191,7 +1196,7 @@ class TicketManagementTest extends TestCase
         $this->assertStringContainsString('Title updated from \'Initial Title\' to \'Admin Updated Title\'', $comment->content);
         $this->assertStringContainsString('Description updated', $comment->content);
         $this->assertStringContainsString('Stage updated from \'Open\' to \'Closed\'', $comment->content);
-        $this->assertStringContainsString("Assignee updated from 'None' to '{$admin->name}'", $comment->content);
+        $this->assertStringContainsString("Assigned User updated from 'None' to '{$admin->name}'", $comment->content);
         $this->assertStringContainsString('Deadline SLA updated from \'None\' to', $comment->content);
     }
 
@@ -1222,7 +1227,7 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'created_by' => $creator->id,
             'category_1_id' => $category->id,
-            'assigned_to' => $agent->id,
+            'assigned_id' => $agent->id,
         ]);
 
         $response = $this->actingAs($admin)->put("/tickets/{$ticket->id}", [
@@ -1235,13 +1240,13 @@ class TicketManagementTest extends TestCase
             'location_id' => $this->location->id,
             'category_1_id' => $category->id,
             'stage_id' => $stageOpen->id,
-            'assigned_to' => '', // blank/unassigned
+            'assigned_id' => '', // blank/unassigned
         ]);
 
         $response->assertRedirect(route('tickets.show', $ticket));
 
         $ticket->refresh();
-        $this->assertNull($ticket->assigned_to);
+        $this->assertNull($ticket->assigned_id);
 
         // Assert that the system comment log was successfully recorded with the assignee update from 'Agent' to 'None'
         $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
@@ -1249,7 +1254,7 @@ class TicketManagementTest extends TestCase
             ->first();
 
         $this->assertNotNull($comment);
-        $this->assertStringContainsString("Assignee updated from '{$agent->name}' to 'None'", $comment->content);
+        $this->assertStringContainsString("Assigned User updated from '{$agent->name}' to 'None'", $comment->content);
     }
 
     /**
@@ -1540,7 +1545,7 @@ class TicketManagementTest extends TestCase
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $author->id,
-            'assigned_to' => $assignedUser->id,
+            'assigned_id' => $assignedUser->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -1552,7 +1557,7 @@ class TicketManagementTest extends TestCase
         
         $ticket->refresh();
         $this->assertEquals($reviewStage->id, $ticket->stage_id);
-        $this->assertEquals($author->id, $ticket->assigned_to);
+        $this->assertEquals($author->id, $ticket->assigned_id);
 
         // Assert review message comments was created
         $this->assertDatabaseHas('ticket_comments', [
@@ -1591,7 +1596,7 @@ class TicketManagementTest extends TestCase
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $author->id,
-            'assigned_to' => $assignedUser->id,
+            'assigned_id' => $assignedUser->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -1603,7 +1608,7 @@ class TicketManagementTest extends TestCase
         
         $ticket->refresh();
         $this->assertEquals($assignedStage->id, $ticket->stage_id);
-        $this->assertEquals($assignedUser->id, $ticket->assigned_to);
+        $this->assertEquals($assignedUser->id, $ticket->assigned_id);
     }
 
     /**
@@ -1633,7 +1638,7 @@ class TicketManagementTest extends TestCase
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $author->id,
-            'assigned_to' => $author->id,
+            'assigned_id' => $author->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -1645,7 +1650,7 @@ class TicketManagementTest extends TestCase
         
         $ticket->refresh();
         $this->assertEquals($closedStage->id, $ticket->stage_id);
-        $this->assertNull($ticket->assigned_to);
+        $this->assertNull($ticket->assigned_id);
 
         $this->assertDatabaseHas('ticket_comments', [
             'ticket_id' => $ticket->id,
@@ -1682,7 +1687,7 @@ class TicketManagementTest extends TestCase
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $author->id,
-            'assigned_to' => $author->id,
+            'assigned_id' => $author->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -1694,7 +1699,7 @@ class TicketManagementTest extends TestCase
         
         $ticket->refresh();
         $this->assertEquals($canceledStage->id, $ticket->stage_id);
-        $this->assertNull($ticket->assigned_to);
+        $this->assertNull($ticket->assigned_id);
 
         $this->assertDatabaseHas('ticket_comments', [
             'ticket_id' => $ticket->id,
@@ -1732,7 +1737,7 @@ class TicketManagementTest extends TestCase
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $author->id,
-            'assigned_to' => $author->id,
+            'assigned_id' => $author->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -1745,7 +1750,7 @@ class TicketManagementTest extends TestCase
         
         $ticket->refresh();
         $this->assertEquals($assignedStage->id, $ticket->stage_id);
-        $this->assertEquals($newAssignee->id, $ticket->assigned_to);
+        $this->assertEquals($newAssignee->id, $ticket->assigned_id);
 
         $this->assertDatabaseHas('ticket_comments', [
             'ticket_id' => $ticket->id,
@@ -1782,7 +1787,7 @@ class TicketManagementTest extends TestCase
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $author->id,
-            'assigned_to' => $author->id,
+            'assigned_id' => $author->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -2170,7 +2175,7 @@ class TicketManagementTest extends TestCase
     }
 
     /**
-     * Test that administrators can see and search/filter by Intended User on the index.
+     * Test that administrators can see and search/filter by Assigned User on the index.
      */
     public function test_admin_can_see_and_filter_by_intended_user_on_index(): void
     {
@@ -2199,7 +2204,7 @@ class TicketManagementTest extends TestCase
             'created_by' => $admin->id,
             'location_id' => $this->location->id,
             'category_1_id' => $category->id,
-            'to_user_id' => $user1->id,
+            'assigned_id' => $user1->id,
         ]);
 
         // Ticket 2: Intended for Alice Smith
@@ -2215,15 +2220,15 @@ class TicketManagementTest extends TestCase
             'created_by' => $admin->id,
             'location_id' => $this->location->id,
             'category_1_id' => $category->id,
-            'to_user_id' => $user2->id,
+            'assigned_id' => $user2->id,
         ]);
 
         // Visit tickets index as admin
         $response = $this->actingAs($admin)->get('/tickets');
         $response->assertStatus(200);
 
-        // Assert that Intended User column header and names are visible
-        $response->assertSee('Intended User');
+        // Assert that Assigned User column header and names are visible
+        $response->assertSee('Assigned User');
         $response->assertSee('John Doe');
         $response->assertSee('Alice Smith');
 
@@ -2235,7 +2240,7 @@ class TicketManagementTest extends TestCase
     }
 
     /**
-     * Test that regular users cannot see the Intended User column or search filter.
+     * Test that regular users cannot see the Assigned User search filter.
      */
     public function test_regular_user_cannot_see_intended_user_filters_on_index(): void
     {
@@ -2262,15 +2267,14 @@ class TicketManagementTest extends TestCase
             'created_by' => $regularUser->id,
             'location_id' => $this->location->id,
             'category_1_id' => $category->id,
-            'to_user_id' => $intendedUser->id,
+            'assigned_id' => $intendedUser->id,
         ]);
 
         // Visit tickets index as regular user
         $response = $this->actingAs($regularUser)->get('/tickets');
         $response->assertStatus(200);
 
-        // Assert that Intended User column and text are NOT visible
-        $response->assertDontSee('Secret Intended User');
-        $response->assertDontSee('<th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Intended User</th>', false);
+        // Assert that Assigned User search filter is NOT visible
+        $response->assertDontSee('name="to_user_search"', false);
     }
 }

@@ -191,10 +191,10 @@
                 </div>
 
                 @php
-                    $oldIntendedUser = null;
-                    $intendedUserId = old('to_user_id', $ticket->to_user_id);
-                    if ($intendedUserId) {
-                        $oldIntendedUser = $users->firstWhere('id', $intendedUserId);
+                    $oldAssignedUser = null;
+                    $assignedId = old('assigned_id', $ticket->assigned_id);
+                    if ($assignedId) {
+                        $oldAssignedUser = $users->firstWhere('id', $assignedId);
                     }
                     $oldLocation = null;
                     $locationId = old('location_id', $ticket->location_id);
@@ -257,18 +257,18 @@
                         </ul>
                     </div>
 
-                    <!-- Intended User (Optional) - Autocomplete -->
+                    <!-- Assigned User (Optional) - Autocomplete -->
                     <div class="position-relative">
-                        <label for="user_search" class="form-label fw-semibold text-dark small">Intended User (Optional)</label>
+                        <label for="user_search" class="form-label fw-semibold text-dark small">Assigned User (Optional)</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light text-muted small py-1 px-2.5" style="border-right: 0;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
                                     <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
                                 </svg>
                             </span>
-                            <input type="text" id="user_search" class="form-control @error('to_user_id') is-invalid @enderror" placeholder="Type to search users..." autocomplete="off" value="{{ $oldIntendedUser ? $oldIntendedUser->name : '' }}" style="border-left: 0; border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem;">
-                            <input type="hidden" id="to_user_id" name="to_user_id" value="{{ $intendedUserId }}">
-                            @error('to_user_id')
+                            <input type="text" id="user_search" class="form-control @error('assigned_id') is-invalid @enderror" placeholder="Type to search users..." autocomplete="off" value="{{ $oldAssignedUser ? $oldAssignedUser->name : '' }}" style="border-left: 0; border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem;">
+                            <input type="hidden" id="assigned_id" name="assigned_id" value="{{ $assignedId }}">
+                            @error('assigned_id')
                                 <span class="invalid-feedback" role="alert">
                                     <strong>{{ $message }}</strong>
                                 </span>
@@ -285,7 +285,7 @@
                     <h5 class="fw-bold mb-1 text-dark text-danger">Admin Overrides</h5>
                     <p class="text-muted small mb-3">As an administrator, you can directly override the ticket's current stage, assign support staff, or adjust the SLA deadline.</p>
                     
-                    <div class="row row-cols-1 row-cols-md-3 g-3">
+                    <div class="row row-cols-1 row-cols-md-2 g-3">
                         <!-- Stage -->
                         <div>
                             <label for="stage_id" class="form-label fw-semibold text-dark small">Ticket Stage</label>
@@ -295,22 +295,6 @@
                                 @endforeach
                             </select>
                             @error('stage_id')
-                                <span class="invalid-feedback" role="alert">
-                                    <strong>{{ $message }}</strong>
-                                </span>
-                            @enderror
-                        </div>
-
-                        <!-- Assignee -->
-                        <div>
-                            <label for="assigned_to" class="form-label fw-semibold text-dark small">Assignee (Assigned To)</label>
-                            <select id="assigned_to" class="form-select @error('assigned_to') is-invalid @enderror" name="assigned_to">
-                                <option value="">Unassigned</option>
-                                @foreach($users as $assigneeOption)
-                                    <option value="{{ $assigneeOption->id }}" {{ old('assigned_to', $ticket->assigned_to) == $assigneeOption->id ? 'selected' : '' }}>{{ $assigneeOption->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('assigned_to')
                                 <span class="invalid-feedback" role="alert">
                                     <strong>{{ $message }}</strong>
                                 </span>
@@ -774,7 +758,7 @@
         const divisionSelect = document.getElementById('division_id');
         const departmentSelect = document.getElementById('department_id');
         const userSearchInput = document.getElementById('user_search');
-        const toUserIdInput = document.getElementById('to_user_id');
+        const toUserIdInput = document.getElementById('assigned_id');
         const autocompleteResults = document.getElementById('autocomplete-results');
 
         let allUsers = []; // Dynamic, loaded when division is selected

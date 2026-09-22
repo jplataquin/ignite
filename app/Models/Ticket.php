@@ -17,7 +17,7 @@ class Ticket extends Model
     #[Fillable]
     protected $fillable = [
         'ticket_number', 'title', 'description', 'ticket_type_id', 'priority_option_id', 'stage_id', 'status',
-        'division_id', 'department_id', 'location_id', 'created_by', 'assigned_to', 'to_user_id',
+        'division_id', 'department_id', 'location_id', 'created_by', 'assigned_id',
         'deadline_date', 'category_1_id', 'category_2_id', 'category_3_id'
     ];
 
@@ -62,12 +62,7 @@ class Ticket extends Model
 
     public function assignee(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'assigned_to');
-    }
-
-    public function toUser(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'to_user_id');
+        return $this->belongsTo(User::class, 'assigned_id');
     }
 
     public function category1(): BelongsTo

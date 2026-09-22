@@ -35,7 +35,7 @@ class TicketCommentObserver
         }
 
         // 2. Assigned User
-        if ($ticket->assigned_to && $ticket->assigned_to !== $actorId) {
+        if ($ticket->assigned_id && $ticket->assigned_id !== $actorId) {
             $usersToNotify->push($ticket->assignee);
         }
 
@@ -45,14 +45,6 @@ class TicketCommentObserver
                 return $user && $user->id !== $actorId;
             });
             $usersToNotify = $usersToNotify->merge($subscribers);
-        }
-
-        // 4. Intended User (If ticket is in open stage)
-        if ($ticket->to_user_id && $ticket->to_user_id !== $actorId) {
-            $stage = $ticket->relationLoaded('stage') ? $ticket->stage : $ticket->stage()->first();
-            if ($stage && $stage->slug === 'open') {
-                $usersToNotify->push($ticket->toUser);
-            }
         }
 
         $usersToNotify = $usersToNotify->unique('id')->filter();

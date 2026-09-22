@@ -277,10 +277,10 @@
                     <span class="text-muted small d-block">Category 3</span>
                     <span class="fw-semibold text-dark">{{ $ticket->category3->name ?? '-' }}</span>
                 </div>
-                @if($ticket->toUser)
+                @if($ticket->assignee)
                 <div>
-                    <span class="text-muted small d-block">Intended User</span>
-                    <span class="fw-semibold text-dark text-danger">{{ $ticket->toUser->name }}</span>
+                    <span class="text-muted small d-block">Assigned User</span>
+                    <span class="fw-semibold text-dark">{{ $ticket->assignee->name }}</span>
                 </div>
                 @endif
                 <div>
@@ -303,8 +303,7 @@
             <!-- Comment Submission Form (for involved actors only) -->
             @if(Auth::user()->user_type === 'admin' || 
                 $ticket->created_by === Auth::id() || 
-                $ticket->assigned_to === Auth::id() || 
-                $ticket->to_user_id === Auth::id())
+                $ticket->assigned_id === Auth::id())
                 <form action="{{ route('tickets.comments.store', $ticket) }}" method="POST" class="mb-4" id="comment-form">
                     @csrf
                     <div class="mb-3">
@@ -422,8 +421,8 @@
         <div class="card fd-card p-4 shadow-sm mb-4">
             <h5 class="fw-bold text-dark mb-3">Actions</h5>
             <div class="mb-3">
-                @if($ticket->assignee)
-                    @if($ticket->assigned_to === Auth::id() && $ticket->stage?->slug === 'assigned')
+                @if($ticket->stage?->slug !== 'open')
+                    @if($ticket->assigned_id === Auth::id() && $ticket->stage?->slug === 'assigned')
                         <button type="button" class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-center mt-3" style="min-height: 38px;" data-bs-toggle="modal" data-bs-target="#forReviewModal">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-send-fill me-1.5" viewBox="0 0 16 16">
                                 <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471z"/>
@@ -446,22 +445,35 @@
                             </svg>
                             You cannot accept your own ticket.
                         </div>
-                    @elseif(!$ticket->to_user_id || $ticket->to_user_id === Auth::id())
-                        <form action="{{ route('tickets.accept', $ticket) }}" method="POST" class="mt-2">
-                            @csrf
-                            <button type="submit" class="btn btn-sm btn-primary w-100 d-flex align-items-center justify-content-center" style="min-height: 38px;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-check-lg me-1.5" viewBox="0 0 16 16">
-                                    <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                    @elseif(!$ticket->assigned_id || $ticket->assigned_id === Auth::id())
+                        @php
+                            $matchesDivision = Auth::user()->division_id && Auth::user()->division_id === $ticket->division_id;
+                            $matchesDepartment = Auth::user()->department_id && Auth::user()->department_id === $ticket->department_id;
+                        @endphp
+                        @if(!$ticket->assigned_id && !$matchesDivision && !$matchesDepartment)
+                            <div class="alert alert-warning border-0 p-2.5 rounded text-dark small mt-2 mb-0 d-flex align-items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-lock-fill text-warning me-1.5" viewBox="0 0 16 16">
+                                    <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
                                 </svg>
-                                Accept Ticket
-                            </button>
-                        </form>
+                                Must be in ticket's division or department to accept.
+                            </div>
+                        @else
+                            <form action="{{ route('tickets.accept', $ticket) }}" method="POST" class="mt-2">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-primary w-100 d-flex align-items-center justify-content-center" style="min-height: 38px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-check-lg me-1.5" viewBox="0 0 16 16">
+                                        <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                                    </svg>
+                                    Accept Ticket
+                                </button>
+                            </form>
+                        @endif
                     @else
                         <div class="alert alert-warning border-0 p-2.5 rounded text-dark small mt-2 mb-0 d-flex align-items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-lock-fill text-warning me-1.5" viewBox="0 0 16 16">
                                 <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
                             </svg>
-                            Reserved for {{ $ticket->toUser->name }}
+                            Reserved for {{ $ticket->assignee->name }}
                         </div>
                     @endif
                 @endif
@@ -513,7 +525,7 @@
     </div>
 </div>
 
-@if($ticket->assignee && $ticket->assigned_to === Auth::id() && $ticket->stage?->slug === 'assigned')
+@if($ticket->assignee && $ticket->assigned_id === Auth::id() && $ticket->stage?->slug === 'assigned')
 <!-- For Review Message Modal -->
 <div class="modal fade" id="forReviewModal" tabindex="-1" aria-labelledby="forReviewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -729,12 +741,6 @@
                 return file;
             }
         }
-
-        const dropZone = document.getElementById('comment-drop-zone');
-        const fileInput = document.getElementById('comment-file-input');
-        const progressList = document.getElementById('comment-upload-progress-list');
-        const attachmentsJsonInput = document.getElementById('comment_attachments_json');
-        const submitBtn = document.getElementById('comment-submit-btn');
 
         if (!dropZone || !fileInput) return;
 

@@ -76,15 +76,10 @@ class TicketObserver
                     $newName = \App\Models\Category::find($newValue)?->name ?? 'None';
                     $changeLog[] = "Category {$num} updated from '{$oldName}' to '{$newName}'";
                     break;
-                case 'to_user_id':
+                case 'assigned_id':
                     $oldName = \App\Models\User::find($oldValue)?->name ?? 'None';
                     $newName = \App\Models\User::find($newValue)?->name ?? 'None';
-                    $changeLog[] = "Intended User updated from '{$oldName}' to '{$newName}'";
-                    break;
-                case 'assigned_to':
-                    $oldName = \App\Models\User::find($oldValue)?->name ?? 'None';
-                    $newName = \App\Models\User::find($newValue)?->name ?? 'None';
-                    $changeLog[] = "Assignee updated from '{$oldName}' to '{$newName}'";
+                    $changeLog[] = "Assigned User updated from '{$oldName}' to '{$newName}'";
                     break;
                 case 'deadline_date':
                     $oldDate = $oldValue ? \Carbon\Carbon::parse($oldValue)->format('M d, Y H:i') : 'None';
@@ -141,7 +136,7 @@ class TicketObserver
         }
 
         // 2. Assigned User
-        if ($ticket->assigned_to && $ticket->assigned_to !== $actorId) {
+        if ($ticket->assigned_id && $ticket->assigned_id !== $actorId) {
             $usersToNotify->push($ticket->assignee);
         }
 
@@ -151,14 +146,6 @@ class TicketObserver
         });
         
         $usersToNotify = $usersToNotify->merge($subscribers);
-
-        // 4. Intended User (If ticket is in open stage and status is Valid)
-        if ($ticket->to_user_id && $ticket->to_user_id !== $actorId) {
-            $stage = $ticket->relationLoaded('stage') ? $ticket->stage : $ticket->stage()->first();
-            if ($ticket->status === 'Valid' && $stage && $stage->slug === 'open') {
-                $usersToNotify->push($ticket->toUser);
-            }
-        }
         
         $usersToNotify = $usersToNotify->unique('id')->filter();
 

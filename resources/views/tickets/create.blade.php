@@ -144,9 +144,9 @@
                 </div>
 
                 @php
-                    $oldIntendedUser = null;
-                    if (old('to_user_id')) {
-                        $oldIntendedUser = $users->firstWhere('id', old('to_user_id'));
+                    $oldAssignedUser = null;
+                    if (old('assigned_id')) {
+                        $oldAssignedUser = $users->firstWhere('id', old('assigned_id'));
                     }
                     $oldLocation = null;
                     if (old('location_id')) {
@@ -213,18 +213,18 @@
                 </div>
 
                 <div class="row mb-4">
-                       <!-- Intended User (Optional) - Autocomplete -->
+                       <!-- Assigned User (Optional) - Autocomplete -->
                     <div class="col-12">
-                        <label for="user_search" class="form-label fw-semibold text-dark small">Intended User (Optional)</label>
+                        <label for="user_search" class="form-label fw-semibold text-dark small">Assigned User (Optional)</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light text-muted small py-1 px-2.5" style="border-right: 0;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
                                     <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
                                 </svg>
                             </span>
-                            <input type="text" id="user_search" class="form-control @error('to_user_id') is-invalid @enderror" placeholder="Type to search users..." autocomplete="off" value="{{ $oldIntendedUser ? $oldIntendedUser->name : '' }}" style="border-left: 0; border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem;">
-                            <input type="hidden" id="to_user_id" name="to_user_id" value="{{ old('to_user_id') }}">
-                            @error('to_user_id')
+                            <input type="text" id="user_search" class="form-control @error('assigned_id') is-invalid @enderror" placeholder="Type to search users..." autocomplete="off" value="{{ $oldAssignedUser ? $oldAssignedUser->name : '' }}" style="border-left: 0; border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem;">
+                            <input type="hidden" id="assigned_id" name="assigned_id" value="{{ old('assigned_id') }}">
+                            @error('assigned_id')
                                 <span class="invalid-feedback" role="alert">
                                     <strong>{{ $message }}</strong>
                                 </span>
@@ -657,7 +657,7 @@
         const divisionSelect = document.getElementById('division_id');
         const departmentSelect = document.getElementById('department_id');
         const userSearchInput = document.getElementById('user_search');
-        const toUserIdInput = document.getElementById('to_user_id');
+        const toUserIdInput = document.getElementById('assigned_id');
         const autocompleteResults = document.getElementById('autocomplete-results');
 
         let allUsers = []; // Dynamic, loaded when division is selected

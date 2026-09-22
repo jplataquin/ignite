@@ -199,7 +199,7 @@ class NotificationManagementTest extends TestCase
             'department_id' => $department->id,
             'location_id' => $location->id,
             'category_1_id' => $category->id,
-            'to_user_id' => $intendedUser->id,
+            'assigned_id' => $intendedUser->id,
         ]);
 
         $response->assertSessionHasNoErrors();

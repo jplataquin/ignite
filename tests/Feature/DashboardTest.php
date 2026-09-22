@@ -47,7 +47,7 @@ class DashboardTest extends TestCase
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $admin->id,
-            'assigned_to' => null,
+            'assigned_id' => null,
             'category_1_id' => $category->id,
         ]);
 
@@ -61,7 +61,7 @@ class DashboardTest extends TestCase
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $admin->id,
-            'assigned_to' => $admin->id,
+            'assigned_id' => $admin->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -76,7 +76,7 @@ class DashboardTest extends TestCase
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $admin->id,
-            'assigned_to' => $admin->id,
+            'assigned_id' => $admin->id,
             'deadline_date' => now()->subDay(),
             'category_1_id' => $category->id,
         ]);
@@ -92,7 +92,7 @@ class DashboardTest extends TestCase
             'division_id' => $division->id,
             'department_id' => $department->id,
             'created_by' => $admin->id,
-            'assigned_to' => $admin->id,
+            'assigned_id' => $admin->id,
             'deadline_date' => now()->subDay(),
             'category_1_id' => $category->id,
         ]);
@@ -145,7 +145,7 @@ class DashboardTest extends TestCase
             'division_id' => $divisionA->id,
             'department_id' => $departmentA->id,
             'created_by' => $regularUser->id,
-            'assigned_to' => null,
+            'assigned_id' => null,
             'category_1_id' => $category->id,
         ]);
 
@@ -159,7 +159,7 @@ class DashboardTest extends TestCase
             'division_id' => $divisionA->id,
             'department_id' => $departmentA->id,
             'created_by' => $regularUser->id,
-            'assigned_to' => $regularUser->id,
+            'assigned_id' => $regularUser->id,
             'category_1_id' => $category->id,
         ]);
 
@@ -174,7 +174,7 @@ class DashboardTest extends TestCase
             'division_id' => $divisionB->id,
             'department_id' => $departmentB->id,
             'created_by' => $regularUser->id,
-            'assigned_to' => null,
+            'assigned_id' => null,
             'category_1_id' => $category->id,
         ]);
 

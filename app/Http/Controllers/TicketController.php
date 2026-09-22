@@ -27,7 +27,7 @@ class TicketController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $query = Ticket::with(['ticketType', 'priorityOption', 'stage', 'creator', 'assignee', 'toUser']);
+        $query = Ticket::with(['ticketType', 'priorityOption', 'stage', 'creator', 'assignee']);
 
         if ($request->filled('priority_id')) {
             $query->where('priority_option_id', $request->input('priority_id'));
@@ -55,7 +55,7 @@ class TicketController extends Controller
             }
             if ($request->filled('to_user_search')) {
                 $search = $request->input('to_user_search');
-                $query->whereHas('toUser', function ($q) use ($search) {
+                $query->whereHas('assignee', function ($q) use ($search) {
                     $q->where('name', 'like', '%' . $search . '%');
                 });
             }
@@ -144,7 +144,7 @@ class TicketController extends Controller
             'category_1_id' => 'required|exists:categories,id',
             'category_2_id' => 'nullable|exists:categories,id',
             'category_3_id' => 'nullable|exists:categories,id',
-            'to_user_id' => 'nullable|exists:users,id',
+            'assigned_id' => 'nullable|exists:users,id',
             'attachments_json' => 'nullable|string',
         ]);
 
@@ -204,7 +204,7 @@ class TicketController extends Controller
                 'category_1_id' => $validated['category_1_id'],
                 'category_2_id' => $validated['category_2_id'] ?? null,
                 'category_3_id' => $validated['category_3_id'] ?? null,
-                'to_user_id' => $validated['to_user_id'] ?? null,
+                'assigned_id' => $validated['assigned_id'] ?? null,
             ]);
 
             // Merge File Chunks for each attachment
@@ -343,9 +343,7 @@ class TicketController extends Controller
             'category_1_id' => 'required|exists:categories,id',
             'category_2_id' => 'nullable|exists:categories,id',
             'category_3_id' => 'nullable|exists:categories,id',
-            'to_user_id' => 'nullable|exists:users,id',
-            'stage_id' => 'nullable|exists:ticket_stages,id',
-            'assigned_to' => [
+            'assigned_id' => [
                 'nullable',
                 'exists:users,id',
                 function ($attribute, $value, $fail) use ($ticket, $user) {
@@ -354,6 +352,7 @@ class TicketController extends Controller
                     }
                 }
             ],
+            'stage_id' => 'nullable|exists:ticket_stages,id',
             'deadline_date' => 'nullable|date',
             'attachments_json' => 'nullable|string',
             'deleted_attachments' => 'nullable|string', // JSON array of attachment IDs
@@ -402,12 +401,11 @@ class TicketController extends Controller
                 'category_1_id' => $validated['category_1_id'],
                 'category_2_id' => $validated['category_2_id'] ?? null,
                 'category_3_id' => $validated['category_3_id'] ?? null,
-                'to_user_id' => $validated['to_user_id'] ?? null,
+                'assigned_id' => array_key_exists('assigned_id', $validated) ? $validated['assigned_id'] : $ticket->assigned_id,
             ];
 
             if ($user->user_type === 'admin') {
                 $updateData['stage_id'] = $validated['stage_id'] ?? $ticket->stage_id;
-                $updateData['assigned_to'] = array_key_exists('assigned_to', $validated) ? $validated['assigned_to'] : $ticket->assigned_to;
                 $updateData['deadline_date'] = $request->filled('deadline_date') ? \Carbon\Carbon::parse($request->input('deadline_date')) : null;
             }
 
@@ -581,18 +579,26 @@ class TicketController extends Controller
             return redirect()->back()->with('error', 'You cannot accept your own ticket.');
         }
 
-        if ($ticket->assigned_to) {
+        if ($ticket->stage?->slug === 'open') {
+            if ($ticket->assigned_id) {
+                if ($ticket->assigned_id !== $user->id) {
+                    return redirect()->back()->with('error', 'This ticket is intended for another user and can only be accepted by them.');
+                }
+            } else {
+                $matchesDivision = $user->division_id && $user->division_id === $ticket->division_id;
+                $matchesDepartment = $user->department_id && $user->department_id === $ticket->department_id;
+                if (!$matchesDivision && !$matchesDepartment) {
+                    return redirect()->back()->with('error', 'You must belong to the ticket\'s division or department to accept it.');
+                }
+            }
+        } else {
             return redirect()->back()->with('error', 'This ticket has already been accepted/assigned.');
-        }
-
-        if ($ticket->to_user_id && $ticket->to_user_id !== $user->id) {
-            return redirect()->back()->with('error', 'This ticket is intended for another user and can only be accepted by them.');
         }
 
         $assignedStage = TicketStage::where('slug', 'assigned')->first();
 
         $ticket->update([
-            'assigned_to' => $user->id,
+            'assigned_id' => $user->id,
             'stage_id' => $assignedStage ? $assignedStage->id : $ticket->stage_id,
         ]);
 
@@ -630,11 +636,10 @@ class TicketController extends Controller
             abort(403);
         }
 
-        // Involved users are: the creator, assigned support staff, intended user, and admin users
+        // Involved users are: the creator, assigned user, and admin users
         $isInvolved = $user->user_type === 'admin' ||
                       $ticket->created_by === $user->id ||
-                      $ticket->assigned_to === $user->id ||
-                      $ticket->to_user_id === $user->id;
+                      $ticket->assigned_id === $user->id;
 
         if (!$isInvolved) {
             return redirect()->back()->with('error', 'You are not authorized to comment on this ticket.');
@@ -721,7 +726,7 @@ class TicketController extends Controller
         }
 
         // Only the assigned user can transition the ticket to review
-        if ($ticket->assigned_to !== $user->id) {
+        if ($ticket->assigned_id !== $user->id) {
             abort(403, 'You are not authorized to submit this ticket for review.');
         }
 
@@ -741,7 +746,7 @@ class TicketController extends Controller
 
         return DB::transaction(function () use ($validated, $ticket, $reviewStage, $user) {
             $ticket->update([
-                'assigned_to' => $ticket->created_by, // Assign back to the author
+                'assigned_id' => $ticket->created_by, // Assign back to the author
                 'stage_id' => $reviewStage->id,
             ]);
 
@@ -784,7 +789,7 @@ class TicketController extends Controller
             $ticket->update([
                 'stage_id' => $closedStage->id,
                 'status' => 'Done',
-                'assigned_to' => null,
+                'assigned_id' => null,
             ]);
 
             TicketComment::create([
@@ -825,7 +830,7 @@ class TicketController extends Controller
             $ticket->update([
                 'stage_id' => $canceledStage->id,
                 'status' => 'Done',
-                'assigned_to' => null,
+                'assigned_id' => null,
             ]);
 
             TicketComment::create([
@@ -874,7 +879,7 @@ class TicketController extends Controller
         return DB::transaction(function () use ($validated, $ticket, $assignedStage, $user) {
             $ticket->update([
                 'stage_id' => $assignedStage->id,
-                'assigned_to' => $validated['assignee_id'],
+                'assigned_id' => $validated['assignee_id'],
             ]);
 
             TicketComment::create([
