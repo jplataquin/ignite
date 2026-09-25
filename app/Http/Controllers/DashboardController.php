@@ -25,18 +25,7 @@ class DashboardController extends Controller
 
         $openTicketsCount = (clone $baseQuery)->where('status', 'Valid')->count();
 
-        $myTicketsCountQuery = Ticket::query();
-        if ($user && $user->user_type !== 'admin') {
-            $myTicketsCountQuery->where(function ($q) use ($user) {
-                if ($user->division_id) {
-                    $q->orWhere('division_id', $user->division_id);
-                }
-                if ($user->department_id) {
-                    $q->orWhere('department_id', $user->department_id);
-                }
-            });
-        }
-        $myTicketsCount = $myTicketsCountQuery->where(function ($q) use ($user) {
+        $myTicketsCount = Ticket::where(function ($q) use ($user) {
             $q->orWhere('assigned_id', $user->id);
             $q->orWhere(function ($sub) use ($user) {
                 $sub->where('created_by', $user->id)

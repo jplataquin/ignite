@@ -128,18 +128,7 @@
                 <a class="nav-link d-flex align-items-center {{ request('tab') === 'my_tickets' ? 'active fw-bold text-danger' : 'text-muted' }}" href="{{ route('tickets.index', array_merge(request()->except('page'), ['tab' => 'my_tickets'])) }}">
                     <span>My Tickets</span>
                     @php
-                        $myTicketsCountQuery = \App\Models\Ticket::query();
-                        if (Auth::user()->user_type === 'regular') {
-                            $myTicketsCountQuery->where(function ($q) {
-                                if (Auth::user()->division_id) {
-                                    $q->orWhere('division_id', Auth::user()->division_id);
-                                }
-                                if (Auth::user()->department_id) {
-                                    $q->orWhere('department_id', Auth::user()->department_id);
-                                }
-                            });
-                        }
-                        $myTicketsCount = $myTicketsCountQuery->where(function ($q) {
+                        $myTicketsCount = \App\Models\Ticket::where(function ($q) {
                             $q->orWhere('assigned_id', Auth::id());
                             $q->orWhere(function ($sub) {
                                 $sub->where('created_by', Auth::id())

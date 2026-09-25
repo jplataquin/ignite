@@ -29,21 +29,8 @@ class TicketController extends Controller
         $user = Auth::user();
         $query = Ticket::with(['ticketType', 'priorityOption', 'stage', 'creator', 'assignee']);
 
-        if ($user && $user->user_type === 'regular') {
-            $query->where(function ($q) use ($user) {
-                if ($user->division_id) {
-                    $q->orWhere('division_id', $user->division_id);
-                }
-                if ($user->department_id) {
-                    $q->orWhere('department_id', $user->department_id);
-                }
-                if (!$user->division_id && !$user->department_id) {
-                    $q->whereRaw('1 = 0');
-                }
-            });
-        }
-
         $tab = $request->input('tab', 'all');
+
         if ($tab === 'my_tickets') {
             $query->where(function ($q) use ($user) {
                 $q->orWhere('assigned_id', $user->id);
@@ -54,6 +41,20 @@ class TicketController extends Controller
                         });
                 });
             });
+        } else {
+            if ($user && $user->user_type === 'regular') {
+                $query->where(function ($q) use ($user) {
+                    if ($user->division_id) {
+                        $q->orWhere('division_id', $user->division_id);
+                    }
+                    if ($user->department_id) {
+                        $q->orWhere('department_id', $user->department_id);
+                    }
+                    if (!$user->division_id && !$user->department_id) {
+                        $q->whereRaw('1 = 0');
+                    }
+                });
+            }
         }
 
         if ($request->filled('priority_id')) {
