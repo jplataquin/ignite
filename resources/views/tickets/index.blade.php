@@ -120,12 +120,12 @@
     <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
         <ul class="nav nav-tabs border-bottom">
             <li class="nav-item">
-                <a class="nav-link {{ request('tab', 'all') === 'all' ? 'active fw-bold text-danger' : 'text-muted' }}" href="{{ route('tickets.index', array_merge(request()->query(), ['tab' => 'all'])) }}">
+                <a class="nav-link {{ request('tab', 'all') === 'all' ? 'active fw-bold text-danger' : 'text-muted' }}" href="{{ route('tickets.index', array_merge(request()->except('page'), ['tab' => 'all'])) }}">
                     All Tickets
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link d-flex align-items-center {{ request('tab') === 'my_tickets' ? 'active fw-bold text-danger' : 'text-muted' }}" href="{{ route('tickets.index', array_merge(request()->query(), ['tab' => 'my_tickets'])) }}">
+                <a class="nav-link d-flex align-items-center {{ request('tab') === 'my_tickets' ? 'active fw-bold text-danger' : 'text-muted' }}" href="{{ route('tickets.index', array_merge(request()->except('page'), ['tab' => 'my_tickets'])) }}">
                     <span>My Tickets</span>
                     @php
                         $myTicketsCountQuery = \App\Models\Ticket::query();

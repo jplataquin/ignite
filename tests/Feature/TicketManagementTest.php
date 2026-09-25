@@ -1907,6 +1907,54 @@ class TicketManagementTest extends TestCase
     }
 
     /**
+     * Test that pagination links preserve search filters.
+     */
+    public function test_pagination_respects_filters(): void
+    {
+        $user = User::factory()->create();
+
+        $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Create 15 tickets with Low priority
+        for ($i = 1; $i <= 15; $i++) {
+            Ticket::create([
+                'ticket_number' => "TCK-PAG-{$i}",
+                'title' => "Low Priority Ticket {$i}",
+                'description' => "Description {$i}",
+                'ticket_type_id' => $type->id,
+                'priority_option_id' => $priorityLow->id,
+                'stage_id' => $stageOpen->id,
+                'division_id' => $division->id,
+                'location_id' => $this->location->id,
+                'category_1_id' => $category->id,
+                'created_by' => $user->id,
+                'status' => 'Valid',
+            ]);
+        }
+
+        // Visit page 1 with priority_id filter
+        $response = $this->actingAs($user)->get("/tickets?priority_id={$priorityLow->id}");
+        $response->assertStatus(200);
+        
+        // Assert pagination link for page 2 contains priority_id filter
+        $response->assertSee("priority_id={$priorityLow->id}");
+        $response->assertSee("page=2");
+
+        // Visit page 2
+        $responsePage2 = $this->actingAs($user)->get("/tickets?priority_id={$priorityLow->id}&page=2");
+        $responsePage2->assertStatus(200);
+        $responsePage2->assertSee("priority_id={$priorityLow->id}");
+        $responsePage2->assertSee("page=1");
+
+        // Assert that the My Tickets tab link does NOT contain the page parameter
+        $responsePage2->assertDontSee("tab=my_tickets&amp;page=2");
+    }
+
+    /**
      * Test that ticket numbers are generated with the ticket type's custom code prefix.
      */
     public function test_ticket_number_generation_uses_custom_ticket_type_code(): void
