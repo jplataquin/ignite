@@ -77,10 +77,10 @@
                 </div>
                 <div class="col-md-2">
                     <label for="department_id" class="form-label small fw-bold text-muted text-uppercase mb-1">Department</label>
-                    <select name="department_id" id="department_id" class="form-select form-select-sm">
+                    <select name="department_id" id="department_id" class="form-select form-select-sm" disabled>
                         <option value="">All Departments</option>
                         @foreach($departments as $department)
-                            <option value="{{ $department->id }}" {{ request('department_id') == $department->id ? 'selected' : '' }}>
+                            <option value="{{ $department->id }}" data-division-id="{{ $department->division_id }}" {{ request('department_id') == $department->id ? 'selected' : '' }}>
                                 {{ $department->name }}
                             </option>
                         @endforeach
@@ -256,3 +256,53 @@
     @endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const divisionSelect = document.getElementById('division_id');
+        const departmentSelect = document.getElementById('department_id');
+
+        if (divisionSelect && departmentSelect) {
+            const originalDepartmentOptions = Array.from(departmentSelect.options);
+
+            function filterDepartments(initial = false) {
+                const selectedDivisionId = divisionSelect.value;
+                const previousVal = initial ? "{{ request('department_id') }}" : departmentSelect.value;
+
+                // Clear and rebuild options
+                departmentSelect.innerHTML = '';
+
+                // Add default/placeholder option
+                const placeholderOption = document.createElement('option');
+                placeholderOption.value = '';
+                placeholderOption.textContent = selectedDivisionId ? 'All Departments' : 'Select Division First';
+                departmentSelect.appendChild(placeholderOption);
+
+                if (selectedDivisionId) {
+                    departmentSelect.disabled = false;
+                    originalDepartmentOptions.forEach(option => {
+                        if (option.getAttribute('data-division-id') === selectedDivisionId) {
+                            const clonedOpt = option.cloneNode(true);
+                            if (clonedOpt.value === previousVal) {
+                                clonedOpt.selected = true;
+                            }
+                            departmentSelect.appendChild(clonedOpt);
+                        }
+                    });
+                } else {
+                    departmentSelect.disabled = true;
+                    departmentSelect.value = '';
+                }
+            }
+
+            divisionSelect.addEventListener('change', () => {
+                filterDepartments(false);
+            });
+
+            // Run on initial load
+            filterDepartments(true);
+        }
+    });
+</script>
+@endpush
