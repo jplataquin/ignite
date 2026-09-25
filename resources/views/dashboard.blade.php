@@ -3,9 +3,6 @@
 @php
     $openStage = \App\Models\TicketStage::where('slug', 'open')->first();
     $openStageId = $openStage ? $openStage->id : null;
-    
-    $assignedStage = \App\Models\TicketStage::where('slug', 'assigned')->first();
-    $assignedStageId = $assignedStage ? $assignedStage->id : null;
 @endphp
 
 @section('content')
@@ -36,14 +33,14 @@
         </a>
     </div>
     <div class="col">
-        <a href="{{ route('tickets.index', ['stage_id' => $assignedStageId]) }}" class="text-decoration-none">
+        <a href="{{ route('tickets.index', ['tab' => 'my_tickets']) }}" class="text-decoration-none">
             <div class="card fd-card h-100 p-3 card-hover" style="cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h6 class="text-muted mb-0 fw-semibold">Assigned Tickets</h6>
-                    <span class="badge badge-progress rounded-pill">Assigned</span>
+                    <h6 class="text-muted mb-0 fw-semibold">My Tickets</h6>
+                    <span class="badge badge-progress rounded-pill">My Tickets</span>
                 </div>
-                <h2 class="mt-3 mb-0 fw-bold text-dark">{{ $assignedTicketsCount }}</h2>
-                <small class="text-muted">In progress</small>
+                <h2 class="mt-3 mb-0 fw-bold text-dark">{{ $myTicketsCount }}</h2>
+                <small class="text-muted">Assigned or in review</small>
             </div>
         </a>
     </div>

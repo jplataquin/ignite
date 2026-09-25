@@ -187,23 +187,22 @@ class DashboardTest extends TestCase
         // Check the actual open tickets counter content
         $response->assertSee('Open Tickets');
         $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">2</h2>', false); // Open Tickets Count
-        $response->assertSee('Assigned Tickets');
-        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">1</h2>', false); // Assigned Tickets Count
+        $response->assertSee('My Tickets');
+        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">1</h2>', false); // My Tickets Count
     }
 
     /**
-     * Test that the dashboard Assigned Tickets card links to the filtered ticket list.
+     * Test that the dashboard My Tickets card links to the filtered ticket list.
      */
-    public function test_dashboard_assigned_ticket_card_links_to_tickets_index_filtered_by_assigned_stage(): void
+    public function test_dashboard_my_tickets_card_links_to_tickets_index_filtered_by_my_tickets_tab(): void
     {
         $admin = User::factory()->create(['user_type' => 'admin']);
-        $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#1']);
 
         $response = $this->actingAs($admin)->get('/');
         $response->assertStatus(200);
 
-        // Check that the response contains the link with correct stage_id parameter
-        $expectedUrl = route('tickets.index', ['stage_id' => $stageAssigned->id]);
+        // Check that the response contains the link with correct tab parameter
+        $expectedUrl = route('tickets.index', ['tab' => 'my_tickets']);
         $response->assertSee(htmlentities($expectedUrl), false);
     }
 

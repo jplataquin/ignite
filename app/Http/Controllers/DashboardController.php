@@ -25,11 +25,26 @@ class DashboardController extends Controller
 
         $openTicketsCount = (clone $baseQuery)->where('status', 'Valid')->count();
 
-        $assignedStage = \App\Models\TicketStage::where('slug', 'assigned')->first();
-        $assignedStageId = $assignedStage ? $assignedStage->id : null;
-        $assignedTicketsCount = $assignedStageId 
-            ? (clone $baseQuery)->where('status', 'Valid')->where('stage_id', $assignedStageId)->count() 
-            : 0;
+        $myTicketsCountQuery = Ticket::query();
+        if ($user && $user->user_type !== 'admin') {
+            $myTicketsCountQuery->where(function ($q) use ($user) {
+                if ($user->division_id) {
+                    $q->orWhere('division_id', $user->division_id);
+                }
+                if ($user->department_id) {
+                    $q->orWhere('department_id', $user->department_id);
+                }
+            });
+        }
+        $myTicketsCount = $myTicketsCountQuery->where(function ($q) use ($user) {
+            $q->orWhere('assigned_id', $user->id);
+            $q->orWhere(function ($sub) use ($user) {
+                $sub->where('created_by', $user->id)
+                    ->whereHas('stage', function ($sq) {
+                        $sq->where('slug', 'review');
+                    });
+            });
+        })->count();
 
         $criticalTicketsCount = (clone $baseQuery)->where('status', 'Valid')
             ->whereHas('priorityOption', function ($query) {
@@ -41,7 +56,7 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'openTicketsCount',
-            'assignedTicketsCount',
+            'myTicketsCount',
             'criticalTicketsCount',
             'slaLapsedCount'
         ));
