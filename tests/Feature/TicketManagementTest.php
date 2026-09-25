@@ -2438,4 +2438,46 @@ class TicketManagementTest extends TestCase
         $responseMy->assertSee('My Ticket in Review');
         $responseMy->assertDontSee('General Unassigned Ticket');
     }
+
+    /**
+     * Test that ticket creation fails if the department does not belong to the selected division.
+     */
+    public function test_creating_ticket_with_mismatched_department_fails_validation(): void
+    {
+        $user = User::factory()->create();
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $user->roles()->attach($role->id);
+
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $role->ticketTypes()->attach($type->id);
+
+        $divisionA = Division::create(['name' => 'Division A']);
+        $divisionB = Division::create(['name' => 'Division B']);
+        
+        // Department belongs to Division B
+        $departmentOfB = Department::create(['name' => 'Dept of B', 'division_id' => $divisionB->id]);
+        
+        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Try to create ticket under Division A, but selecting a Department of Division B
+        $response = $this->actingAs($user)->post('/tickets', [
+            'title' => 'Mismatched Ticket',
+            'description' => 'This should fail validation',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stage->id,
+            'division_id' => $divisionA->id, // Division A
+            'department_id' => $departmentOfB->id, // Department of Division B
+            'location_id' => $location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response->assertSessionHasErrors(['department_id']);
+        $this->assertDatabaseMissing('tickets', [
+            'title' => 'Mismatched Ticket',
+        ]);
+    }
 }

@@ -166,7 +166,20 @@ class TicketController extends Controller
             'priority_option_id' => 'required|exists:priorities,id',
             'stage_id' => 'nullable|exists:ticket_stages,id',
             'division_id' => 'required|exists:divisions,id',
-            'department_id' => 'nullable|exists:departments,id',
+            'department_id' => [
+                'nullable',
+                'exists:departments,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->filled('division_id')) {
+                        $exists = \App\Models\Department::where('id', $value)
+                            ->where('division_id', $request->input('division_id'))
+                            ->exists();
+                        if (!$exists) {
+                            $fail('The selected department does not belong to the selected division.');
+                        }
+                    }
+                }
+            ],
             'location_id' => 'required|exists:locations,id',
             'category_1_id' => 'required|exists:categories,id',
             'category_2_id' => 'nullable|exists:categories,id',
@@ -365,7 +378,20 @@ class TicketController extends Controller
             ],
             'priority_option_id' => 'required|exists:priorities,id',
             'division_id' => 'required|exists:divisions,id',
-            'department_id' => 'nullable|exists:departments,id',
+            'department_id' => [
+                'nullable',
+                'exists:departments,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->filled('division_id')) {
+                        $exists = \App\Models\Department::where('id', $value)
+                            ->where('division_id', $request->input('division_id'))
+                            ->exists();
+                        if (!$exists) {
+                            $fail('The selected department does not belong to the selected division.');
+                        }
+                    }
+                }
+            ],
             'location_id' => 'required|exists:locations,id',
             'category_1_id' => 'required|exists:categories,id',
             'category_2_id' => 'nullable|exists:categories,id',
