@@ -60,6 +60,10 @@ class TicketController extends Controller
             $query->where('priority_option_id', $request->input('priority_id'));
         }
 
+        if ($request->filled('ticket_type_id')) {
+            $query->where('ticket_type_id', $request->input('ticket_type_id'));
+        }
+
         if ($request->filled('stage_id')) {
             $query->where('stage_id', $request->input('stage_id'));
         }
@@ -102,7 +106,19 @@ class TicketController extends Controller
             $departments = Department::orderBy('name')->get();
         }
 
-        return view('tickets.index', compact('tickets', 'priorities', 'stages', 'statuses', 'divisions', 'departments'));
+        if ($user && $user->user_type === 'admin') {
+            $ticketTypes = TicketType::all();
+        } else {
+            $ticketTypes = $user ? $user->roles()
+                ->with('ticketTypes')
+                ->get()
+                ->pluck('ticketTypes')
+                ->collapse()
+                ->unique('id')
+                ->values() : collect();
+        }
+
+        return view('tickets.index', compact('tickets', 'priorities', 'stages', 'statuses', 'divisions', 'departments', 'ticketTypes'));
     }
 
     /**

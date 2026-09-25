@@ -1822,21 +1822,23 @@ class TicketManagementTest extends TestCase
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
 
-        $type = TicketType::create(['name' => 'Incident']);
+        $typeIncident = TicketType::create(['name' => 'Incident']);
+        $typeRequest = TicketType::create(['name' => 'Service Request']);
         $division = Division::create(['name' => 'IT']);
-        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+        $category1 = Category::create(['name' => 'Software', 'ticket_type_id' => $typeIncident->id]);
+        $category2 = Category::create(['name' => 'Hardware', 'ticket_type_id' => $typeRequest->id]);
 
         // Ticket 1: Low, Open, Valid, Created 2 days ago
         $ticket1 = Ticket::create([
             'ticket_number' => 'TCK-1',
             'title' => 'Alpha Ticket',
             'description' => 'Test 1',
-            'ticket_type_id' => $type->id,
+            'ticket_type_id' => $typeIncident->id,
             'priority_option_id' => $priorityLow->id,
             'stage_id' => $stageOpen->id,
             'division_id' => $division->id,
             'location_id' => $this->location->id,
-            'category_1_id' => $category->id,
+            'category_1_id' => $category1->id,
             'created_by' => $user->id,
             'status' => 'Valid',
         ]);
@@ -1848,12 +1850,12 @@ class TicketManagementTest extends TestCase
             'ticket_number' => 'TCK-2',
             'title' => 'Beta Ticket',
             'description' => 'Test 2',
-            'ticket_type_id' => $type->id,
+            'ticket_type_id' => $typeRequest->id,
             'priority_option_id' => $priorityHigh->id,
             'stage_id' => $stageAssigned->id,
             'division_id' => $division->id,
             'location_id' => $this->location->id,
-            'category_1_id' => $category->id,
+            'category_1_id' => $category2->id,
             'created_by' => $user->id,
             'status' => 'Done',
         ]);
@@ -1896,6 +1898,12 @@ class TicketManagementTest extends TestCase
         $response->assertStatus(200);
         $response->assertDontSee('Alpha Ticket');
         $response->assertDontSee('Beta Ticket');
+
+        // 7. Filter by Ticket Type = Service Request
+        $response = $this->actingAs($user)->get("/tickets?ticket_type_id={$typeRequest->id}");
+        $response->assertStatus(200);
+        $response->assertSee('Beta Ticket');
+        $response->assertDontSee('Alpha Ticket');
     }
 
     /**

@@ -42,6 +42,17 @@
                 </select>
             </div>
             <div class="col-md-2">
+                <label for="ticket_type_id" class="form-label small fw-bold text-muted text-uppercase mb-1">Ticket Type</label>
+                <select name="ticket_type_id" id="ticket_type_id" class="form-select form-select-sm">
+                    <option value="">All Types</option>
+                    @foreach($ticketTypes as $type)
+                        <option value="{{ $type->id }}" {{ request('ticket_type_id') == $type->id ? 'selected' : '' }}>
+                            {{ $type->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label for="stage_id" class="form-label small fw-bold text-muted text-uppercase mb-1">Stage</label>
                 <select name="stage_id" id="stage_id" class="form-select form-select-sm">
                     <option value="">All Stages</option>
@@ -97,7 +108,7 @@
             </div>
             <div class="col-md-2 d-flex gap-2 ms-auto">
                 <button type="submit" class="btn btn-sm btn-primary flex-grow-1">Filter</button>
-                @if(request()->filled('priority_id') || request()->filled('stage_id') || request()->filled('status') || request()->filled('date_created') || request()->filled('division_id') || request()->filled('department_id') || request()->filled('to_user_search'))
+                @if(request()->filled('priority_id') || request()->filled('ticket_type_id') || request()->filled('stage_id') || request()->filled('status') || request()->filled('date_created') || request()->filled('division_id') || request()->filled('department_id') || request()->filled('to_user_search'))
                     <a href="{{ route('tickets.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
                 @endif
             </div>
