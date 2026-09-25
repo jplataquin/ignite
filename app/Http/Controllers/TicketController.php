@@ -50,9 +50,14 @@ class TicketController extends Controller
                     if ($user->department_id) {
                         $q->orWhere('department_id', $user->department_id);
                     }
-                    if (!$user->division_id && !$user->department_id) {
-                        $q->whereRaw('1 = 0');
-                    }
+                    
+                    // Also allow tickets that are in 'review' stage and assigned to this user
+                    $q->orWhere(function ($sub) use ($user) {
+                        $sub->where('assigned_id', $user->id)
+                            ->whereHas('stage', function ($sq) {
+                                $sq->where('slug', 'review');
+                            });
+                    });
                 });
             }
         }

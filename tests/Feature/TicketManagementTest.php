@@ -2547,6 +2547,57 @@ class TicketManagementTest extends TestCase
     }
 
     /**
+     * Test that tickets in the 'review' stage assigned to the user are visible in the "All Tickets" tab,
+     * even if they belong to a completely different division or department.
+     */
+    public function test_all_tickets_tab_shows_assigned_review_tickets_even_with_different_division_and_department(): void
+    {
+        $divisionUser = Division::create(['name' => 'User Division']);
+        $departmentUser = Department::create(['name' => 'User Department', 'division_id' => $divisionUser->id]);
+
+        $user = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $divisionUser->id,
+            'department_id' => $departmentUser->id,
+        ]);
+
+        $divisionOther = Division::create(['name' => 'Other Division']);
+        $departmentOther = Department::create(['name' => 'Other Department', 'division_id' => $divisionOther->id]);
+        $otherUser = User::factory()->create(['user_type' => 'regular']);
+
+        $stageReview = TicketStage::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Ticket belongs to Other Division/Department, in 'review' stage, and assigned to $user
+        Ticket::create([
+            'ticket_number' => 'FLR-CROSS-REV-001',
+            'title' => 'Cross Division Review Ticket Assigned to Me',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageReview->id, // Review stage
+            'status' => 'Valid',
+            'division_id' => $divisionOther->id, // Mismatched division
+            'department_id' => $departmentOther->id, // Mismatched department
+            'created_by' => $otherUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'assigned_id' => $user->id, // Assigned to user!
+        ]);
+
+        // 1. Visit "All Tickets" tab -> SHOULD see this ticket because it is in review and assigned to us!
+        $responseAll = $this->actingAs($user)->get('/tickets?tab=all');
+        $responseAll->assertStatus(200);
+        $responseAll->assertSee('Cross Division Review Ticket Assigned to Me');
+
+        // 2. Visit "My Tickets" tab -> SHOULD see this ticket because assigned to us!
+        $responseMy = $this->actingAs($user)->get('/tickets?tab=my_tickets');
+        $responseMy->assertStatus(200);
+        $responseMy->assertSee('Cross Division Review Ticket Assigned to Me');
+    }
+
+    /**
      * Test that ticket creation fails if the department does not belong to the selected division.
      */
     public function test_creating_ticket_with_mismatched_department_fails_validation(): void
