@@ -57,7 +57,7 @@
                             {{ $type->name }}
                         </td>
                         <td class="py-3">
-                            <span class="badge bg-dark text-white rounded px-2 py-1.5 fw-bold">{{ $type->code ?: 'FLR' }}</span>
+                            <span class="badge bg-dark text-white rounded px-2 py-1.5 fw-bold">{{ $type->code ?: 'IGN' }}</span>
                         </td>
                         <td class="py-3 text-muted">
                             {{ $type->description ?: 'No description provided.' }}

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ticket;
+use App\Models\TicketStage;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -23,7 +24,12 @@ class DashboardController extends Controller
             }
         }
 
-        $openTicketsCount = (clone $baseQuery)->where('status', 'Valid')->count();
+        $openStage = TicketStage::where('slug', 'open')->first();
+        $openStageId = $openStage ? $openStage->id : null;
+
+        $openTicketsCount = $openStageId
+            ? (clone $baseQuery)->where('stage_id', $openStageId)->count()
+            : 0;
 
         $myTicketsCount = Ticket::where(function ($q) use ($user) {
             $q->orWhere('assigned_id', $user->id);
@@ -45,6 +51,7 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'openTicketsCount',
+            'openStageId',
             'myTicketsCount',
             'criticalTicketsCount',
             'slaLapsedCount'

@@ -150,6 +150,20 @@ class DashboardTest extends TestCase
         ]);
 
         Ticket::create([
+            'ticket_number' => 'FLR-2026-0004',
+            'title' => 'Second Open Ticket in Div A Dept A',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $divisionA->id,
+            'department_id' => $departmentA->id,
+            'created_by' => $regularUser->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        Ticket::create([
             'ticket_number' => 'FLR-2026-0003',
             'title' => 'Assigned Ticket in Div A Dept A',
             'ticket_type_id' => $type->id,
@@ -268,5 +282,91 @@ class DashboardTest extends TestCase
         // Check that the response contains the link with correct status parameter
         $expectedUrl = route('tickets.index', ['status' => 'Lapsed']);
         $response->assertSee(htmlentities($expectedUrl), false);
+    }
+
+    /**
+     * Test that the Open Tickets card only counts tickets in the Open stage and ignores assigned or review tickets.
+     */
+    public function test_dashboard_open_tickets_card_only_counts_tickets_in_open_stage(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        $stageReview = TicketStage::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
+        $stageClosed = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#4']);
+
+        $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // 1 Open ticket
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0001',
+            'title' => 'Open Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 1 Assigned ticket (status Valid)
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0002',
+            'title' => 'Assigned Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageAssigned->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => $admin->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 1 Review ticket (status Valid)
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0003',
+            'title' => 'Review Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageReview->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => $admin->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 1 Closed ticket (status Done)
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0004',
+            'title' => 'Closed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageClosed->id,
+            'status' => 'Done',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($admin)->get('/');
+        $response->assertStatus(200);
+
+        // Open tickets count must be exactly 1 (not 3 Valid tickets)
+        $response->assertSee('Open Tickets');
+        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">1</h2>', false);
     }
 }

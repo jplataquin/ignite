@@ -237,7 +237,7 @@ class TicketController extends Controller
             $nextId = $latest ? $latest->id + 1 : 1;
             
             $ticketType = TicketType::find($validated['ticket_type_id']);
-            $prefix = ($ticketType && !empty($ticketType->code)) ? $ticketType->code : 'FLR';
+            $prefix = ($ticketType && !empty($ticketType->code)) ? $ticketType->code : 'IGN';
             $ticketNumber = $prefix . '-' . Carbon::now()->format('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
 
             // Default to Open stage if stage_id is not specified

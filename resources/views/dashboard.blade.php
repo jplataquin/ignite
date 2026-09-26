@@ -1,8 +1,7 @@
 @extends('layouts.app')
 
 @php
-    $openStage = \App\Models\TicketStage::where('slug', 'open')->first();
-    $openStageId = $openStage ? $openStage->id : null;
+    $openStageId = $openStageId ?? (\App\Models\TicketStage::where('slug', 'open')->value('id'));
 @endphp
 
 @section('content')
