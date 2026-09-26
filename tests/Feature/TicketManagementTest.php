@@ -2598,6 +2598,147 @@ class TicketManagementTest extends TestCase
     }
 
     /**
+     * Test that regular users can see tickets they created that are in status 'Done' and stage 'Closed',
+     * even if the tickets belong to a completely different division or department.
+     */
+    public function test_regular_user_can_see_their_created_closed_tickets_in_ticket_list_even_with_different_division_and_department(): void
+    {
+        $divisionUser = Division::create(['name' => 'User Division']);
+        $departmentUser = Department::create(['name' => 'User Department', 'division_id' => $divisionUser->id]);
+
+        $user = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $divisionUser->id,
+            'department_id' => $departmentUser->id,
+        ]);
+
+        $divisionOther = Division::create(['name' => 'Other Division']);
+        $departmentOther = Department::create(['name' => 'Other Department', 'division_id' => $divisionOther->id]);
+
+        $stageClosed = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#6B7280']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        Ticket::create([
+            'ticket_number' => 'IGN-CROSS-CLOSED-001',
+            'title' => 'My Cross Division Closed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageClosed->id,
+            'status' => 'Done',
+            'division_id' => $divisionOther->id,
+            'department_id' => $departmentOther->id,
+            'created_by' => $user->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'assigned_id' => null,
+        ]);
+
+        // Default ticket list (/tickets)
+        $response = $this->actingAs($user)->get('/tickets');
+        $response->assertStatus(200);
+        $response->assertSee('My Cross Division Closed Ticket');
+
+        // All Tickets tab (/tickets?tab=all)
+        $responseAll = $this->actingAs($user)->get('/tickets?tab=all');
+        $responseAll->assertStatus(200);
+        $responseAll->assertSee('My Cross Division Closed Ticket');
+    }
+
+    /**
+     * Test that regular users can see tickets they created that are in status 'Done' and stage 'Canceled',
+     * even if the tickets belong to a completely different division or department.
+     */
+    public function test_regular_user_can_see_their_created_canceled_tickets_in_ticket_list_even_with_different_division_and_department(): void
+    {
+        $divisionUser = Division::create(['name' => 'User Division']);
+        $departmentUser = Department::create(['name' => 'User Department', 'division_id' => $divisionUser->id]);
+
+        $user = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $divisionUser->id,
+            'department_id' => $departmentUser->id,
+        ]);
+
+        $divisionOther = Division::create(['name' => 'Other Division']);
+        $departmentOther = Department::create(['name' => 'Other Department', 'division_id' => $divisionOther->id]);
+
+        $stageCanceled = TicketStage::create(['name' => 'Canceled', 'slug' => 'canceled', 'color_code' => '#EF4444']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        Ticket::create([
+            'ticket_number' => 'IGN-CROSS-CANCELED-001',
+            'title' => 'My Cross Division Canceled Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow = $priorityOption->id,
+            'stage_id' => $stageCanceled->id,
+            'status' => 'Done',
+            'division_id' => $divisionOther->id,
+            'department_id' => $departmentOther->id,
+            'created_by' => $user->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'assigned_id' => null,
+        ]);
+
+        // Default ticket list (/tickets)
+        $response = $this->actingAs($user)->get('/tickets');
+        $response->assertStatus(200);
+        $response->assertSee('My Cross Division Canceled Ticket');
+
+        // All Tickets tab (/tickets?tab=all)
+        $responseAll = $this->actingAs($user)->get('/tickets?tab=all');
+        $responseAll->assertStatus(200);
+        $responseAll->assertSee('My Cross Division Canceled Ticket');
+    }
+
+    /**
+     * Test that regular users cannot see other users' cross-division closed or canceled tickets.
+     */
+    public function test_regular_user_cannot_see_other_users_cross_division_closed_or_canceled_tickets(): void
+    {
+        $divisionUser = Division::create(['name' => 'User Division']);
+        $departmentUser = Department::create(['name' => 'User Department', 'division_id' => $divisionUser->id]);
+
+        $user = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $divisionUser->id,
+            'department_id' => $departmentUser->id,
+        ]);
+
+        $divisionOther = Division::create(['name' => 'Other Division']);
+        $departmentOther = Department::create(['name' => 'Other Department', 'division_id' => $divisionOther->id]);
+        $otherUser = User::factory()->create(['user_type' => 'regular']);
+
+        $stageClosed = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#6B7280']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        Ticket::create([
+            'ticket_number' => 'IGN-OTHER-CLOSED-001',
+            'title' => 'Other User Cross Division Closed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageClosed->id,
+            'status' => 'Done',
+            'division_id' => $divisionOther->id,
+            'department_id' => $departmentOther->id,
+            'created_by' => $otherUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'assigned_id' => null,
+        ]);
+
+        $response = $this->actingAs($user)->get('/tickets');
+        $response->assertStatus(200);
+        $response->assertDontSee('Other User Cross Division Closed Ticket');
+    }
+
+    /**
      * Test that ticket creation fails if the department does not belong to the selected division.
      */
     public function test_creating_ticket_with_mismatched_department_fails_validation(): void

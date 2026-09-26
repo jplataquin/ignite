@@ -24,7 +24,7 @@ Ignite is an enterprise IT service management and ticketing platform built with 
 
 ### Scoping & Permissions
 - **Admin Users (`user_type === 'admin'`)**: Unrestricted access across all divisions, departments, ticket types, and master data settings.
-- **Regular Users (`user_type === 'regular'`)**: Scoped to their assigned `division_id` and `department_id` (plus tickets in `review` stage assigned directly to them).
+- **Regular Users (`user_type === 'regular'`)**: Scoped to their assigned `division_id` and `department_id`, plus tickets in `review` stage assigned directly to them, and any tickets they created that are in status `Done` with stage `closed` or `canceled`.
 
 ### File Attachments & Chunked Uploads
 - Large file uploads utilize chunking (`staging/{temp_token}/{chunk}.part`).

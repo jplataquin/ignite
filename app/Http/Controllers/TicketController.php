@@ -58,6 +58,15 @@ class TicketController extends Controller
                                 $sq->where('slug', 'review');
                             });
                     });
+
+                    // Also allow tickets created by this user that are in status Done and stage Closed or Canceled
+                    $q->orWhere(function ($sub) use ($user) {
+                        $sub->where('created_by', $user->id)
+                            ->where('status', 'Done')
+                            ->whereHas('stage', function ($sq) {
+                                $sq->whereIn('slug', ['closed', 'canceled']);
+                            });
+                    });
                 });
             }
         }
