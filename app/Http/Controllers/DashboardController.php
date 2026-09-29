@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Ticket;
 use App\Models\TicketStage;
-use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -18,9 +17,12 @@ class DashboardController extends Controller
 
         // Non-admin users are restricted to their division and department (if assigned)
         if ($user && $user->user_type !== 'admin') {
-            $baseQuery->where('division_id', $user->division_id);
             if ($user->department_id) {
                 $baseQuery->where('department_id', $user->department_id);
+            } elseif ($user->division_id) {
+                $baseQuery->where('division_id', $user->division_id);
+            } else {
+                $baseQuery->whereRaw('1 = 0');
             }
         }
 
@@ -44,7 +46,7 @@ class DashboardController extends Controller
         $criticalTicketsCount = (clone $baseQuery)->where('status', 'Valid')
             ->whereHas('priorityOption', function ($query) {
                 $query->where('level', '>=', 3)
-                      ->orWhereIn('name', ['Critical', 'critical']);
+                    ->orWhereIn('name', ['Critical', 'critical']);
             })->count();
 
         $slaLapsedCount = (clone $baseQuery)->where('status', 'Lapsed')->count();

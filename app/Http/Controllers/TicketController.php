@@ -2,22 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Ticket;
 use App\Models\Attachment;
-use App\Models\TicketComment;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\Division;
 use App\Models\Location;
+use App\Models\Priority;
+use App\Models\Ticket;
+use App\Models\TicketComment;
 use App\Models\TicketStage;
 use App\Models\TicketType;
-use App\Models\Priority;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Auth;
-use Carbon\Carbon;
 
 class TicketController extends Controller
 {
@@ -44,13 +44,16 @@ class TicketController extends Controller
         } else {
             if ($user && $user->user_type === 'regular') {
                 $query->where(function ($q) use ($user) {
-                    if ($user->division_id) {
-                        $q->orWhere('division_id', $user->division_id);
-                    }
-                    if ($user->department_id) {
-                        $q->orWhere('department_id', $user->department_id);
-                    }
-                    
+                    $q->where(function ($sub) use ($user) {
+                        if ($user->department_id) {
+                            $sub->where('department_id', $user->department_id);
+                        } elseif ($user->division_id) {
+                            $sub->where('division_id', $user->division_id);
+                        } else {
+                            $sub->whereRaw('1 = 0');
+                        }
+                    });
+
                     // Also allow tickets that are in 'review' stage and assigned to this user
                     $q->orWhere(function ($sub) use ($user) {
                         $sub->where('assigned_id', $user->id)
@@ -102,7 +105,7 @@ class TicketController extends Controller
             if ($request->filled('to_user_search')) {
                 $search = $request->input('to_user_search');
                 $query->whereHas('assignee', function ($q) use ($search) {
-                    $q->where('name', 'like', '%' . $search . '%');
+                    $q->where('name', 'like', '%'.$search.'%');
                 });
             }
         }
@@ -153,7 +156,7 @@ class TicketController extends Controller
                 ->unique('id')
                 ->values();
         }
-        
+
         $priorities = Priority::orderBy('level')->get();
         $stages = TicketStage::all();
         $divisions = Division::all();
@@ -188,11 +191,11 @@ class TicketController extends Controller
                             ->collapse()
                             ->pluck('id')
                             ->toArray();
-                        if (!in_array((int)$value, $allowedTypeIds)) {
+                        if (! in_array((int) $value, $allowedTypeIds)) {
                             $fail('You do not have permission to create tickets of this type.');
                         }
                     }
-                }
+                },
             ],
             'priority_option_id' => 'required|exists:priorities,id',
             'stage_id' => 'nullable|exists:ticket_stages,id',
@@ -202,14 +205,14 @@ class TicketController extends Controller
                 'exists:departments,id',
                 function ($attribute, $value, $fail) use ($request) {
                     if ($request->filled('division_id')) {
-                        $exists = \App\Models\Department::where('id', $value)
+                        $exists = Department::where('id', $value)
                             ->where('division_id', $request->input('division_id'))
                             ->exists();
-                        if (!$exists) {
+                        if (! $exists) {
                             $fail('The selected department does not belong to the selected division.');
                         }
                     }
-                }
+                },
             ],
             'location_id' => 'required|exists:locations,id',
             'category_1_id' => 'required|exists:categories,id',
@@ -222,7 +225,7 @@ class TicketController extends Controller
         $attachments = [];
         if ($request->filled('attachments_json')) {
             $attachments = json_decode($request->input('attachments_json'), true);
-            if (json_last_error() !== JSON_ERROR_NONE || !is_array($attachments)) {
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($attachments)) {
                 return redirect()->back()->with('error', 'Invalid attachments data.')->withInput();
             }
 
@@ -234,8 +237,8 @@ class TicketController extends Controller
                 }
 
                 $extension = strtolower(pathinfo($attachment['file_name'], PATHINFO_EXTENSION));
-                if (!in_array($extension, $allowedExtensions)) {
-                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are WebP, PDF, Excel, and Word documents.") ->withInput();
+                if (! in_array($extension, $allowedExtensions)) {
+                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are WebP, PDF, Excel, and Word documents.")->withInput();
                 }
             }
         }
@@ -244,19 +247,19 @@ class TicketController extends Controller
             // Generate ticket number with lock
             $latest = Ticket::lockForUpdate()->latest('id')->first();
             $nextId = $latest ? $latest->id + 1 : 1;
-            
+
             $ticketType = TicketType::find($validated['ticket_type_id']);
-            $prefix = ($ticketType && !empty($ticketType->code)) ? $ticketType->code : 'IGN';
-            $ticketNumber = $prefix . '-' . Carbon::now()->format('Y') . '-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            $prefix = ($ticketType && ! empty($ticketType->code)) ? $ticketType->code : 'IGN';
+            $ticketNumber = $prefix.'-'.Carbon::now()->format('Y').'-'.str_pad($nextId, 4, '0', STR_PAD_LEFT);
 
             // Default to Open stage if stage_id is not specified
             $stageId = $validated['stage_id'] ?? null;
-            if (!$stageId) {
+            if (! $stageId) {
                 $openStage = TicketStage::where('slug', 'open')->first();
                 $stageId = $openStage ? $openStage->id : null;
             }
 
-            if (!$stageId) {
+            if (! $stageId) {
                 throw new \Exception('Default Open stage not found in database.');
             }
 
@@ -281,25 +284,25 @@ class TicketController extends Controller
             // Merge File Chunks for each attachment
             foreach ($attachments as $attachment) {
                 $tempToken = $attachment['temp_token'];
-                $totalChunks = (int)$attachment['total_chunks'];
-                $stagingDir = 'staging/' . $tempToken;
-                
+                $totalChunks = (int) $attachment['total_chunks'];
+                $stagingDir = 'staging/'.$tempToken;
+
                 $finalFileName = $attachment['file_name'];
-                $finalPath = 'attachments/' . $ticket->id . '/' . $finalFileName;
-                
-                Storage::makeDirectory('attachments/' . $ticket->id);
-                
+                $finalPath = 'attachments/'.$ticket->id.'/'.$finalFileName;
+
+                Storage::makeDirectory('attachments/'.$ticket->id);
+
                 $finalContent = '';
                 for ($i = 1; $i <= $totalChunks; $i++) {
-                    $chunkPath = $stagingDir . '/' . $i . '.part';
+                    $chunkPath = $stagingDir.'/'.$i.'.part';
                     if (Storage::exists($chunkPath)) {
                         $finalContent .= Storage::get($chunkPath);
                         Storage::delete($chunkPath);
                     } else {
-                        throw new \Exception('Missing chunk ' . $i);
+                        throw new \Exception('Missing chunk '.$i);
                     }
                 }
-                
+
                 Storage::put($finalPath, $finalContent);
                 Storage::deleteDirectory($stagingDir);
 
@@ -324,15 +327,15 @@ class TicketController extends Controller
     public function show(Ticket $ticket)
     {
         $ticket->load([
-            'ticketType', 'stage', 'division', 'department', 'location', 'creator', 'assignee', 
-            'category1', 'category2', 'category3', 'attachments', 'comments.user', 'comments.attachments'
+            'ticketType', 'stage', 'division', 'department', 'location', 'creator', 'assignee',
+            'category1', 'category2', 'category3', 'attachments', 'comments.user', 'comments.attachments',
         ]);
 
         $divisions = collect();
         $departments = collect();
         if ($ticket->stage?->slug === 'review' && $ticket->created_by === Auth::id()) {
-            $divisions = \App\Models\Division::orderBy('name')->get();
-            $departments = \App\Models\Department::orderBy('name')->get();
+            $divisions = Division::orderBy('name')->get();
+            $departments = Department::orderBy('name')->get();
         }
 
         return view('tickets.show', compact('ticket', 'divisions', 'departments'));
@@ -344,7 +347,7 @@ class TicketController extends Controller
     public function edit(Ticket $ticket)
     {
         $user = Auth::user();
-        if (!$user || ($user->user_type !== 'admin' && $ticket->created_by !== $user->id)) {
+        if (! $user || ($user->user_type !== 'admin' && $ticket->created_by !== $user->id)) {
             abort(403, 'You are not authorized to edit this ticket.');
         }
 
@@ -359,16 +362,16 @@ class TicketController extends Controller
                 ->unique('id')
                 ->values();
         }
-        
+
         $priorities = Priority::orderBy('level')->get();
         $stages = TicketStage::all();
         $divisions = Division::all();
         $departments = Department::all();
         $locations = Location::orderBy('name')->get();
-        
+
         // Only load categories belonging to the selected ticket type
         $categories = Category::where('ticket_type_id', $ticket->ticket_type_id)->get();
-        
+
         $users = User::orderBy('name')->get();
 
         return view('tickets.edit', compact(
@@ -382,7 +385,7 @@ class TicketController extends Controller
     public function update(Request $request, Ticket $ticket)
     {
         $user = Auth::user();
-        if (!$user || ($user->user_type !== 'admin' && $ticket->created_by !== $user->id)) {
+        if (! $user || ($user->user_type !== 'admin' && $ticket->created_by !== $user->id)) {
             abort(403, 'You are not authorized to edit this ticket.');
         }
 
@@ -401,11 +404,11 @@ class TicketController extends Controller
                             ->collapse()
                             ->pluck('id')
                             ->toArray();
-                        if (!in_array((int)$value, $allowedTypeIds)) {
+                        if (! in_array((int) $value, $allowedTypeIds)) {
                             $fail('You do not have permission to use this ticket type.');
                         }
                     }
-                }
+                },
             ],
             'priority_option_id' => 'required|exists:priorities,id',
             'division_id' => 'required|exists:divisions,id',
@@ -414,14 +417,14 @@ class TicketController extends Controller
                 'exists:departments,id',
                 function ($attribute, $value, $fail) use ($request) {
                     if ($request->filled('division_id')) {
-                        $exists = \App\Models\Department::where('id', $value)
+                        $exists = Department::where('id', $value)
                             ->where('division_id', $request->input('division_id'))
                             ->exists();
-                        if (!$exists) {
+                        if (! $exists) {
                             $fail('The selected department does not belong to the selected division.');
                         }
                     }
-                }
+                },
             ],
             'location_id' => 'required|exists:locations,id',
             'category_1_id' => 'required|exists:categories,id',
@@ -434,7 +437,7 @@ class TicketController extends Controller
                     if ($user->user_type !== 'admin' && $value == $ticket->created_by) {
                         $fail('The ticket cannot be assigned to its creator.');
                     }
-                }
+                },
             ],
             'stage_id' => 'nullable|exists:ticket_stages,id',
             'deadline_date' => 'nullable|date',
@@ -447,7 +450,7 @@ class TicketController extends Controller
         $attachments = [];
         if ($request->filled('attachments_json')) {
             $attachments = json_decode($request->input('attachments_json'), true);
-            if (json_last_error() !== JSON_ERROR_NONE || !is_array($attachments)) {
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($attachments)) {
                 return redirect()->back()->with('error', 'Invalid attachments data.')->withInput();
             }
 
@@ -459,8 +462,8 @@ class TicketController extends Controller
                 }
 
                 $extension = strtolower(pathinfo($attachment['file_name'], PATHINFO_EXTENSION));
-                if (!in_array($extension, $allowedExtensions)) {
-                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are WebP, PDF, Excel, and Word documents.") ->withInput();
+                if (! in_array($extension, $allowedExtensions)) {
+                    return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are WebP, PDF, Excel, and Word documents.")->withInput();
                 }
             }
         }
@@ -468,7 +471,7 @@ class TicketController extends Controller
         $deletedAttachmentIds = [];
         if ($request->filled('deleted_attachments')) {
             $deletedAttachmentIds = json_decode($request->input('deleted_attachments'), true);
-            if (json_last_error() !== JSON_ERROR_NONE || !is_array($deletedAttachmentIds)) {
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($deletedAttachmentIds)) {
                 return redirect()->back()->with('error', 'Invalid deleted attachments data.')->withInput();
             }
         }
@@ -490,13 +493,13 @@ class TicketController extends Controller
 
             if ($user->user_type === 'admin') {
                 $updateData['stage_id'] = $validated['stage_id'] ?? $ticket->stage_id;
-                $updateData['deadline_date'] = $request->filled('deadline_date') ? \Carbon\Carbon::parse($request->input('deadline_date')) : null;
+                $updateData['deadline_date'] = $request->filled('deadline_date') ? Carbon::parse($request->input('deadline_date')) : null;
             }
 
             $ticket->update($updateData);
 
             // Handle deleted attachments
-            if (!empty($deletedAttachmentIds)) {
+            if (! empty($deletedAttachmentIds)) {
                 $attachmentsToDelete = Attachment::whereIn('id', $deletedAttachmentIds)
                     ->where('ticket_id', $ticket->id)
                     ->get();
@@ -507,23 +510,23 @@ class TicketController extends Controller
                     }
                     $attachment->delete();
                 }
-                
+
                 if ($attachmentsToDelete->count() > 0) {
-                    $ticket->temp_system_comment = ($ticket->temp_system_comment ? $ticket->temp_system_comment . "\n" : "Ticket details updated:\n") . "- " . $attachmentsToDelete->count() . " attachment(s) removed";
+                    $ticket->temp_system_comment = ($ticket->temp_system_comment ? $ticket->temp_system_comment."\n" : "Ticket details updated:\n").'- '.$attachmentsToDelete->count().' attachment(s) removed';
                 }
             }
 
             // Handle existing notes updates
             if ($request->filled('existing_notes')) {
                 foreach ($request->input('existing_notes') as $attachmentId => $note) {
-                    if (!in_array($attachmentId, $deletedAttachmentIds)) {
+                    if (! in_array($attachmentId, $deletedAttachmentIds)) {
                         $attachment = Attachment::where('id', $attachmentId)
                             ->where('ticket_id', $ticket->id)
                             ->first();
-                        
+
                         if ($attachment && $attachment->note !== $note) {
                             $attachment->update(['note' => $note]);
-                            $ticket->temp_system_comment = ($ticket->temp_system_comment ? $ticket->temp_system_comment . "\n" : "Ticket details updated:\n") . "- Attachment '{$attachment->file_name}' note updated";
+                            $ticket->temp_system_comment = ($ticket->temp_system_comment ? $ticket->temp_system_comment."\n" : "Ticket details updated:\n")."- Attachment '{$attachment->file_name}' note updated";
                         }
                     }
                 }
@@ -533,25 +536,25 @@ class TicketController extends Controller
             $newAttachmentsCount = 0;
             foreach ($attachments as $attachment) {
                 $tempToken = $attachment['temp_token'];
-                $totalChunks = (int)$attachment['total_chunks'];
-                $stagingDir = 'staging/' . $tempToken;
-                
+                $totalChunks = (int) $attachment['total_chunks'];
+                $stagingDir = 'staging/'.$tempToken;
+
                 $finalFileName = $attachment['file_name'];
-                $finalPath = 'attachments/' . $ticket->id . '/' . $finalFileName;
-                
-                Storage::makeDirectory('attachments/' . $ticket->id);
-                
+                $finalPath = 'attachments/'.$ticket->id.'/'.$finalFileName;
+
+                Storage::makeDirectory('attachments/'.$ticket->id);
+
                 $finalContent = '';
                 for ($i = 1; $i <= $totalChunks; $i++) {
-                    $chunkPath = $stagingDir . '/' . $i . '.part';
+                    $chunkPath = $stagingDir.'/'.$i.'.part';
                     if (Storage::exists($chunkPath)) {
                         $finalContent .= Storage::get($chunkPath);
                         Storage::delete($chunkPath);
                     } else {
-                        throw new \Exception('Missing chunk ' . $i);
+                        throw new \Exception('Missing chunk '.$i);
                     }
                 }
-                
+
                 Storage::put($finalPath, $finalContent);
                 Storage::deleteDirectory($stagingDir);
 
@@ -568,11 +571,11 @@ class TicketController extends Controller
             }
 
             if ($newAttachmentsCount > 0) {
-                $ticket->temp_system_comment = ($ticket->temp_system_comment ? $ticket->temp_system_comment . "\n" : "Ticket details updated:\n") . "- {$newAttachmentsCount} new attachment(s) added";
+                $ticket->temp_system_comment = ($ticket->temp_system_comment ? $ticket->temp_system_comment."\n" : "Ticket details updated:\n")."- {$newAttachmentsCount} new attachment(s) added";
             }
-            
+
             // Create comment directly if the observer did not run
-            if (!empty($ticket->temp_system_comment)) {
+            if (! empty($ticket->temp_system_comment)) {
                 TicketComment::create([
                     'ticket_id' => $ticket->id,
                     'user_id' => null, // Logged by system
@@ -598,7 +601,7 @@ class TicketController extends Controller
             // Fetch descendants with depth = 1
             $categories = Category::whereHas('ancestorClosures', function ($query) use ($parentId) {
                 $query->where('ancestor_id', $parentId)
-                      ->where('depth', 1);
+                    ->where('depth', 1);
             })->get(['id', 'name']);
         } elseif ($ticketTypeId) {
             // Fetch Category 1s (no ancestors of depth > 0)
@@ -634,7 +637,7 @@ class TicketController extends Controller
         }
 
         if ($search) {
-            $query->where('name', 'like', '%' . $search . '%');
+            $query->where('name', 'like', '%'.$search.'%');
         }
 
         if ($ticketId) {
@@ -655,7 +658,7 @@ class TicketController extends Controller
     public function accept(Ticket $ticket)
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             abort(403);
         }
 
@@ -671,7 +674,7 @@ class TicketController extends Controller
             } else {
                 $matchesDivision = $user->division_id && $user->division_id === $ticket->division_id;
                 $matchesDepartment = $user->department_id && $user->department_id === $ticket->department_id;
-                if (!$matchesDivision && !$matchesDepartment) {
+                if (! $matchesDivision && ! $matchesDepartment) {
                     return redirect()->back()->with('error', 'You must belong to the ticket\'s division or department to accept it.');
                 }
             }
@@ -698,7 +701,7 @@ class TicketController extends Controller
             abort(404);
         }
 
-        if (!Storage::exists($attachment->file_path)) {
+        if (! Storage::exists($attachment->file_path)) {
             abort(404);
         }
 
@@ -716,7 +719,7 @@ class TicketController extends Controller
         ]);
 
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             abort(403);
         }
 
@@ -725,14 +728,14 @@ class TicketController extends Controller
                       $ticket->created_by === $user->id ||
                       $ticket->assigned_id === $user->id;
 
-        if (!$isInvolved) {
+        if (! $isInvolved) {
             return redirect()->back()->with('error', 'You are not authorized to comment on this ticket.');
         }
 
         $attachments = [];
         if ($request->filled('attachments_json')) {
             $attachments = json_decode($request->input('attachments_json'), true);
-            if (json_last_error() !== JSON_ERROR_NONE || !is_array($attachments)) {
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($attachments)) {
                 return redirect()->back()->with('error', 'Invalid attachments data.')->withInput();
             }
 
@@ -744,7 +747,7 @@ class TicketController extends Controller
                 }
 
                 $extension = strtolower(pathinfo($attachment['file_name'], PATHINFO_EXTENSION));
-                if (!in_array($extension, $allowedExtensions)) {
+                if (! in_array($extension, $allowedExtensions)) {
                     return redirect()->back()->with('error', "File type '{$extension}' is not allowed. Allowed types are WebP, PDF, Excel, and Word documents.")->withInput();
                 }
             }
@@ -761,25 +764,25 @@ class TicketController extends Controller
             // Merge File Chunks for each attachment
             foreach ($attachments as $attachment) {
                 $tempToken = $attachment['temp_token'];
-                $totalChunks = (int)$attachment['total_chunks'];
-                $stagingDir = 'staging/' . $tempToken;
-                
+                $totalChunks = (int) $attachment['total_chunks'];
+                $stagingDir = 'staging/'.$tempToken;
+
                 $finalFileName = $attachment['file_name'];
-                $finalPath = 'attachments/' . $ticket->id . '/' . $finalFileName;
-                
-                Storage::makeDirectory('attachments/' . $ticket->id);
-                
+                $finalPath = 'attachments/'.$ticket->id.'/'.$finalFileName;
+
+                Storage::makeDirectory('attachments/'.$ticket->id);
+
                 $finalContent = '';
                 for ($i = 1; $i <= $totalChunks; $i++) {
-                    $chunkPath = $stagingDir . '/' . $i . '.part';
+                    $chunkPath = $stagingDir.'/'.$i.'.part';
                     if (Storage::exists($chunkPath)) {
                         $finalContent .= Storage::get($chunkPath);
                         Storage::delete($chunkPath);
                     } else {
-                        throw new \Exception('Missing chunk ' . $i);
+                        throw new \Exception('Missing chunk '.$i);
                     }
                 }
-                
+
                 Storage::put($finalPath, $finalContent);
                 Storage::deleteDirectory($stagingDir);
 
@@ -805,7 +808,7 @@ class TicketController extends Controller
     public function forReview(Request $request, Ticket $ticket)
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             abort(403);
         }
 
@@ -824,7 +827,7 @@ class TicketController extends Controller
         ]);
 
         $reviewStage = TicketStage::where('slug', 'review')->first();
-        if (!$reviewStage) {
+        if (! $reviewStage) {
             return redirect()->back()->with('error', 'Review stage not found.');
         }
 
@@ -852,7 +855,7 @@ class TicketController extends Controller
     public function closeReview(Request $request, Ticket $ticket)
     {
         $user = Auth::user();
-        if (!$user || $ticket->created_by !== $user->id) {
+        if (! $user || $ticket->created_by !== $user->id) {
             abort(403, 'You are not authorized to close this ticket.');
         }
 
@@ -865,7 +868,7 @@ class TicketController extends Controller
         ]);
 
         $closedStage = TicketStage::where('slug', 'closed')->first();
-        if (!$closedStage) {
+        if (! $closedStage) {
             return redirect()->back()->with('error', 'Closed stage not found.');
         }
 
@@ -893,7 +896,7 @@ class TicketController extends Controller
     public function cancelReview(Request $request, Ticket $ticket)
     {
         $user = Auth::user();
-        if (!$user || $ticket->created_by !== $user->id) {
+        if (! $user || $ticket->created_by !== $user->id) {
             abort(403, 'You are not authorized to cancel this ticket.');
         }
 
@@ -906,7 +909,7 @@ class TicketController extends Controller
         ]);
 
         $canceledStage = TicketStage::where('slug', 'canceled')->first();
-        if (!$canceledStage) {
+        if (! $canceledStage) {
             return redirect()->back()->with('error', 'Canceled stage not found.');
         }
 
@@ -934,7 +937,7 @@ class TicketController extends Controller
     public function reassignReview(Request $request, Ticket $ticket)
     {
         $user = Auth::user();
-        if (!$user || $ticket->created_by !== $user->id) {
+        if (! $user || $ticket->created_by !== $user->id) {
             abort(403, 'You are not authorized to reassign this ticket.');
         }
 
@@ -951,12 +954,12 @@ class TicketController extends Controller
                     if ($value == $ticket->created_by) {
                         $fail('The ticket cannot be assigned to its creator.');
                     }
-                }
+                },
             ],
         ]);
 
         $assignedStage = TicketStage::where('slug', 'assigned')->first();
-        if (!$assignedStage) {
+        if (! $assignedStage) {
             return redirect()->back()->with('error', 'Assigned stage not found.');
         }
 
@@ -970,7 +973,7 @@ class TicketController extends Controller
                 'ticket_id' => $ticket->id,
                 'user_id' => $user->id,
                 'type' => 'comment',
-                'content' => "Ticket reassigned from review. Comment: " . $validated['comment'],
+                'content' => 'Ticket reassigned from review. Comment: '.$validated['comment'],
             ]);
 
             return redirect()->back()->with('success', 'Ticket reassigned successfully.');

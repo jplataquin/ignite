@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\Division;
-use App\Models\Ticket;
 use App\Models\Priority;
+use App\Models\Ticket;
 use App\Models\TicketStage;
 use App\Models\TicketType;
 use App\Models\User;
@@ -28,7 +28,7 @@ class DashboardTest extends TestCase
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#3']);
         $stageClosed = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#2']);
-        
+
         $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
 
         $type = TicketType::create(['name' => 'Incident']);
@@ -203,6 +203,81 @@ class DashboardTest extends TestCase
         $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">2</h2>', false); // Open Tickets Count
         $response->assertSee('My Tickets');
         $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">1</h2>', false); // My Tickets Count
+    }
+
+    /**
+     * Test that regular users with only division see open tickets across their entire division on dashboard.
+     */
+    public function test_dashboard_open_tickets_card_for_regular_user_with_only_division(): void
+    {
+        // 1. Setup Division & Departments
+        $divisionA = Division::create(['name' => 'Division A']);
+        $departmentA = Department::create(['name' => 'Department A', 'division_id' => $divisionA->id]);
+        $departmentB = Department::create(['name' => 'Department B', 'division_id' => $divisionA->id]);
+
+        $divisionUser = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $divisionA->id,
+            'department_id' => null,
+        ]);
+
+        // 2. Setup Lookup dependencies
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Ticket 1: In Dept A of Division A
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0001',
+            'title' => 'Open Ticket in Dept A',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $divisionA->id,
+            'department_id' => $departmentA->id,
+            'created_by' => $divisionUser->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket 2: In Dept B of Division A
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0002',
+            'title' => 'Open Ticket in Dept B',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $divisionA->id,
+            'department_id' => $departmentB->id,
+            'created_by' => $divisionUser->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket 3: In Division A with no department
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0003',
+            'title' => 'Open Ticket No Dept',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $divisionA->id,
+            'department_id' => null,
+            'created_by' => $divisionUser->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($divisionUser)->get('/');
+        $response->assertStatus(200);
+
+        // All 3 open tickets in Division A should be counted
+        $response->assertSee('Open Tickets');
+        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">3</h2>', false);
     }
 
     /**

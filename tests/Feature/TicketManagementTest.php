@@ -2,30 +2,37 @@
 
 namespace Tests\Feature;
 
+use App\Models\Attachment;
 use App\Models\Category;
 use App\Models\CategoryClosure;
 use App\Models\Department;
 use App\Models\Division;
+use App\Models\Location;
+use App\Models\Priority;
+use App\Models\Role;
+use App\Models\Setting;
 use App\Models\Ticket;
+use App\Models\TicketComment;
 use App\Models\TicketStage;
 use App\Models\TicketType;
-use App\Models\Priority;
 use App\Models\User;
-use App\Models\Role;
+use Carbon\Carbon;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class TicketManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    private \App\Models\Location $location;
+    private Location $location;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
-        $this->location = \App\Models\Location::create(['name' => 'Default Location']);
+        $this->withoutMiddleware([PreventRequestForgery::class]);
+        $this->location = Location::create(['name' => 'Default Location']);
     }
 
     /**
@@ -103,7 +110,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $location = Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         $response = $this->actingAs($user)->post('/tickets', [
@@ -144,7 +151,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $location = Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         $response = $this->actingAs($user)->post('/tickets', [
@@ -182,7 +189,7 @@ class TicketManagementTest extends TestCase
         $role->ticketTypes()->attach($type->id);
 
         $division = Division::create(['name' => 'IT']);
-        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $location = Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         $response = $this->actingAs($user)->post('/tickets', [
@@ -276,7 +283,7 @@ class TicketManagementTest extends TestCase
         $user = User::factory()->create();
         $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
         $user->roles()->attach($role->id);
-        
+
         // Seed lookups
         $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
@@ -285,16 +292,16 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $location = Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         // Stage mock chunks in storage
-        \Illuminate\Support\Facades\Storage::fake('local');
+        Storage::fake('local');
         $token1 = 'token_abc123';
         $token2 = 'token_xyz789';
-        
-        \Illuminate\Support\Facades\Storage::put("staging/{$token1}/1.part", "part1");
-        \Illuminate\Support\Facades\Storage::put("staging/{$token2}/1.part", "part2");
+
+        Storage::put("staging/{$token1}/1.part", 'part1');
+        Storage::put("staging/{$token2}/1.part", 'part2');
 
         $attachmentsJson = json_encode([
             [
@@ -302,15 +309,15 @@ class TicketManagementTest extends TestCase
                 'total_chunks' => 1,
                 'file_name' => 'report.pdf',
                 'mime_type' => 'application/pdf',
-                'note' => 'First attachment note'
+                'note' => 'First attachment note',
             ],
             [
                 'temp_token' => $token2,
                 'total_chunks' => 1,
                 'file_name' => 'photo.webp',
                 'mime_type' => 'image/webp',
-                'note' => 'Second attachment note'
-            ]
+                'note' => 'Second attachment note',
+            ],
         ]);
 
         $response = $this->actingAs($user)->post('/tickets', [
@@ -323,7 +330,7 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'location_id' => $location->id,
             'category_1_id' => $category->id,
-            'attachments_json' => $attachmentsJson
+            'attachments_json' => $attachmentsJson,
         ]);
 
         $ticket = Ticket::where('title', 'Ticket with multiple files')->first();
@@ -335,12 +342,12 @@ class TicketManagementTest extends TestCase
         $this->assertDatabaseHas('attachments', [
             'ticket_id' => $ticket->id,
             'file_name' => 'report.pdf',
-            'note' => 'First attachment note'
+            'note' => 'First attachment note',
         ]);
         $this->assertDatabaseHas('attachments', [
             'ticket_id' => $ticket->id,
             'file_name' => 'photo.webp',
-            'note' => 'Second attachment note'
+            'note' => 'Second attachment note',
         ]);
     }
 
@@ -361,13 +368,13 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $location = Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         // Stage mock webp chunk in storage
-        \Illuminate\Support\Facades\Storage::fake('local');
+        Storage::fake('local');
         $token = 'token_webp_abc';
-        \Illuminate\Support\Facades\Storage::put("staging/{$token}/1.part", "webp_part");
+        Storage::put("staging/{$token}/1.part", 'webp_part');
 
         $attachmentsJson = json_encode([
             [
@@ -375,8 +382,8 @@ class TicketManagementTest extends TestCase
                 'total_chunks' => 1,
                 'file_name' => 'image_upload.webp',
                 'mime_type' => 'image/webp',
-                'note' => 'WEBP Note'
-            ]
+                'note' => 'WEBP Note',
+            ],
         ]);
 
         $response = $this->actingAs($user)->post('/tickets', [
@@ -389,7 +396,7 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'location_id' => $location->id,
             'category_1_id' => $category->id,
-            'attachments_json' => $attachmentsJson
+            'attachments_json' => $attachmentsJson,
         ]);
 
         $ticket = Ticket::where('title', 'Ticket with WEBP file')->first();
@@ -401,7 +408,7 @@ class TicketManagementTest extends TestCase
         $this->assertDatabaseHas('attachments', [
             'ticket_id' => $ticket->id,
             'file_name' => 'image_upload.webp',
-            'note' => 'WEBP Note'
+            'note' => 'WEBP Note',
         ]);
     }
 
@@ -422,13 +429,13 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $location = Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         // Stage mock exe chunk in storage
-        \Illuminate\Support\Facades\Storage::fake('local');
+        Storage::fake('local');
         $token = 'token_exe_abc';
-        \Illuminate\Support\Facades\Storage::put("staging/{$token}/1.part", "exe_part");
+        Storage::put("staging/{$token}/1.part", 'exe_part');
 
         $attachmentsJson = json_encode([
             [
@@ -436,8 +443,8 @@ class TicketManagementTest extends TestCase
                 'total_chunks' => 1,
                 'file_name' => 'malicious.exe',
                 'mime_type' => 'application/x-msdownload',
-                'note' => 'EXE Note'
-            ]
+                'note' => 'EXE Note',
+            ],
         ]);
 
         $response = $this->actingAs($user)->post('/tickets', [
@@ -450,12 +457,12 @@ class TicketManagementTest extends TestCase
             'department_id' => $department->id,
             'location_id' => $location->id,
             'category_1_id' => $category->id,
-            'attachments_json' => $attachmentsJson
+            'attachments_json' => $attachmentsJson,
         ]);
 
         $response->assertSessionHas('error');
         $this->assertDatabaseMissing('attachments', [
-            'file_name' => 'malicious.exe'
+            'file_name' => 'malicious.exe',
         ]);
     }
 
@@ -467,7 +474,7 @@ class TicketManagementTest extends TestCase
         $creator = User::factory()->create();
         $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
         $creator->roles()->attach($role->id);
-        
+
         $intendedUser = User::factory()->create();
 
         $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
@@ -477,7 +484,7 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $location = Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         $response = $this->actingAs($creator)->post('/tickets', [
@@ -509,7 +516,7 @@ class TicketManagementTest extends TestCase
 
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']); // Used when accepted
-        
+
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $division = Division::create(['name' => 'IT']);
@@ -530,7 +537,7 @@ class TicketManagementTest extends TestCase
         ]);
 
         // Disable CSRF for requests forgery
-        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+        $this->withoutMiddleware([PreventRequestForgery::class]);
 
         // Try accepting as other user - should fail
         $response = $this->actingAs($otherUser)->post(route('tickets.accept', $ticket));
@@ -558,7 +565,7 @@ class TicketManagementTest extends TestCase
 
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
-        
+
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $division = Division::create(['name' => 'IT']);
@@ -583,7 +590,7 @@ class TicketManagementTest extends TestCase
             'assigned_id' => null,
         ]);
 
-        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+        $this->withoutMiddleware([PreventRequestForgery::class]);
 
         $response = $this->actingAs($acceptor)->post(route('tickets.accept', $ticket));
         $response->assertRedirect();
@@ -601,7 +608,7 @@ class TicketManagementTest extends TestCase
 
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
-        
+
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $division = Division::create(['name' => 'IT']);
@@ -622,7 +629,7 @@ class TicketManagementTest extends TestCase
             'assigned_id' => null,
         ]);
 
-        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+        $this->withoutMiddleware([PreventRequestForgery::class]);
 
         $response = $this->actingAs($creator)->post(route('tickets.accept', $ticket));
         $response->assertRedirect();
@@ -640,7 +647,7 @@ class TicketManagementTest extends TestCase
 
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
-        
+
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
         $type = TicketType::create(['name' => 'Incident']);
         $division = Division::create(['name' => 'IT']);
@@ -661,7 +668,7 @@ class TicketManagementTest extends TestCase
             'assigned_id' => null,
         ]);
 
-        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+        $this->withoutMiddleware([PreventRequestForgery::class]);
 
         $response = $this->actingAs($adminCreator)->post(route('tickets.accept', $ticket));
         $response->assertRedirect();
@@ -698,7 +705,7 @@ class TicketManagementTest extends TestCase
             'category_1_id' => $category->id,
         ]);
 
-        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+        $this->withoutMiddleware([PreventRequestForgery::class]);
 
         $response = $this->actingAs($admin)->put(route('tickets.update', $ticket), [
             'title' => 'Updated Title',
@@ -746,7 +753,7 @@ class TicketManagementTest extends TestCase
             'category_1_id' => $category->id,
         ]);
 
-        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+        $this->withoutMiddleware([PreventRequestForgery::class]);
 
         $response = $this->actingAs($creator)->post(route('tickets.reassign-review', $ticket), [
             'comment' => 'Please redo it.',
@@ -793,7 +800,7 @@ class TicketManagementTest extends TestCase
             ->assertJsonMissing(['id' => $userInDiv2Dept2->id]);
 
         // 4. Fetch with search query filter 'q'
-        $response = $this->actingAs($user)->getJson("/api/users?q=Jane");
+        $response = $this->actingAs($user)->getJson('/api/users?q=Jane');
         $response->assertStatus(200)
             ->assertJsonFragment(['id' => $userInDiv2Dept2->id, 'name' => 'Jane Div2Dept2'])
             ->assertJsonMissing(['id' => $userInDiv1Dept1->id]);
@@ -831,36 +838,36 @@ class TicketManagementTest extends TestCase
 
         // 1. Creator can comment
         $response = $this->actingAs($creator)->post("/tickets/{$ticket->id}/comments", [
-            'content' => 'Creator comment'
+            'content' => 'Creator comment',
         ]);
         $response->assertRedirect();
         $this->assertDatabaseHas('ticket_comments', [
             'ticket_id' => $ticket->id,
             'user_id' => $creator->id,
-            'content' => 'Creator comment'
+            'content' => 'Creator comment',
         ]);
 
         // 2. Assigned Agent can comment
         $response = $this->actingAs($agent)->post("/tickets/{$ticket->id}/comments", [
-            'content' => 'Agent comment'
+            'content' => 'Agent comment',
         ]);
         $response->assertRedirect();
         $this->assertDatabaseHas('ticket_comments', [
             'ticket_id' => $ticket->id,
             'user_id' => $agent->id,
-            'content' => 'Agent comment'
+            'content' => 'Agent comment',
         ]);
 
         // 3. Uninvolved user cannot comment
         $response = $this->actingAs($unInvolved)->post("/tickets/{$ticket->id}/comments", [
-            'content' => 'Uninvolved user comment'
+            'content' => 'Uninvolved user comment',
         ]);
         $response->assertRedirect();
         $response->assertSessionHas('error');
         $this->assertDatabaseMissing('ticket_comments', [
             'ticket_id' => $ticket->id,
             'user_id' => $unInvolved->id,
-            'content' => 'Uninvolved user comment'
+            'content' => 'Uninvolved user comment',
         ]);
     }
 
@@ -892,9 +899,9 @@ class TicketManagementTest extends TestCase
         ]);
 
         // Stage mock chunks in storage
-        \Illuminate\Support\Facades\Storage::fake('local');
+        Storage::fake('local');
         $token = 'token_comment_123';
-        \Illuminate\Support\Facades\Storage::put("staging/{$token}/1.part", "comment part content");
+        Storage::put("staging/{$token}/1.part", 'comment part content');
 
         $attachmentsJson = json_encode([
             [
@@ -902,19 +909,19 @@ class TicketManagementTest extends TestCase
                 'total_chunks' => 1,
                 'file_name' => 'comment_doc.pdf',
                 'mime_type' => 'application/pdf',
-                'note' => 'Comment attachment note'
-            ]
+                'note' => 'Comment attachment note',
+            ],
         ]);
 
         $response = $this->actingAs($creator)->post("/tickets/{$ticket->id}/comments", [
             'content' => 'This is a comment with file attached',
-            'attachments_json' => $attachmentsJson
+            'attachments_json' => $attachmentsJson,
         ]);
 
         $response->assertRedirect();
 
         // Assert comment was created
-        $comment = \App\Models\TicketComment::where('content', 'This is a comment with file attached')->first();
+        $comment = TicketComment::where('content', 'This is a comment with file attached')->first();
         $this->assertNotNull($comment);
 
         // Assert attachment was created and associated with the comment and ticket
@@ -923,7 +930,7 @@ class TicketManagementTest extends TestCase
             'comment_id' => $comment->id,
             'file_name' => 'comment_doc.pdf',
             'note' => 'Comment attachment note',
-            'uploaded_by' => $creator->id
+            'uploaded_by' => $creator->id,
         ]);
     }
 
@@ -1085,7 +1092,7 @@ class TicketManagementTest extends TestCase
         ]);
 
         $response->assertStatus(403);
-        
+
         $ticket->refresh();
         $this->assertEquals('Initial Title', $ticket->title);
     }
@@ -1188,7 +1195,7 @@ class TicketManagementTest extends TestCase
             'type' => 'system_event',
         ]);
 
-        $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
+        $comment = TicketComment::where('ticket_id', $ticket->id)
             ->where('type', 'system_event')
             ->first();
 
@@ -1249,7 +1256,7 @@ class TicketManagementTest extends TestCase
         $this->assertNull($ticket->assigned_id);
 
         // Assert that the system comment log was successfully recorded with the assignee update from 'Agent' to 'None'
-        $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
+        $comment = TicketComment::where('ticket_id', $ticket->id)
             ->where('type', 'system_event')
             ->first();
 
@@ -1299,15 +1306,15 @@ class TicketManagementTest extends TestCase
         ]);
 
         // Assert system comment was created documenting the changes
-        $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
+        $comment = TicketComment::where('ticket_id', $ticket->id)
             ->where('type', 'system_event')
             ->first();
 
         $this->assertNotNull($comment);
         $this->assertNull($comment->user_id);
-        $this->assertStringContainsString("Ticket details updated:", $comment->content);
+        $this->assertStringContainsString('Ticket details updated:', $comment->content);
         $this->assertStringContainsString("Title updated from 'Original Title' to 'Updated Title'", $comment->content);
-        $this->assertStringContainsString("Description updated", $comment->content);
+        $this->assertStringContainsString('Description updated', $comment->content);
     }
 
     /**
@@ -1340,10 +1347,10 @@ class TicketManagementTest extends TestCase
             'category_1_id' => $category->id,
         ]);
 
-        $attachment = \App\Models\Attachment::create([
+        $attachment = Attachment::create([
             'ticket_id' => $ticket->id,
             'file_name' => 'original_file.pdf',
-            'file_path' => 'attachments/' . $ticket->id . '/original_file.pdf',
+            'file_path' => 'attachments/'.$ticket->id.'/original_file.pdf',
             'file_size' => 1234,
             'mime_type' => 'application/pdf',
             'uploaded_by' => $creator->id,
@@ -1368,12 +1375,12 @@ class TicketManagementTest extends TestCase
         ]);
 
         // Assert system comment documenting removal
-        $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
+        $comment = TicketComment::where('ticket_id', $ticket->id)
             ->where('type', 'system_event')
             ->first();
 
         $this->assertNotNull($comment);
-        $this->assertStringContainsString("1 attachment(s) removed", $comment->content);
+        $this->assertStringContainsString('1 attachment(s) removed', $comment->content);
     }
 
     /**
@@ -1406,9 +1413,9 @@ class TicketManagementTest extends TestCase
             'category_1_id' => $category->id,
         ]);
 
-        \Illuminate\Support\Facades\Storage::fake('local');
+        Storage::fake('local');
         $token = 'token_edit_456';
-        \Illuminate\Support\Facades\Storage::put("staging/{$token}/1.part", "new part content");
+        Storage::put("staging/{$token}/1.part", 'new part content');
 
         $attachmentsJson = json_encode([
             [
@@ -1416,8 +1423,8 @@ class TicketManagementTest extends TestCase
                 'total_chunks' => 1,
                 'file_name' => 'new_uploaded_file.xlsx',
                 'mime_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'note' => 'New edit attachment note'
-            ]
+                'note' => 'New edit attachment note',
+            ],
         ]);
 
         $response = $this->actingAs($creator)->put("/tickets/{$ticket->id}", [
@@ -1437,16 +1444,16 @@ class TicketManagementTest extends TestCase
         $this->assertDatabaseHas('attachments', [
             'ticket_id' => $ticket->id,
             'file_name' => 'new_uploaded_file.xlsx',
-            'note' => 'New edit attachment note'
+            'note' => 'New edit attachment note',
         ]);
 
         // Assert system comment documenting addition
-        $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
+        $comment = TicketComment::where('ticket_id', $ticket->id)
             ->where('type', 'system_event')
             ->first();
 
         $this->assertNotNull($comment);
-        $this->assertStringContainsString("1 new attachment(s) added", $comment->content);
+        $this->assertStringContainsString('1 new attachment(s) added', $comment->content);
     }
 
     /**
@@ -1479,10 +1486,10 @@ class TicketManagementTest extends TestCase
             'category_1_id' => $category->id,
         ]);
 
-        $attachment = \App\Models\Attachment::create([
+        $attachment = Attachment::create([
             'ticket_id' => $ticket->id,
             'file_name' => 'note_test.pdf',
-            'file_path' => 'attachments/' . $ticket->id . '/note_test.pdf',
+            'file_path' => 'attachments/'.$ticket->id.'/note_test.pdf',
             'file_size' => 1234,
             'mime_type' => 'application/pdf',
             'uploaded_by' => $creator->id,
@@ -1509,7 +1516,7 @@ class TicketManagementTest extends TestCase
         $this->assertEquals('Updated Note Content', $attachment->note);
 
         // Assert system comment documenting note update
-        $comment = \App\Models\TicketComment::where('ticket_id', $ticket->id)
+        $comment = TicketComment::where('ticket_id', $ticket->id)
             ->where('type', 'system_event')
             ->first();
 
@@ -1527,10 +1534,10 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        
+
         $assignedStage = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
         $reviewStage = TicketStage::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
-        
+
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
@@ -1554,7 +1561,7 @@ class TicketManagementTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        
+
         $ticket->refresh();
         $this->assertEquals($reviewStage->id, $ticket->stage_id);
         $this->assertEquals($author->id, $ticket->assigned_id);
@@ -1579,9 +1586,9 @@ class TicketManagementTest extends TestCase
 
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
-        
+
         $assignedStage = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
-        
+
         $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
         $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
@@ -1605,7 +1612,7 @@ class TicketManagementTest extends TestCase
         ]);
 
         $response->assertStatus(403);
-        
+
         $ticket->refresh();
         $this->assertEquals($assignedStage->id, $ticket->stage_id);
         $this->assertEquals($assignedUser->id, $ticket->assigned_id);
@@ -1617,7 +1624,7 @@ class TicketManagementTest extends TestCase
     public function test_author_can_close_ticket_from_review(): void
     {
         $author = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
-        
+
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
 
@@ -1647,7 +1654,7 @@ class TicketManagementTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        
+
         $ticket->refresh();
         $this->assertEquals($closedStage->id, $ticket->stage_id);
         $this->assertNull($ticket->assigned_id);
@@ -1666,7 +1673,7 @@ class TicketManagementTest extends TestCase
     public function test_author_can_cancel_ticket_from_review(): void
     {
         $author = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
-        
+
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
 
@@ -1696,7 +1703,7 @@ class TicketManagementTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        
+
         $ticket->refresh();
         $this->assertEquals($canceledStage->id, $ticket->stage_id);
         $this->assertNull($ticket->assigned_id);
@@ -1716,7 +1723,7 @@ class TicketManagementTest extends TestCase
     {
         $author = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
         $newAssignee = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
-        
+
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
 
@@ -1747,7 +1754,7 @@ class TicketManagementTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        
+
         $ticket->refresh();
         $this->assertEquals($assignedStage->id, $ticket->stage_id);
         $this->assertEquals($newAssignee->id, $ticket->assigned_id);
@@ -1767,7 +1774,7 @@ class TicketManagementTest extends TestCase
     {
         $author = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
         $otherUser = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
-        
+
         $division = Division::create(['name' => 'IT']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
 
@@ -1842,7 +1849,7 @@ class TicketManagementTest extends TestCase
             'created_by' => $user->id,
             'status' => 'Valid',
         ]);
-        $ticket1->created_at = \Carbon\Carbon::now()->subDays(2);
+        $ticket1->created_at = Carbon::now()->subDays(2);
         $ticket1->save();
 
         // Ticket 2: High, Assigned, Done, Created today
@@ -1859,7 +1866,7 @@ class TicketManagementTest extends TestCase
             'created_by' => $user->id,
             'status' => 'Done',
         ]);
-        $ticket2->created_at = \Carbon\Carbon::now();
+        $ticket2->created_at = Carbon::now();
         $ticket2->save();
 
         // 1. Filter by Priority = High
@@ -1875,13 +1882,13 @@ class TicketManagementTest extends TestCase
         $response->assertDontSee('Beta Ticket');
 
         // 3. Filter by Status = Done
-        $response = $this->actingAs($user)->get("/tickets?status=Done");
+        $response = $this->actingAs($user)->get('/tickets?status=Done');
         $response->assertStatus(200);
         $response->assertSee('Beta Ticket');
         $response->assertDontSee('Alpha Ticket');
 
         // 4. Filter by Date Created = Today
-        $todayStr = \Carbon\Carbon::now()->toDateString();
+        $todayStr = Carbon::now()->toDateString();
         $response = $this->actingAs($user)->get("/tickets?date_created={$todayStr}");
         $response->assertStatus(200);
         $response->assertSee('Beta Ticket');
@@ -1939,19 +1946,19 @@ class TicketManagementTest extends TestCase
         // Visit page 1 with priority_id filter
         $response = $this->actingAs($user)->get("/tickets?priority_id={$priorityLow->id}");
         $response->assertStatus(200);
-        
+
         // Assert pagination link for page 2 contains priority_id filter
         $response->assertSee("priority_id={$priorityLow->id}");
-        $response->assertSee("page=2");
+        $response->assertSee('page=2');
 
         // Visit page 2
         $responsePage2 = $this->actingAs($user)->get("/tickets?priority_id={$priorityLow->id}&page=2");
         $responsePage2->assertStatus(200);
         $responsePage2->assertSee("priority_id={$priorityLow->id}");
-        $responsePage2->assertSee("page=1");
+        $responsePage2->assertSee('page=1');
 
         // Assert that the My Tickets tab link does NOT contain the page parameter
-        $responsePage2->assertDontSee("tab=my_tickets&amp;page=2");
+        $responsePage2->assertDontSee('tab=my_tickets&amp;page=2');
     }
 
     /**
@@ -1969,7 +1976,7 @@ class TicketManagementTest extends TestCase
         $role->ticketTypes()->attach($type->id);
 
         $division = Division::create(['name' => 'IT']);
-        $location = \App\Models\Location::create(['name' => 'Main Office']);
+        $location = Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         $response = $this->actingAs($user)->post('/tickets', [
@@ -2043,10 +2050,10 @@ class TicketManagementTest extends TestCase
     public function test_admin_can_see_and_filter_by_division_and_department_on_index(): void
     {
         $admin = User::factory()->create(['user_type' => 'admin']);
-        
+
         $divisionA = Division::create(['name' => 'Division Alpha']);
         $departmentA = Department::create(['name' => 'Department Alpha', 'division_id' => $divisionA->id]);
-        
+
         $divisionB = Division::create(['name' => 'Division Beta']);
         $departmentB = Department::create(['name' => 'Department Beta', 'division_id' => $divisionB->id]);
 
@@ -2098,7 +2105,7 @@ class TicketManagementTest extends TestCase
         $response->assertSee('Department Beta');
 
         // Filter by Division Beta
-        $responseFiltered = $this->actingAs($admin)->get('/tickets?division_id=' . $divisionB->id);
+        $responseFiltered = $this->actingAs($admin)->get('/tickets?division_id='.$divisionB->id);
         $responseFiltered->assertStatus(200);
         $responseFiltered->assertSee('Beta Ticket');
         $responseFiltered->assertDontSee('Alpha Ticket');
@@ -2110,7 +2117,7 @@ class TicketManagementTest extends TestCase
     public function test_regular_user_cannot_see_division_and_department_filters_on_index(): void
     {
         $regularUser = User::factory()->create(['user_type' => 'regular']);
-        
+
         $division = Division::create(['name' => 'Division Secret']);
         $department = Department::create(['name' => 'Department Secret', 'division_id' => $division->id]);
 
@@ -2140,7 +2147,7 @@ class TicketManagementTest extends TestCase
         // Assert that Division and Department columns / filters are NOT visible
         $response->assertDontSee('Division Secret');
         $response->assertDontSee('Department Secret');
-        
+
         // Also the actual column headers shouldn't be there as text headers
         // Since we check the specific headers, we can assert we don't see them
         $response->assertDontSee('<th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Division</th>', false);
@@ -2155,9 +2162,9 @@ class TicketManagementTest extends TestCase
         $user = User::factory()->create();
 
         // Ensure settings are seeded/configured
-        \App\Models\Setting::updateOrCreate(['key' => 'sla_days_critical'], ['value' => '1']);
-        \App\Models\Setting::updateOrCreate(['key' => 'sla_days_high'], ['value' => '3']);
-        \App\Models\Setting::updateOrCreate(['key' => 'sla_days_low'], ['value' => '5']);
+        Setting::updateOrCreate(['key' => 'sla_days_critical'], ['value' => '1']);
+        Setting::updateOrCreate(['key' => 'sla_days_high'], ['value' => '3']);
+        Setting::updateOrCreate(['key' => 'sla_days_low'], ['value' => '5']);
 
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityCritical = Priority::create(['name' => 'Critical', 'level' => 3]);
@@ -2182,11 +2189,11 @@ class TicketManagementTest extends TestCase
         ]);
 
         // Explicitly override created_at to control math
-        $ticket->created_at = \Carbon\Carbon::parse('2026-09-21 12:00:00');
+        $ticket->created_at = Carbon::parse('2026-09-21 12:00:00');
         $ticket->save();
 
-        $expectedDeadline = \Carbon\Carbon::parse('2026-09-22 12:00:00');
-        
+        $expectedDeadline = Carbon::parse('2026-09-22 12:00:00');
+
         $this->assertEquals($expectedDeadline->format('Y-m-d H:i:s'), $ticket->calculated_deadline->format('Y-m-d H:i:s'));
     }
 
@@ -2197,7 +2204,7 @@ class TicketManagementTest extends TestCase
     {
         $user = User::factory()->create();
 
-        \App\Models\Setting::updateOrCreate(['key' => 'sla_days_critical'], ['value' => '1']);
+        Setting::updateOrCreate(['key' => 'sla_days_critical'], ['value' => '1']);
 
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityCritical = Priority::create(['name' => 'Critical', 'level' => 3]);
@@ -2335,9 +2342,9 @@ class TicketManagementTest extends TestCase
     }
 
     /**
-     * Test that regular users only see tickets within their division and/or department.
+     * Test that regular users with a department only see tickets within their department.
      */
-    public function test_regular_users_only_see_tickets_within_their_division_and_or_department(): void
+    public function test_regular_users_with_department_only_see_tickets_within_their_department(): void
     {
         $divA = Division::create(['name' => 'Division A']);
         $divB = Division::create(['name' => 'Division B']);
@@ -2405,10 +2412,86 @@ class TicketManagementTest extends TestCase
         $response = $this->actingAs($regularUser)->get('/tickets');
         $response->assertStatus(200);
 
-        // Verify correct tickets are shown and incorrect is hidden
+        // Verify that user only sees tickets for their department
         $response->assertSee('Matches Div and Dept');
-        $response->assertSee('Matches Div Only');
+        $response->assertDontSee('Matches Div Only');
         $response->assertDontSee('Outside Div and Dept');
+    }
+
+    /**
+     * Test that regular users with only division see all tickets within their division.
+     */
+    public function test_regular_users_with_only_division_see_all_tickets_within_their_division(): void
+    {
+        $divA = Division::create(['name' => 'Division A']);
+        $divB = Division::create(['name' => 'Division B']);
+
+        $deptA = Department::create(['name' => 'Dept A', 'division_id' => $divA->id]);
+        $deptB = Department::create(['name' => 'Dept B', 'division_id' => $divB->id]);
+
+        $divisionUser = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $divA->id,
+            'department_id' => null,
+        ]);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Ticket 1: In Division A (Dept A)
+        Ticket::create([
+            'ticket_number' => 'FLR-REG-001',
+            'title' => 'Ticket In Div A Dept A',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $divA->id,
+            'department_id' => $deptA->id,
+            'created_by' => $divisionUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket 2: In Division A (No Department)
+        Ticket::create([
+            'ticket_number' => 'FLR-REG-002',
+            'title' => 'Ticket In Div A No Dept',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $divA->id,
+            'department_id' => null,
+            'created_by' => $divisionUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket 3: In Division B
+        Ticket::create([
+            'ticket_number' => 'FLR-REG-003',
+            'title' => 'Ticket In Div B',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $divB->id,
+            'department_id' => $deptB->id,
+            'created_by' => $divisionUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($divisionUser)->get('/tickets');
+        $response->assertStatus(200);
+
+        // Should see both tickets in Division A
+        $response->assertSee('Ticket In Div A Dept A');
+        $response->assertSee('Ticket In Div A No Dept');
+        $response->assertDontSee('Ticket In Div B');
     }
 
     /**
@@ -2754,11 +2837,11 @@ class TicketManagementTest extends TestCase
 
         $divisionA = Division::create(['name' => 'Division A']);
         $divisionB = Division::create(['name' => 'Division B']);
-        
+
         // Department belongs to Division B
         $departmentOfB = Department::create(['name' => 'Dept of B', 'division_id' => $divisionB->id]);
-        
-        $location = \App\Models\Location::create(['name' => 'Main Office']);
+
+        $location = Location::create(['name' => 'Main Office']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
         // Try to create ticket under Division A, but selecting a Department of Division B
