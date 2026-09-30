@@ -156,16 +156,18 @@ document.addEventListener('DOMContentLoaded', () => {
             let itemHtml = '';
             if (isImage) {
                 itemHtml = `
-                    <div class="carousel-item h-100 ${isActive ? 'active' : ''}">
-                        <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center p-5">
-                            <img src="${url}" class="img-fluid rounded shadow-lg" style="max-height: 75vh; object-fit: contain;">
-                            <p class="mt-3 text-center text-white-50 small mb-0">${escapeHtml(name)}</p>
+                    <div class="carousel-item h-100 ${isActive ? 'active' : ''}" data-is-image="true">
+                        <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center p-4 position-relative overflow-hidden preview-image-viewport" style="user-select: none;">
+                            <div class="d-flex align-items-center justify-content-center preview-image-wrapper" style="max-width: 90vw; max-height: 75vh; overflow: visible;">
+                                <img src="${url}" class="img-fluid rounded shadow-lg preview-image" style="max-height: 75vh; max-width: 90vw; object-fit: contain; transition: transform 0.15s ease-out; transform-origin: center center;" draggable="false">
+                            </div>
+                            <p class="mt-3 text-center text-white-50 small mb-0 text-truncate" style="max-width: 600px;">${escapeHtml(name)}</p>
                         </div>
                     </div>
                 `;
             } else {
                 itemHtml = `
-                    <div class="carousel-item h-100 ${isActive ? 'active' : ''}">
+                    <div class="carousel-item h-100 ${isActive ? 'active' : ''}" data-is-image="false">
                         <div class="w-100 h-100 d-flex flex-column align-items-center justify-content-center p-5 text-center">
                             <div class="bg-secondary rounded p-4 mb-3 d-inline-flex align-items-center justify-content-center" style="width: 90px; height: 90px; color: white;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="40" height="48" fill="currentColor" class="bi bi-file-earmark-arrow-down" viewBox="0 0 16 16">
@@ -203,19 +205,231 @@ document.addEventListener('DOMContentLoaded', () => {
             const carouselInstance = bootstrap.Carousel.getOrCreateInstance(carouselEl);
             carouselInstance.to(clickedIndex);
         }
+
+        resetImageTransform();
+        updateToolbarVisibility();
     }
 
+    // Image Manipulation State & Handlers
+    let currentScale = 1;
+    let currentRotation = 0;
+    let panX = 0;
+    let panY = 0;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+
+    const MIN_SCALE = 0.5;
+    const MAX_SCALE = 4.0;
+    const SCALE_STEP = 0.25;
+
+    function getActivePreviewImage() {
+        const activeItem = document.querySelector('#previewCarousel .carousel-item.active');
+        if (!activeItem) return null;
+        return activeItem.querySelector('.preview-image');
+    }
+
+    function applyImageTransform(animate = true) {
+        const img = getActivePreviewImage();
+        if (!img) return;
+
+        img.style.transition = animate ? 'transform 0.15s ease-out' : 'none';
+        img.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale}) rotate(${currentRotation}deg)`;
+        img.style.cursor = currentScale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default';
+
+        const zoomBadge = document.getElementById('previewZoomLevel');
+        if (zoomBadge) {
+            zoomBadge.textContent = `${Math.round(currentScale * 100)}%`;
+        }
+    }
+
+    function resetImageTransform() {
+        currentScale = 1;
+        currentRotation = 0;
+        panX = 0;
+        panY = 0;
+        isDragging = false;
+        applyImageTransform(true);
+    }
+
+    function zoomIn() {
+        if (currentScale < MAX_SCALE) {
+            currentScale = Math.min(MAX_SCALE, Math.round((currentScale + SCALE_STEP) * 100) / 100);
+            applyImageTransform(true);
+        }
+    }
+
+    function zoomOut() {
+        if (currentScale > MIN_SCALE) {
+            currentScale = Math.max(MIN_SCALE, Math.round((currentScale - SCALE_STEP) * 100) / 100);
+            if (currentScale <= 1) {
+                panX = 0;
+                panY = 0;
+            }
+            applyImageTransform(true);
+        }
+    }
+
+    function rotateClockwise() {
+        currentRotation = (currentRotation + 90) % 360;
+        applyImageTransform(true);
+    }
+
+    function rotateCounterClockwise() {
+        currentRotation = (currentRotation - 90) % 360;
+        applyImageTransform(true);
+    }
+
+    function updateToolbarVisibility() {
+        const activeItem = document.querySelector('#previewCarousel .carousel-item.active');
+        const toolbar = document.getElementById('previewImageControls');
+        if (!toolbar) return;
+
+        if (activeItem && activeItem.getAttribute('data-is-image') === 'true') {
+            toolbar.classList.remove('d-none');
+            toolbar.classList.add('d-flex');
+        } else {
+            toolbar.classList.add('d-none');
+            toolbar.classList.remove('d-flex');
+        }
+    }
+
+    // Attach Toolbar Controls
+    document.getElementById('btnPreviewZoomIn')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        zoomIn();
+    });
+
+    document.getElementById('btnPreviewZoomOut')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        zoomOut();
+    });
+
+    document.getElementById('btnPreviewReset')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        resetImageTransform();
+    });
+
+    document.getElementById('btnPreviewRotateRight')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        rotateClockwise();
+    });
+
+    document.getElementById('btnPreviewRotateLeft')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        rotateCounterClockwise();
+    });
+
+    // Panning & Wheel Zoom on Carousel Viewport
+    const carouselInner = document.querySelector('#previewCarousel .carousel-inner');
+    if (carouselInner) {
+        carouselInner.addEventListener('mousedown', function(e) {
+            const img = getActivePreviewImage();
+            if (!img || currentScale <= 1) return;
+            if (e.target !== img && !img.contains(e.target)) return;
+
+            e.preventDefault();
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+            img.style.cursor = 'grabbing';
+            img.style.transition = 'none';
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            const img = getActivePreviewImage();
+            if (!img) return;
+
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            img.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale}) rotate(${currentRotation}deg)`;
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (isDragging) {
+                isDragging = false;
+                const img = getActivePreviewImage();
+                if (img) {
+                    img.style.cursor = currentScale > 1 ? 'grab' : 'default';
+                    img.style.transition = 'transform 0.15s ease-out';
+                }
+            }
+        });
+
+        carouselInner.addEventListener('wheel', function(e) {
+            const img = getActivePreviewImage();
+            if (!img) return;
+
+            if (e.target.closest('.preview-image-viewport') || e.target.closest('.preview-image')) {
+                e.preventDefault();
+                if (e.deltaY < 0) {
+                    zoomIn();
+                } else {
+                    zoomOut();
+                }
+            }
+        }, { passive: false });
+    }
+
+    const previewCarouselEl = document.getElementById('previewCarousel');
+    if (previewCarouselEl) {
+        previewCarouselEl.addEventListener('slide.bs.carousel', function() {
+            resetImageTransform();
+        });
+        previewCarouselEl.addEventListener('slid.bs.carousel', function() {
+            updateToolbarVisibility();
+        });
+    }
+
+    const previewModalEl = document.getElementById('previewCarouselModal');
+    if (previewModalEl) {
+        previewModalEl.addEventListener('hidden.bs.modal', function() {
+            resetImageTransform();
+        });
+        previewModalEl.addEventListener('shown.bs.modal', function() {
+            updateToolbarVisibility();
+        });
+    }
+
+    // Keyboard Shortcuts for Zoom & Rotation
+    document.addEventListener('keydown', function(e) {
+        const modal = document.getElementById('previewCarouselModal');
+        if (!modal || !modal.classList.contains('show')) return;
+        const activeItem = document.querySelector('#previewCarousel .carousel-item.active');
+        if (!activeItem || activeItem.getAttribute('data-is-image') !== 'true') return;
+
+        if (e.key === '+' || e.key === '=') {
+            e.preventDefault();
+            zoomIn();
+        } else if (e.key === '-' || e.key === '_') {
+            e.preventDefault();
+            zoomOut();
+        } else if (e.key === 'r' || e.key === 'R') {
+            e.preventDefault();
+            if (e.shiftKey) {
+                rotateCounterClockwise();
+            } else {
+                rotateClockwise();
+            }
+        } else if (e.key === '0') {
+            e.preventDefault();
+            resetImageTransform();
+        }
+    });
+
     // Touch Swiping Gestures Support for Carousel
-    const carouselEl = document.getElementById('previewCarousel');
     if (carouselEl) {
         let touchStartX = 0;
         let touchEndX = 0;
 
         carouselEl.addEventListener('touchstart', e => {
+            if (currentScale > 1) return;
             touchStartX = e.changedTouches[0].screenX;
         }, { passive: true });
 
         carouselEl.addEventListener('touchend', e => {
+            if (currentScale > 1) return;
             touchEndX = e.changedTouches[0].screenX;
             const carouselInstance = bootstrap.Carousel.getOrCreateInstance(carouselEl);
             if (touchEndX < touchStartX - 50) {

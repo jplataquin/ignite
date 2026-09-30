@@ -217,9 +217,49 @@
     <div class="modal fade" id="previewCarouselModal" tabindex="-1" aria-labelledby="previewCarouselModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen modal-dialog-centered">
             <div class="modal-content bg-dark text-white border-0">
-                <div class="modal-header border-0 p-3">
-                    <h5 class="modal-title" id="previewCarouselModalLabel">Attachment Preview</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header border-0 p-3 d-flex align-items-center justify-content-between">
+                    <h5 class="modal-title text-truncate me-3" id="previewCarouselModalLabel">Attachment Preview</h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Image Controls Toolbar (Zoom & Rotation) -->
+                        <div id="previewImageControls" class="d-none d-flex align-items-center bg-black bg-opacity-50 border border-secondary border-opacity-50 rounded-pill px-2 py-1 gap-1 shadow-sm">
+                            <!-- Zoom Out -->
+                            <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-1 d-flex align-items-center justify-content-center" id="btnPreviewZoomOut" title="Zoom Out" style="width: 28px; height: 28px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-zoom-out" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M6.5 12a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11M13 6.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0"/>
+                                    <path d="M10.344 11.742q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1 6.5 6.5 0 0 1-1.398 1.4z"/>
+                                    <path fill-rule="evenodd" d="M4 6.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 0 1h-4a.5.5 0 0 1-.5-.5"/>
+                                </svg>
+                            </button>
+                            <!-- Reset Zoom / Percentage Badge -->
+                            <button type="button" class="btn btn-sm btn-link text-white-50 text-decoration-none px-1.5 py-0 d-flex align-items-center justify-content-center" id="btnPreviewReset" title="Reset Zoom & Rotation" style="font-size: 0.75rem; font-weight: 600; min-width: 44px;">
+                                <span id="previewZoomLevel">100%</span>
+                            </button>
+                            <!-- Zoom In -->
+                            <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-1 d-flex align-items-center justify-content-center" id="btnPreviewZoomIn" title="Zoom In" style="width: 28px; height: 28px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-zoom-in" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M6.5 12a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11M13 6.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0"/>
+                                    <path d="M10.344 11.742q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1 6.5 6.5 0 0 1-1.398 1.4z"/>
+                                    <path fill-rule="evenodd" d="M6.5 4a.5.5 0 0 1 .5.5v1.5H8.5a.5.5 0 0 1 0 1H7v1.5a.5.5 0 0 1-1 0V7H4.5a.5.5 0 0 1 0-1H6V4.5a.5.5 0 0 1 .5-.5"/>
+                                </svg>
+                            </button>
+                            <span class="text-white-50 mx-1" style="font-size: 0.8rem;">|</span>
+                            <!-- Rotate Counter-Clockwise -->
+                            <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-1 d-flex align-items-center justify-content-center" id="btnPreviewRotateLeft" title="Rotate Counter-Clockwise (90°)" style="width: 28px; height: 28px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
+                                    <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
+                                </svg>
+                            </button>
+                            <!-- Rotate Clockwise -->
+                            <button type="button" class="btn btn-sm btn-link text-white text-decoration-none p-1 d-flex align-items-center justify-content-center" id="btnPreviewRotateRight" title="Rotate Clockwise (90°)" style="width: 28px; height: 28px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+                                    <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
                 </div>
                 <div class="modal-body p-0 d-flex align-items-center justify-content-center position-relative">
                     <!-- Carousel -->
