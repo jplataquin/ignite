@@ -2,10 +2,16 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
-use App\Models\Role;
+use App\Models\Department;
 use App\Models\Division;
+use App\Models\Role;
+use App\Models\User;
+use App\Notifications\PendingUserRegisteredNotification;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -16,7 +22,7 @@ class AuthTest extends TestCase
     {
         parent::setUp();
         // Disable CSRF verification for testing POST requests
-        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+        $this->withoutMiddleware([PreventRequestForgery::class]);
     }
 
     /**
@@ -67,7 +73,7 @@ class AuthTest extends TestCase
         ]);
 
         $loginResponse->assertSessionHasErrors('email');
-        $this->assertFalse(\Illuminate\Support\Facades\Auth::check());
+        $this->assertFalse(Auth::check());
     }
 
     /**
@@ -261,9 +267,9 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertRedirect('/admin/users');
-        
+
         $newUser = User::where('email', 'staffuser@example.com')->firstOrFail();
-        
+
         $this->assertEquals('New Staff User', $newUser->name);
         $this->assertEquals('moderator', $newUser->user_type);
         $this->assertTrue($newUser->roles->contains($role1->id));
@@ -351,13 +357,13 @@ class AuthTest extends TestCase
     public function test_admins_can_reset_user_password_forcing_next_login_reset(): void
     {
         $admin = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
-        $division = \App\Models\Division::create(['name' => 'IT Department']);
+        $division = Division::create(['name' => 'IT Department']);
         $user = User::factory()->create([
             'user_type' => 'regular',
             'division_id' => $division->id,
             'is_approved' => true,
             'must_reset_password' => false,
-            'password' => \Illuminate\Support\Facades\Hash::make('old_password'),
+            'password' => Hash::make('old_password'),
         ]);
 
         // Admin resets password
@@ -374,10 +380,10 @@ class AuthTest extends TestCase
 
         $user = $user->fresh();
         $this->assertTrue($user->must_reset_password);
-        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('new_temporary_password_123', $user->password));
+        $this->assertTrue(Hash::check('new_temporary_password_123', $user->password));
 
         // Log out admin so we can test guest login
-        \Illuminate\Support\Facades\Auth::logout();
+        Auth::logout();
 
         // Now attempt user login with the new password (should be forced to reset)
         $loginResponse = $this->post('/login', [
@@ -415,14 +421,14 @@ class AuthTest extends TestCase
      */
     public function test_registering_user_can_select_division_and_department_and_admin_is_notified(): void
     {
-        \Illuminate\Support\Facades\Notification::fake();
+        Notification::fake();
 
         $admin = User::factory()->create([
             'user_type' => 'admin',
         ]);
 
-        $division = \App\Models\Division::create(['name' => 'HR Division']);
-        $department = \App\Models\Department::create(['name' => 'Recruiting', 'division_id' => $division->id]);
+        $division = Division::create(['name' => 'HR Division']);
+        $department = Department::create(['name' => 'Recruiting', 'division_id' => $division->id]);
 
         $response = $this->post('/register', [
             'name' => 'Pending Staff',
@@ -446,9 +452,9 @@ class AuthTest extends TestCase
         $newUser = User::where('email', 'pendingstaff@example.com')->first();
 
         // Assert notification was sent to admin
-        \Illuminate\Support\Facades\Notification::assertSentTo(
+        Notification::assertSentTo(
             $admin,
-            \App\Notifications\PendingUserRegisteredNotification::class,
+            PendingUserRegisteredNotification::class,
             function ($notification, $channels) use ($newUser) {
                 return $notification->user->id === $newUser->id;
             }
@@ -467,7 +473,7 @@ class AuthTest extends TestCase
 
         $response->assertRedirect(route('dashboard'));
         $response->assertSessionHas('success');
-        $this->assertEquals($regularUser->id, \Illuminate\Support\Facades\Auth::id());
+        $this->assertEquals($regularUser->id, Auth::id());
         $this->assertEquals($admin->id, session('impersonated_by'));
     }
 
@@ -481,15 +487,15 @@ class AuthTest extends TestCase
 
         // Start impersonation
         $this->actingAs($admin)->post("/admin/users/{$regularUser->id}/impersonate");
-        
-        $this->assertEquals($regularUser->id, \Illuminate\Support\Facades\Auth::id());
+
+        $this->assertEquals($regularUser->id, Auth::id());
 
         // Leave impersonation
         $response = $this->post('/impersonate/leave');
 
         $response->assertRedirect(route('admin.users.index'));
         $response->assertSessionHas('success');
-        $this->assertEquals($admin->id, \Illuminate\Support\Facades\Auth::id());
+        $this->assertEquals($admin->id, Auth::id());
         $this->assertFalse(session()->has('impersonated_by'));
     }
 
@@ -505,7 +511,7 @@ class AuthTest extends TestCase
 
         $response->assertRedirect();
         $response->assertSessionHas('error', 'Administrators cannot be impersonated.');
-        $this->assertEquals($admin1->id, \Illuminate\Support\Facades\Auth::id());
+        $this->assertEquals($admin1->id, Auth::id());
         $this->assertFalse(session()->has('impersonated_by'));
     }
 
@@ -520,7 +526,22 @@ class AuthTest extends TestCase
         $response = $this->actingAs($regularUser1)->post("/admin/users/{$regularUser2->id}/impersonate");
 
         $response->assertStatus(403);
-        $this->assertEquals($regularUser1->id, \Illuminate\Support\Facades\Auth::id());
+        $this->assertEquals($regularUser1->id, Auth::id());
         $this->assertFalse(session()->has('impersonated_by'));
+    }
+
+    /**
+     * Test that administrators can view the users index page.
+     */
+    public function test_admin_can_view_users_index(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
+        User::factory()->create(['user_type' => 'regular', 'is_approved' => true]);
+
+        $response = $this->actingAs($admin)->get(route('admin.users.index'));
+
+        $response->assertOk();
+        $response->assertSee('Login As');
+        $response->assertSee('Edit');
     }
 }

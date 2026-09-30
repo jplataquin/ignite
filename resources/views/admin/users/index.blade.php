@@ -110,16 +110,16 @@
                                     </form>
                                 </div>
                             @else
-                                <div class="d-flex justify-content-end gap-1.5 align-items-center">
+                                <div class="d-flex justify-content-end gap-1 align-items-center">
                                     @if($user->user_type === 'regular' && $user->id !== Auth::id())
                                         <form method="POST" action="{{ route('admin.users.impersonate', $user) }}" class="d-inline">
                                             @csrf
-                                            <button type="submit" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center px-2.5 me-1" style="min-height: 34px;">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center px-2.5" style="min-height: 34px; min-width: 85px;">
                                                 Login As
                                             </button>
                                         </form>
                                     @endif
-                                    <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center justify-content-center" style="min-height: 34px;">
+                                    <a href="{{ route('admin.users.edit', $user) }}" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center justify-content-center px-2.5" style="min-height: 34px; min-width: 85px;">
                                         Edit
                                     </a>
                                 </div>
