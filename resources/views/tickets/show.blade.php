@@ -187,11 +187,14 @@
             </div>
 
             <!-- File Attachments List (Flat Material Style) -->
-            @if($ticket->attachments->count() > 0)
+            @php
+                $mainAttachments = $ticket->attachments->whereNull('comment_id');
+            @endphp
+            @if($mainAttachments->count() > 0)
                 <div class="mb-4 bg-white p-4 rounded-4 border shadow-none" style="border-color: #e2e8f0 !important;">
                     <span class="text-secondary small d-block mb-3 fw-bold text-uppercase tracking-wider" style="font-size: 0.72rem; letter-spacing: 0.8px; color: #64748b !important;">File Attachments</span>
                     <div class="row row-cols-1 g-3">
-                        @foreach($ticket->attachments as $index => $attachment)
+                        @foreach($mainAttachments as $index => $attachment)
                             <div class="d-flex flex-column p-3 rounded-3 mb-2" style="background-color: #f8fafc; border: 1px solid #e2e8f0;">
                                 <div class="d-flex align-items-center justify-content-between">
                                     <div class="d-flex align-items-center previewable-attachment" style="cursor: pointer;"
@@ -224,13 +227,29 @@
                                         </div>
                                     </div>
 
-                                    <!-- Download Button (Flat) -->
-                                    <a href="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" download="{{ $attachment->file_name }}" class="btn btn-sm btn-light p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border-radius: 8px; background-color: #f1f5f9; border: 1px solid #e2e8f0; color: #475569;" title="Download file">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-download" viewBox="0 0 16 16">
-                                            <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
-                                            <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-                                        </svg>
-                                    </a>
+                                    <!-- Action Buttons -->
+                                    <div class="d-flex align-items-center gap-1">
+                                        <!-- Download Button (Flat) -->
+                                        <a href="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" download="{{ $attachment->file_name }}" class="btn btn-sm btn-light p-0 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border-radius: 8px; background-color: #f1f5f9; border: 1px solid #e2e8f0; color: #475569;" title="Download file">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-download" viewBox="0 0 16 16">
+                                                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+                                                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                                            </svg>
+                                        </a>
+
+                                        @if(!in_array($ticket->stage?->slug, ['closed', 'canceled']) && $attachment->uploaded_by === auth()->id() && $ticket->assigned_id === auth()->id() && $attachment->created_at->gt(now()->subHours(2)))
+                                            <form action="{{ route('tickets.attachments.destroy', [$ticket->id, $attachment->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this attachment?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-light p-0 d-flex align-items-center justify-content-center text-danger" style="width: 32px; height: 32px; border-radius: 8px; background-color: #f1f5f9; border: 1px solid #e2e8f0;" title="Delete file">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                                                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                                                        <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
                                 </div>
                                 @if($attachment->note)
                                     <div class="mt-2.5 pt-2 border-top text-muted" style="font-size: 0.82rem; line-height: 1.5; border-top-color: #e2e8f0 !important; color: #475569 !important;">
@@ -388,12 +407,27 @@
                                                                 <span class="text-muted d-block" style="font-size: 0.7rem;">{{ round($attachment->file_size / 1024, 1) }} KB</span>
                                                             </div>
                                                         </div>
-                                                        <a href="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" download="{{ $attachment->file_name }}" class="btn btn-sm btn-light p-0 d-flex align-items-center justify-content-center" style="width: 26px; height: 26px; border-radius: 6px; background-color: #e2e8f0; border: 1px solid #cbd5e1; color: #475569;" title="Download file">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-download" viewBox="0 0 16 16">
-                                                                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
-                                                                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-                                                            </svg>
-                                                        </a>
+                                                        <div class="d-flex align-items-center gap-1">
+                                                            <a href="{{ route('tickets.attachments.serve', [$ticket->id, $attachment->id]) }}" download="{{ $attachment->file_name }}" class="btn btn-sm btn-light p-0 d-flex align-items-center justify-content-center" style="width: 26px; height: 26px; border-radius: 6px; background-color: #e2e8f0; border: 1px solid #cbd5e1; color: #475569;" title="Download file">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-download" viewBox="0 0 16 16">
+                                                                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+                                                                    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                                                                </svg>
+                                                            </a>
+
+                                                            @if(!in_array($ticket->stage?->slug, ['closed', 'canceled']) && $attachment->uploaded_by === auth()->id() && $ticket->assigned_id === auth()->id() && $attachment->created_at->gt(now()->subHours(2)))
+                                                                <form action="{{ route('tickets.attachments.destroy', [$ticket->id, $attachment->id]) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this attachment?');">
+                                                                    @csrf
+                                                                    @method('DELETE')
+                                                                    <button type="submit" class="btn btn-sm btn-light p-0 d-flex align-items-center justify-content-center text-danger" style="width: 26px; height: 26px; border-radius: 6px; background-color: #e2e8f0; border: 1px solid #cbd5e1;" title="Delete file">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                                                                            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                                                                            <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                                                                        </svg>
+                                                                    </button>
+                                                                </form>
+                                                            @endif
+                                                        </div>
                                                     </div>
                                                     @if($attachment->note)
                                                         <div class="mt-1.5 p-2 rounded bg-white text-muted" style="font-size: 0.72rem; border-left: 2.5px solid #cbd5e1; margin-top: 6px;">

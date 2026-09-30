@@ -709,6 +709,60 @@ class TicketController extends Controller
     }
 
     /**
+     * Delete an attachment from a ticket.
+     */
+    public function destroyAttachment(Ticket $ticket, Attachment $attachment)
+    {
+        if ($attachment->ticket_id !== $ticket->id) {
+            abort(404);
+        }
+
+        $user = Auth::user();
+        if (! $user) {
+            abort(403);
+        }
+
+        // 1. Ticket stage cannot be closed or canceled
+        if (in_array($ticket->stage?->slug, ['closed', 'canceled'])) {
+            return redirect()->back()->with('error', 'Cannot delete attachments from a closed or canceled ticket.');
+        }
+
+        // 2. The user must be the uploader
+        if ($attachment->uploaded_by !== $user->id) {
+            return redirect()->back()->with('error', 'You can only delete your own attachments.');
+        }
+
+        // 3. The user must be the current assignee
+        if ($ticket->assigned_id !== $user->id) {
+            return redirect()->back()->with('error', 'Only the current assignee can delete attachments.');
+        }
+
+        // 4. File or image is only 2 hours old
+        if ($attachment->created_at->lt(now()->subHours(2))) {
+            return redirect()->back()->with('error', 'Attachments older than 2 hours cannot be deleted.');
+        }
+
+        DB::transaction(function () use ($ticket, $attachment, $user) {
+            $fileName = $attachment->file_name;
+
+            if (Storage::exists($attachment->file_path)) {
+                Storage::delete($attachment->file_path);
+            }
+
+            $attachment->delete();
+
+            TicketComment::create([
+                'ticket_id' => $ticket->id,
+                'user_id' => null,
+                'type' => 'system_event',
+                'content' => "Attachment '{$fileName}' was deleted by {$user->name}.",
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Attachment deleted successfully.');
+    }
+
+    /**
      * Add a comment to the specified ticket.
      */
     public function storeComment(Request $request, Ticket $ticket)

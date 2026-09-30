@@ -1,20 +1,20 @@
 <?php
 
-use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\TicketTypeController;
-use App\Http\Controllers\Admin\TicketTypeCategoryController;
-use App\Http\Controllers\Admin\RoleController;
-use App\Http\Controllers\Admin\DivisionController;
-use App\Http\Controllers\Admin\DepartmentController;
-use App\Http\Controllers\Admin\LocationController;
-use App\Http\Controllers\Admin\TicketStageController;
-use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\CronJobLogController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\TicketController;
+use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\DivisionController;
+use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\TicketStageController;
+use App\Http\Controllers\Admin\TicketTypeCategoryController;
+use App\Http\Controllers\Admin\TicketTypeController;
+use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\ChunkUploadController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
 
 // Guest Routes
@@ -50,6 +50,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets/{ticket}/edit', [TicketController::class, 'edit'])->name('tickets.edit');
     Route::put('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
     Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'serveAttachment'])->name('tickets.attachments.serve');
+    Route::delete('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'destroyAttachment'])->name('tickets.attachments.destroy');
     Route::post('/tickets/{ticket}/comments', [TicketController::class, 'storeComment'])->name('tickets.comments.store');
     Route::post('/tickets/{ticket}/accept', [TicketController::class, 'accept'])->name('tickets.accept');
     Route::post('/tickets/{ticket}/for-review', [TicketController::class, 'forReview'])->name('tickets.for-review');
