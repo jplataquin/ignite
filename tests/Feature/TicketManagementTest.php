@@ -2357,6 +2357,7 @@ class TicketManagementTest extends TestCase
             'division_id' => $divA->id,
             'department_id' => $deptA->id,
         ]);
+        $otherUser = User::factory()->create(['user_type' => 'regular']);
 
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
@@ -2388,7 +2389,7 @@ class TicketManagementTest extends TestCase
             'status' => 'Valid',
             'division_id' => $divB->id,
             'department_id' => $deptB->id,
-            'created_by' => $regularUser->id,
+            'created_by' => $otherUser->id,
             'location_id' => $this->location->id,
             'category_1_id' => $category->id,
         ]);
@@ -2403,7 +2404,7 @@ class TicketManagementTest extends TestCase
             'status' => 'Valid',
             'division_id' => $divA->id,
             'department_id' => $deptB->id,
-            'created_by' => $regularUser->id,
+            'created_by' => $otherUser->id,
             'location_id' => $this->location->id,
             'category_1_id' => $category->id,
         ]);
@@ -2434,6 +2435,7 @@ class TicketManagementTest extends TestCase
             'division_id' => $divA->id,
             'department_id' => null,
         ]);
+        $otherUser = User::factory()->create(['user_type' => 'regular']);
 
         $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
         $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
@@ -2480,7 +2482,7 @@ class TicketManagementTest extends TestCase
             'status' => 'Valid',
             'division_id' => $divB->id,
             'department_id' => $deptB->id,
-            'created_by' => $divisionUser->id,
+            'created_by' => $otherUser->id,
             'location_id' => $this->location->id,
             'category_1_id' => $category->id,
         ]);
@@ -2861,5 +2863,148 @@ class TicketManagementTest extends TestCase
         $this->assertDatabaseMissing('tickets', [
             'title' => 'Mismatched Ticket',
         ]);
+    }
+
+    /**
+     * Test that after creating a ticket, the author can see it in the ticket list,
+     * even if the ticket belongs to a completely different division and department.
+     */
+    public function test_author_can_see_created_ticket_in_ticket_list_even_with_different_division_and_department(): void
+    {
+        $divisionUser = Division::create(['name' => 'User Division']);
+        $departmentUser = Department::create(['name' => 'User Department', 'division_id' => $divisionUser->id]);
+
+        $author = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $divisionUser->id,
+            'department_id' => $departmentUser->id,
+        ]);
+
+        $divisionOther = Division::create(['name' => 'IT Division']);
+        $departmentOther = Department::create(['name' => 'IT Support', 'division_id' => $divisionOther->id]);
+
+        $role = Role::create(['name' => 'Staff', 'slug' => 'staff']);
+        $author->roles()->attach($role->id);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $role->ticketTypes()->attach($type->id);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Author creates ticket for IT Division & IT Support Department
+        $response = $this->actingAs($author)->post('/tickets', [
+            'title' => 'My New Cross-Division IT Ticket',
+            'description' => 'Laptop screen broken',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'division_id' => $divisionOther->id,
+            'department_id' => $departmentOther->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response->assertRedirect();
+
+        // Visit tickets index (/tickets)
+        $responseList = $this->actingAs($author)->get('/tickets');
+        $responseList->assertStatus(200);
+        $responseList->assertSee('My New Cross-Division IT Ticket');
+
+        // Visit tickets index with tab=all (/tickets?tab=all)
+        $responseAll = $this->actingAs($author)->get('/tickets?tab=all');
+        $responseAll->assertStatus(200);
+        $responseAll->assertSee('My New Cross-Division IT Ticket');
+    }
+
+    /**
+     * Test that after creating a ticket without a department, the author can see it in the ticket list.
+     */
+    public function test_author_can_see_created_ticket_without_department_in_ticket_list(): void
+    {
+        $divisionUser = Division::create(['name' => 'User Division']);
+        $departmentUser = Department::create(['name' => 'User Department', 'division_id' => $divisionUser->id]);
+
+        $author = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $divisionUser->id,
+            'department_id' => $departmentUser->id,
+        ]);
+
+        $role = Role::create(['name' => 'Staff', 'slug' => 'staff']);
+        $author->roles()->attach($role->id);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $role->ticketTypes()->attach($type->id);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Author creates ticket with no department
+        $response = $this->actingAs($author)->post('/tickets', [
+            'title' => 'My Ticket Without Department',
+            'description' => 'General inquiry',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'division_id' => $divisionUser->id,
+            'department_id' => null,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response->assertRedirect();
+
+        $responseList = $this->actingAs($author)->get('/tickets');
+        $responseList->assertStatus(200);
+        $responseList->assertSee('My Ticket Without Department');
+    }
+
+    /**
+     * Test that an author can see their created ticket across workflow stages (e.g. open and assigned).
+     */
+    public function test_author_can_see_their_ticket_when_assigned_in_ticket_list(): void
+    {
+        $divisionUser = Division::create(['name' => 'User Division']);
+        $departmentUser = Department::create(['name' => 'User Department', 'division_id' => $divisionUser->id]);
+
+        $author = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $divisionUser->id,
+            'department_id' => $departmentUser->id,
+        ]);
+
+        $divisionOther = Division::create(['name' => 'Other Division']);
+        $departmentOther = Department::create(['name' => 'Other Department', 'division_id' => $divisionOther->id]);
+        $agent = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $divisionOther->id,
+            'department_id' => $departmentOther->id,
+        ]);
+
+        $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        Ticket::create([
+            'ticket_number' => 'IGN-ASSIGNED-001',
+            'title' => 'My Assigned Ticket in Other Department',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageAssigned->id,
+            'status' => 'Valid',
+            'division_id' => $divisionOther->id,
+            'department_id' => $departmentOther->id,
+            'created_by' => $author->id,
+            'assigned_id' => $agent->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($author)->get('/tickets');
+        $response->assertStatus(200);
+        $response->assertSee('My Assigned Ticket in Other Department');
     }
 }
