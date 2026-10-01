@@ -1957,8 +1957,9 @@ class TicketManagementTest extends TestCase
         $responsePage2->assertSee("priority_id={$priorityLow->id}");
         $responsePage2->assertSee('page=1');
 
-        // Assert that the My Tickets tab link does NOT contain the page parameter
+        // Assert that the My Tickets and Assigned Tickets tab links do NOT contain the page parameter
         $responsePage2->assertDontSee('tab=my_tickets&amp;page=2');
+        $responsePage2->assertDontSee('tab=assigned_tickets&amp;page=2');
     }
 
     /**
@@ -2497,9 +2498,10 @@ class TicketManagementTest extends TestCase
     }
 
     /**
-     * Test that the My Tickets tab filters tickets assigned to the user or requiring review.
+     * Test that the My Tickets tab only shows tickets created by the user,
+     * and Assigned Tickets tab only shows tickets assigned to the user.
      */
-    public function test_my_tickets_tab_filters_assigned_or_review_tickets(): void
+    public function test_my_tickets_and_assigned_tickets_tabs_filter_correctly(): void
     {
         $division = Division::create(['name' => 'IT Department']);
         $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
@@ -2517,7 +2519,7 @@ class TicketManagementTest extends TestCase
         $type = TicketType::create(['name' => 'Incident']);
         $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
 
-        // Ticket 1: Assigned to the user
+        // Ticket 1: Assigned to the user, created by otherUser
         Ticket::create([
             'ticket_number' => 'FLR-MY-001',
             'title' => 'Ticket Assigned to Me',
@@ -2533,7 +2535,7 @@ class TicketManagementTest extends TestCase
             'assigned_id' => $user->id,
         ]);
 
-        // Ticket 2: Created by the user & in Review stage
+        // Ticket 2: Created by the user & in Review stage, unassigned
         Ticket::create([
             'ticket_number' => 'FLR-MY-002',
             'title' => 'My Ticket in Review',
@@ -2549,7 +2551,7 @@ class TicketManagementTest extends TestCase
             'assigned_id' => null,
         ]);
 
-        // Ticket 3: General unassigned ticket (visible in All, but hidden in My Tickets)
+        // Ticket 3: General unassigned ticket created by otherUser
         Ticket::create([
             'ticket_number' => 'FLR-MY-003',
             'title' => 'General Unassigned Ticket',
@@ -2572,19 +2574,26 @@ class TicketManagementTest extends TestCase
         $responseAll->assertSee('My Ticket in Review');
         $responseAll->assertSee('General Unassigned Ticket');
 
-        // 2. Visit "My Tickets" tab
+        // 2. Visit "My Tickets" tab (only created by user)
         $responseMy = $this->actingAs($user)->get('/tickets?tab=my_tickets');
         $responseMy->assertStatus(200);
-        $responseMy->assertSee('Ticket Assigned to Me');
         $responseMy->assertSee('My Ticket in Review');
+        $responseMy->assertDontSee('Ticket Assigned to Me');
         $responseMy->assertDontSee('General Unassigned Ticket');
+
+        // 3. Visit "Assigned Tickets" tab (only assigned to user)
+        $responseAssigned = $this->actingAs($user)->get('/tickets?tab=assigned_tickets');
+        $responseAssigned->assertStatus(200);
+        $responseAssigned->assertSee('Ticket Assigned to Me');
+        $responseAssigned->assertDontSee('My Ticket in Review');
+        $responseAssigned->assertDontSee('General Unassigned Ticket');
     }
 
     /**
-     * Test that tickets assigned to the user or in review by the user appear in the My Tickets tab,
+     * Test that tickets assigned to the user appear in the Assigned Tickets tab,
      * even if they belong to a completely different division or department.
      */
-    public function test_my_tickets_tab_shows_cross_division_and_department_assigned_tickets(): void
+    public function test_assigned_tickets_tab_shows_cross_division_and_department_assigned_tickets(): void
     {
         $divisionUser = Division::create(['name' => 'User Division']);
         $departmentUser = Department::create(['name' => 'User Department', 'division_id' => $divisionUser->id]);
@@ -2625,10 +2634,15 @@ class TicketManagementTest extends TestCase
         $responseAll->assertStatus(200);
         $responseAll->assertDontSee('Cross Division Ticket Assigned to Me');
 
-        // 2. Visit "My Tickets" tab -> SHOULD see this ticket because assigned to us!
+        // 2. Visit "My Tickets" tab -> Should NOT see this ticket because not created by user!
         $responseMy = $this->actingAs($user)->get('/tickets?tab=my_tickets');
         $responseMy->assertStatus(200);
-        $responseMy->assertSee('Cross Division Ticket Assigned to Me');
+        $responseMy->assertDontSee('Cross Division Ticket Assigned to Me');
+
+        // 3. Visit "Assigned Tickets" tab -> SHOULD see this ticket because assigned to us!
+        $responseAssigned = $this->actingAs($user)->get('/tickets?tab=assigned_tickets');
+        $responseAssigned->assertStatus(200);
+        $responseAssigned->assertSee('Cross Division Ticket Assigned to Me');
     }
 
     /**
@@ -2676,10 +2690,15 @@ class TicketManagementTest extends TestCase
         $responseAll->assertStatus(200);
         $responseAll->assertSee('Cross Division Review Ticket Assigned to Me');
 
-        // 2. Visit "My Tickets" tab -> SHOULD see this ticket because assigned to us!
+        // 2. Visit "My Tickets" tab -> Should NOT see this ticket because user did not create it
         $responseMy = $this->actingAs($user)->get('/tickets?tab=my_tickets');
         $responseMy->assertStatus(200);
-        $responseMy->assertSee('Cross Division Review Ticket Assigned to Me');
+        $responseMy->assertDontSee('Cross Division Review Ticket Assigned to Me');
+
+        // 3. Visit "Assigned Tickets" tab -> SHOULD see this ticket because assigned to us!
+        $responseAssigned = $this->actingAs($user)->get('/tickets?tab=assigned_tickets');
+        $responseAssigned->assertStatus(200);
+        $responseAssigned->assertSee('Cross Division Review Ticket Assigned to Me');
     }
 
     /**
@@ -3006,5 +3025,339 @@ class TicketManagementTest extends TestCase
         $response = $this->actingAs($author)->get('/tickets');
         $response->assertStatus(200);
         $response->assertSee('My Assigned Ticket in Other Department');
+    }
+
+    /**
+     * Test that the My Tickets tab strictly displays only tickets created by the authenticated user.
+     */
+    public function test_my_tickets_tab_only_shows_tickets_created_by_authenticated_user(): void
+    {
+        $division = Division::create(['name' => 'General Operations']);
+        $department = Department::create(['name' => 'Logistics', 'division_id' => $division->id]);
+
+        $user = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+        ]);
+        $otherUser = User::factory()->create(['user_type' => 'regular']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'General', 'ticket_type_id' => $type->id]);
+
+        // Ticket 1: Created by user, assigned to otherUser
+        Ticket::create([
+            'ticket_number' => 'TCK-MY-ONLY-01',
+            'title' => 'Created by me and assigned to colleague',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageAssigned->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'assigned_id' => $otherUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket 2: Created by user, unassigned
+        Ticket::create([
+            'ticket_number' => 'TCK-MY-ONLY-02',
+            'title' => 'Created by me and unassigned',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'assigned_id' => null,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket 3: Created by otherUser, assigned to user
+        Ticket::create([
+            'ticket_number' => 'TCK-MY-ONLY-03',
+            'title' => 'Created by colleague but assigned to me',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageAssigned->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $otherUser->id,
+            'assigned_id' => $user->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket 4: Created by otherUser, unassigned
+        Ticket::create([
+            'ticket_number' => 'TCK-MY-ONLY-04',
+            'title' => 'Colleague general unassigned ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $otherUser->id,
+            'assigned_id' => null,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($user)->get('/tickets?tab=my_tickets');
+        $response->assertStatus(200);
+
+        // Author tickets should be visible
+        $response->assertSee('Created by me and assigned to colleague');
+        $response->assertSee('Created by me and unassigned');
+
+        // Other users' tickets should NOT be visible in My Tickets (even if assigned to user)
+        $response->assertDontSee('Created by colleague but assigned to me');
+        $response->assertDontSee('Colleague general unassigned ticket');
+    }
+
+    /**
+     * Test that the Assigned Tickets tab strictly displays only tickets currently assigned to the user.
+     */
+    public function test_assigned_tickets_tab_only_shows_tickets_assigned_to_authenticated_user(): void
+    {
+        $division = Division::create(['name' => 'General Operations']);
+        $department = Department::create(['name' => 'Logistics', 'division_id' => $division->id]);
+
+        $user = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+        ]);
+        $otherUser = User::factory()->create(['user_type' => 'regular']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'General', 'ticket_type_id' => $type->id]);
+
+        // Ticket 1: Created by otherUser, assigned to user
+        Ticket::create([
+            'ticket_number' => 'TCK-ASG-ONLY-01',
+            'title' => 'Assigned from colleague to me',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageAssigned->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $otherUser->id,
+            'assigned_id' => $user->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket 2: Created by user, also self-assigned
+        Ticket::create([
+            'ticket_number' => 'TCK-ASG-ONLY-02',
+            'title' => 'Created by me and self assigned',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageAssigned->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'assigned_id' => $user->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket 3: Created by user, NOT assigned to user (assigned to colleague)
+        Ticket::create([
+            'ticket_number' => 'TCK-ASG-ONLY-03',
+            'title' => 'Created by me assigned to colleague only',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageAssigned->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'assigned_id' => $otherUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Ticket 4: Created by otherUser, unassigned
+        Ticket::create([
+            'ticket_number' => 'TCK-ASG-ONLY-04',
+            'title' => 'Unassigned ticket from colleague',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $otherUser->id,
+            'assigned_id' => null,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($user)->get('/tickets?tab=assigned_tickets');
+        $response->assertStatus(200);
+
+        // Assigned tickets should be visible
+        $response->assertSee('Assigned from colleague to me');
+        $response->assertSee('Created by me and self assigned');
+
+        // Non-assigned tickets should NOT be visible in Assigned Tickets
+        $response->assertDontSee('Created by me assigned to colleague only');
+        $response->assertDontSee('Unassigned ticket from colleague');
+    }
+
+    /**
+     * Test that tab navigation badges accurately display the created and assigned ticket counts.
+     */
+    public function test_tabs_display_accurate_badge_counts(): void
+    {
+        $division = Division::create(['name' => 'General Operations']);
+        $department = Department::create(['name' => 'Logistics', 'division_id' => $division->id]);
+
+        $user = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+        ]);
+        $otherUser = User::factory()->create(['user_type' => 'regular']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'General', 'ticket_type_id' => $type->id]);
+
+        // 2 tickets created by user (1 assigned to otherUser, 1 unassigned)
+        Ticket::create([
+            'ticket_number' => 'TCK-BADGE-01',
+            'title' => 'Badge Ticket 1',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'assigned_id' => $otherUser->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        Ticket::create([
+            'ticket_number' => 'TCK-BADGE-02',
+            'title' => 'Badge Ticket 2',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'assigned_id' => null,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 3 tickets assigned to user (all created by otherUser)
+        for ($i = 3; $i <= 5; $i++) {
+            Ticket::create([
+                'ticket_number' => "TCK-BADGE-0{$i}",
+                'title' => "Badge Ticket {$i}",
+                'ticket_type_id' => $type->id,
+                'priority_option_id' => $priorityOption->id,
+                'stage_id' => $stageOpen->id,
+                'status' => 'Valid',
+                'division_id' => $division->id,
+                'department_id' => $department->id,
+                'created_by' => $otherUser->id,
+                'assigned_id' => $user->id,
+                'location_id' => $this->location->id,
+                'category_1_id' => $category->id,
+            ]);
+        }
+
+        $response = $this->actingAs($user)->get('/tickets');
+        $response->assertStatus(200);
+
+        // My Tickets tab badge should be 2
+        $response->assertSee('<span>My Tickets</span>', false);
+        // Assigned Tickets tab badge should be 3
+        $response->assertSee('<span>Assigned Tickets</span>', false);
+    }
+
+    /**
+     * Test that the Assigned Tickets tab preserves tab parameter when filtering and clearing.
+     */
+    public function test_assigned_tickets_tab_preserves_tab_parameter(): void
+    {
+        $division = Division::create(['name' => 'General Operations']);
+        $department = Department::create(['name' => 'Logistics', 'division_id' => $division->id]);
+
+        $user = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+        ]);
+        $otherUser = User::factory()->create(['user_type' => 'regular']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
+        $priorityHigh = Priority::create(['name' => 'High', 'level' => 3]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'General', 'ticket_type_id' => $type->id]);
+
+        Ticket::create([
+            'ticket_number' => 'TCK-FILTER-01',
+            'title' => 'High Priority Assigned Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityHigh->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $otherUser->id,
+            'assigned_id' => $user->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        Ticket::create([
+            'ticket_number' => 'TCK-FILTER-02',
+            'title' => 'Low Priority Assigned Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $otherUser->id,
+            'assigned_id' => $user->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Filter on assigned tickets tab
+        $response = $this->actingAs($user)->get("/tickets?tab=assigned_tickets&priority_id={$priorityHigh->id}");
+        $response->assertStatus(200);
+        $response->assertSee('High Priority Assigned Ticket');
+        $response->assertDontSee('Low Priority Assigned Ticket');
+
+        // Assert Clear link retains tab=assigned_tickets
+        $expectedClearUrl = route('tickets.index', ['tab' => 'assigned_tickets']);
+        $response->assertSee(htmlentities($expectedClearUrl), false);
     }
 }

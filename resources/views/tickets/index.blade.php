@@ -109,7 +109,7 @@
             <div class="col-md-2 d-flex gap-2 ms-auto">
                 <button type="submit" class="btn btn-sm btn-primary flex-grow-1">Filter</button>
                 @if(request()->filled('priority_id') || request()->filled('ticket_type_id') || request()->filled('stage_id') || request()->filled('status') || request()->filled('date_created') || request()->filled('division_id') || request()->filled('department_id') || request()->filled('to_user_search'))
-                    <a href="{{ route('tickets.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                    <a href="{{ route('tickets.index', request()->filled('tab') ? ['tab' => request('tab')] : []) }}" class="btn btn-sm btn-outline-secondary">Clear</a>
                 @endif
             </div>
         </form>
@@ -127,19 +127,16 @@
             <li class="nav-item">
                 <a class="nav-link d-flex align-items-center {{ request('tab') === 'my_tickets' ? 'active fw-bold text-danger' : 'text-muted' }}" href="{{ route('tickets.index', array_merge(request()->except('page'), ['tab' => 'my_tickets'])) }}">
                     <span>My Tickets</span>
-                    @php
-                        $myTicketsCount = \App\Models\Ticket::where(function ($q) {
-                            $q->orWhere('assigned_id', Auth::id());
-                            $q->orWhere(function ($sub) {
-                                $sub->where('created_by', Auth::id())
-                                    ->whereHas('stage', function ($sq) {
-                                        $sq->where('slug', 'review');
-                                    });
-                            });
-                        })->count();
-                    @endphp
-                    @if($myTicketsCount > 0)
+                    @if(($myTicketsCount ?? 0) > 0)
                         <span class="badge bg-danger rounded-pill ms-2" style="font-size: 0.75rem; padding: 0.25em 0.5em;">{{ $myTicketsCount }}</span>
+                    @endif
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ request('tab') === 'assigned_tickets' ? 'active fw-bold text-danger' : 'text-muted' }}" href="{{ route('tickets.index', array_merge(request()->except('page'), ['tab' => 'assigned_tickets'])) }}">
+                    <span>Assigned Tickets</span>
+                    @if(($assignedTicketsCount ?? 0) > 0)
+                        <span class="badge bg-danger rounded-pill ms-2" style="font-size: 0.75rem; padding: 0.25em 0.5em;">{{ $assignedTicketsCount }}</span>
                     @endif
                 </a>
             </li>

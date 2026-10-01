@@ -32,15 +32,9 @@ class TicketController extends Controller
         $tab = $request->input('tab', 'all');
 
         if ($tab === 'my_tickets') {
-            $query->where(function ($q) use ($user) {
-                $q->orWhere('assigned_id', $user->id);
-                $q->orWhere(function ($sub) use ($user) {
-                    $sub->where('created_by', $user->id)
-                        ->whereHas('stage', function ($sq) {
-                            $sq->where('slug', 'review');
-                        });
-                });
-            });
+            $query->where('created_by', $user ? $user->id : 0);
+        } elseif ($tab === 'assigned_tickets') {
+            $query->where('assigned_id', $user ? $user->id : 0);
         } else {
             if ($user && $user->user_type === 'regular') {
                 $query->where(function ($q) use ($user) {
@@ -130,7 +124,10 @@ class TicketController extends Controller
                 ->values() : collect();
         }
 
-        return view('tickets.index', compact('tickets', 'priorities', 'stages', 'statuses', 'divisions', 'departments', 'ticketTypes'));
+        $myTicketsCount = $user ? Ticket::where('created_by', $user->id)->count() : 0;
+        $assignedTicketsCount = $user ? Ticket::where('assigned_id', $user->id)->count() : 0;
+
+        return view('tickets.index', compact('tickets', 'priorities', 'stages', 'statuses', 'divisions', 'departments', 'ticketTypes', 'myTicketsCount', 'assignedTicketsCount'));
     }
 
     /**
