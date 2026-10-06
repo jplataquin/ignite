@@ -201,8 +201,8 @@ class DashboardTest extends TestCase
         // Check the actual open tickets counter content
         $response->assertSee('Open Tickets');
         $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">2</h2>', false); // Open Tickets Count
-        $response->assertSee('My Tickets');
-        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">1</h2>', false); // My Tickets Count
+        $response->assertSee('Assigned Tickets');
+        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">1</h2>', false); // Assigned Tickets Count
     }
 
     /**
@@ -281,9 +281,9 @@ class DashboardTest extends TestCase
     }
 
     /**
-     * Test that the dashboard My Tickets card links to the filtered ticket list.
+     * Test that the dashboard Assigned Tickets card links to the filtered ticket list.
      */
-    public function test_dashboard_my_tickets_card_links_to_tickets_index_filtered_by_my_tickets_tab(): void
+    public function test_dashboard_assigned_tickets_card_links_to_tickets_index_filtered_by_assigned_tickets_tab(): void
     {
         $admin = User::factory()->create(['user_type' => 'admin']);
 
@@ -291,7 +291,7 @@ class DashboardTest extends TestCase
         $response->assertStatus(200);
 
         // Check that the response contains the link with correct tab parameter
-        $expectedUrl = route('tickets.index', ['tab' => 'my_tickets']);
+        $expectedUrl = route('tickets.index', ['tab' => 'assigned_tickets']);
         $response->assertSee(htmlentities($expectedUrl), false);
     }
 
@@ -442,6 +442,120 @@ class DashboardTest extends TestCase
 
         // Open tickets count must be exactly 1 (not 3 Valid tickets)
         $response->assertSee('Open Tickets');
+        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">1</h2>', false);
+    }
+
+    /**
+     * Test that the SLA Lapsed card does not count tickets in the canceled stage.
+     */
+    public function test_dashboard_sla_lapsed_card_does_not_count_canceled_tickets(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageCanceled = TicketStage::create(['name' => 'Canceled', 'slug' => 'canceled', 'color_code' => '#EF4444']);
+
+        $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Create 1 valid lapsed ticket in Open stage
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0001',
+            'title' => 'Open Lapsed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Create 1 lapsed ticket in Canceled stage
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0002',
+            'title' => 'Canceled Lapsed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageCanceled->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($admin)->get('/');
+        $response->assertStatus(200);
+
+        // SLA Lapsed count should be 1 (excluding the canceled ticket)
+        $response->assertViewHas('slaLapsedCount', 1);
+        $response->assertSee('SLA Lapsed');
+        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">1</h2>', false);
+    }
+
+    /**
+     * Test that regular users only see non-canceled lapsed tickets in their division/department.
+     */
+    public function test_dashboard_sla_lapsed_card_does_not_count_canceled_tickets_for_regular_user(): void
+    {
+        $division = Division::create(['name' => 'IT Division']);
+        $department = Department::create(['name' => 'Support Dept', 'division_id' => $division->id]);
+
+        $regularUser = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+        ]);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageCanceled = TicketStage::create(['name' => 'Canceled', 'slug' => 'canceled', 'color_code' => '#EF4444']);
+
+        $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Lapsed ticket in user's dept (Open stage)
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0001',
+            'title' => 'Open Lapsed Ticket in Dept',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $regularUser->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Lapsed ticket in user's dept (Canceled stage) - should be excluded
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0002',
+            'title' => 'Canceled Lapsed Ticket in Dept',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageCanceled->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $regularUser->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($regularUser)->get('/');
+        $response->assertStatus(200);
+
+        $response->assertViewHas('slaLapsedCount', 1);
+        $response->assertSee('SLA Lapsed');
         $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">1</h2>', false);
     }
 }

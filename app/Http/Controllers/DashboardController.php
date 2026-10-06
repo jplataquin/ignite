@@ -33,15 +33,7 @@ class DashboardController extends Controller
             ? (clone $baseQuery)->where('stage_id', $openStageId)->count()
             : 0;
 
-        $myTicketsCount = Ticket::where(function ($q) use ($user) {
-            $q->orWhere('assigned_id', $user->id);
-            $q->orWhere(function ($sub) use ($user) {
-                $sub->where('created_by', $user->id)
-                    ->whereHas('stage', function ($sq) {
-                        $sq->where('slug', 'review');
-                    });
-            });
-        })->count();
+        $assignedTicketsCount = $user ? Ticket::where('assigned_id', $user->id)->count() : 0;
 
         $criticalTicketsCount = (clone $baseQuery)->where('status', 'Valid')
             ->whereHas('priorityOption', function ($query) {
@@ -49,12 +41,15 @@ class DashboardController extends Controller
                     ->orWhereIn('name', ['Critical', 'critical']);
             })->count();
 
-        $slaLapsedCount = (clone $baseQuery)->where('status', 'Lapsed')->count();
+        $slaLapsedCount = (clone $baseQuery)->where('status', 'Lapsed')
+            ->whereDoesntHave('stage', function ($query) {
+                $query->where('slug', 'canceled');
+            })->count();
 
         return view('dashboard', compact(
             'openTicketsCount',
             'openStageId',
-            'myTicketsCount',
+            'assignedTicketsCount',
             'criticalTicketsCount',
             'slaLapsedCount'
         ));
