@@ -3360,4 +3360,118 @@ class TicketManagementTest extends TestCase
         $expectedClearUrl = route('tickets.index', ['tab' => 'assigned_tickets']);
         $response->assertSee(htmlentities($expectedClearUrl), false);
     }
+
+    /**
+     * Test that filtering tickets list by status=Lapsed strictly shows only tickets in Open, Assigned, or Review stages.
+     */
+    public function test_tickets_index_filtered_by_lapsed_status_only_shows_open_assigned_or_review_stages(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        $stageReview = TicketStage::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#3']);
+        $stageClosed = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#4']);
+        $stageCanceled = TicketStage::create(['name' => 'Canceled', 'slug' => 'canceled', 'color_code' => '#5']);
+
+        $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+
+        Ticket::create([
+            'ticket_number' => 'TCK-LPS-OPEN',
+            'title' => 'Open Lapsed Ticket Feature',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        Ticket::create([
+            'ticket_number' => 'TCK-LPS-ASG',
+            'title' => 'Assigned Lapsed Ticket Feature',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageAssigned->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => $admin->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        Ticket::create([
+            'ticket_number' => 'TCK-LPS-REV',
+            'title' => 'Review Lapsed Ticket Feature',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageReview->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => $admin->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        Ticket::create([
+            'ticket_number' => 'TCK-LPS-CLS',
+            'title' => 'Closed Lapsed Ticket Feature',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageClosed->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        Ticket::create([
+            'ticket_number' => 'TCK-LPS-CNC',
+            'title' => 'Canceled Lapsed Ticket Feature',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageCanceled->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 1. Filter by status=Lapsed without stage_id
+        $response = $this->actingAs($admin)->get('/tickets?status=Lapsed');
+        $response->assertStatus(200);
+
+        $response->assertSee('Open Lapsed Ticket Feature');
+        $response->assertSee('Assigned Lapsed Ticket Feature');
+        $response->assertSee('Review Lapsed Ticket Feature');
+        $response->assertDontSee('Closed Lapsed Ticket Feature');
+        $response->assertDontSee('Canceled Lapsed Ticket Feature');
+
+        // 2. Filter by status=Lapsed and a specific stage_id (e.g. Open)
+        $responseOpen = $this->actingAs($admin)->get("/tickets?status=Lapsed&stage_id={$stageOpen->id}");
+        $responseOpen->assertStatus(200);
+        $responseOpen->assertSee('Open Lapsed Ticket Feature');
+        $responseOpen->assertDontSee('Assigned Lapsed Ticket Feature');
+        $responseOpen->assertDontSee('Review Lapsed Ticket Feature');
+        $responseOpen->assertDontSee('Closed Lapsed Ticket Feature');
+        $responseOpen->assertDontSee('Canceled Lapsed Ticket Feature');
+    }
 }

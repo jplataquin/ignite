@@ -72,10 +72,28 @@ class TicketController extends Controller
 
         if ($request->filled('stage_id')) {
             $query->where('stage_id', $request->input('stage_id'));
+        } elseif ($request->filled('stages')) {
+            $stagesInput = is_array($request->input('stages'))
+                ? $request->input('stages')
+                : explode(',', (string) $request->input('stages'));
+            $query->whereHas('stage', function ($q) use ($stagesInput) {
+                $q->whereIn('slug', $stagesInput)
+                    ->orWhereIn('name', $stagesInput)
+                    ->orWhereIn('id', $stagesInput);
+            });
         }
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
+
+            if ($request->input('status') === 'Lapsed' && ! $request->filled('stage_id') && ! $request->filled('stages')) {
+                $query->whereHas('stage', function ($q) {
+                    $q->where(function ($sub) {
+                        $sub->whereIn('slug', ['open', 'assigned', 'review'])
+                            ->orWhereIn('name', ['Open', 'Assigned', 'Review']);
+                    });
+                });
+            }
         }
 
         if ($request->filled('date_created')) {

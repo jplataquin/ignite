@@ -558,4 +558,284 @@ class DashboardTest extends TestCase
         $response->assertSee('SLA Lapsed');
         $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">1</h2>', false);
     }
+
+    /**
+     * Test that the Assigned Tickets card does not count tickets in closed or canceled stages.
+     */
+    public function test_dashboard_assigned_tickets_card_does_not_count_closed_or_canceled_tickets(): void
+    {
+        $user = User::factory()->create();
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#2']);
+        $stageClosed = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#3']);
+        $stageCanceled = TicketStage::create(['name' => 'Canceled', 'slug' => 'canceled', 'color_code' => '#4']);
+
+        $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // 1. Active assigned ticket in Assigned stage
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0001',
+            'title' => 'Assigned Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageAssigned->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'assigned_id' => $user->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 2. Active assigned ticket in Open stage
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0002',
+            'title' => 'Open Assigned Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'assigned_id' => $user->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 3. Assigned ticket in Closed stage (should be excluded)
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0003',
+            'title' => 'Closed Assigned Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageClosed->id,
+            'status' => 'Done',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'assigned_id' => $user->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 4. Assigned ticket in Canceled stage (should be excluded)
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0004',
+            'title' => 'Canceled Assigned Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageCanceled->id,
+            'status' => 'Done',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $user->id,
+            'assigned_id' => $user->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($user)->get('/');
+        $response->assertStatus(200);
+
+        // Assigned tickets count should be 2 (excluding the closed and canceled tickets)
+        $response->assertViewHas('assignedTicketsCount', 2);
+        $response->assertSee('Assigned Tickets');
+        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">2</h2>', false);
+    }
+
+    /**
+     * Test that the SLA Lapsed card does not count tickets in the closed stage.
+     */
+    public function test_dashboard_sla_lapsed_card_does_not_count_closed_tickets(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $stageClosed = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#6B7280']);
+
+        $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // Create 1 valid lapsed ticket in Open stage
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0001',
+            'title' => 'Open Lapsed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        // Create 1 lapsed ticket in Closed stage
+        Ticket::create([
+            'ticket_number' => 'FLR-2026-0002',
+            'title' => 'Closed Lapsed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageClosed->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($admin)->get('/');
+        $response->assertStatus(200);
+
+        // SLA Lapsed count should be 1 (excluding the closed ticket)
+        $response->assertViewHas('slaLapsedCount', 1);
+        $response->assertSee('SLA Lapsed');
+        $response->assertSee('<h2 class="mt-3 mb-0 fw-bold text-dark">1</h2>', false);
+    }
+
+    /**
+     * Test that clicking the SLA Lapsed card from the dashboard links to ticket list showing only
+     * Lapsed tickets that are status Open, Assigned, or Review.
+     */
+    public function test_dashboard_lapsed_card_redirects_to_ticket_list_showing_only_open_assigned_or_review_lapsed_tickets(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        $stageOpen = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#F59E0B']);
+        $stageAssigned = TicketStage::create(['name' => 'Assigned', 'slug' => 'assigned', 'color_code' => '#0284C7']);
+        $stageReview = TicketStage::create(['name' => 'Review', 'slug' => 'review', 'color_code' => '#8B5CF6']);
+        $stageClosed = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#6B7280']);
+        $stageCanceled = TicketStage::create(['name' => 'Canceled', 'slug' => 'canceled', 'color_code' => '#EF4444']);
+
+        $priorityLow = Priority::create(['name' => 'Low', 'level' => 1]);
+        $type = TicketType::create(['name' => 'Incident']);
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $type->id]);
+
+        // 1. Lapsed ticket in Open stage
+        Ticket::create([
+            'ticket_number' => 'FLR-LAPSED-OPEN',
+            'title' => 'Open Lapsed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 2. Lapsed ticket in Assigned stage
+        Ticket::create([
+            'ticket_number' => 'FLR-LAPSED-ASG',
+            'title' => 'Assigned Lapsed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageAssigned->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => $admin->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 3. Lapsed ticket in Review stage
+        Ticket::create([
+            'ticket_number' => 'FLR-LAPSED-REV',
+            'title' => 'Review Lapsed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageReview->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => $admin->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 4. Lapsed ticket in Closed stage (must NOT be shown)
+        Ticket::create([
+            'ticket_number' => 'FLR-LAPSED-CLS',
+            'title' => 'Closed Lapsed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageClosed->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 5. Lapsed ticket in Canceled stage (must NOT be shown)
+        Ticket::create([
+            'ticket_number' => 'FLR-LAPSED-CNC',
+            'title' => 'Canceled Lapsed Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageCanceled->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 6. Valid ticket in Open stage (must NOT be shown)
+        Ticket::create([
+            'ticket_number' => 'FLR-VALID-OPEN',
+            'title' => 'Valid Open Ticket',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityLow->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $admin->id,
+            'assigned_id' => null,
+            'category_1_id' => $category->id,
+        ]);
+
+        // 1. Visit dashboard: card should show count of 3 and link to filtered list
+        $dashResponse = $this->actingAs($admin)->get('/');
+        $dashResponse->assertStatus(200);
+        $dashResponse->assertViewHas('slaLapsedCount', 3);
+        $targetUrl = route('tickets.index', ['status' => 'Lapsed']);
+        $dashResponse->assertSee(htmlentities($targetUrl), false);
+
+        // 2. Follow the link to the tickets index
+        $listResponse = $this->actingAs($admin)->get($targetUrl);
+        $listResponse->assertStatus(200);
+
+        // Lapsed tickets with Open, Assigned, and Review stages MUST be shown
+        $listResponse->assertSee('Open Lapsed Ticket');
+        $listResponse->assertSee('FLR-LAPSED-OPEN');
+        $listResponse->assertSee('Assigned Lapsed Ticket');
+        $listResponse->assertSee('FLR-LAPSED-ASG');
+        $listResponse->assertSee('Review Lapsed Ticket');
+        $listResponse->assertSee('FLR-LAPSED-REV');
+
+        // Other tickets must NOT be shown
+        $listResponse->assertDontSee('Closed Lapsed Ticket');
+        $listResponse->assertDontSee('FLR-LAPSED-CLS');
+        $listResponse->assertDontSee('Canceled Lapsed Ticket');
+        $listResponse->assertDontSee('FLR-LAPSED-CNC');
+        $listResponse->assertDontSee('Valid Open Ticket');
+        $listResponse->assertDontSee('FLR-VALID-OPEN');
+    }
 }
