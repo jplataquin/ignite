@@ -203,7 +203,7 @@
                     }
                 @endphp
 
-                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3 mb-4">
+                <div class="row row-cols-1 row-cols-md-3 g-3 mb-3">
                     <!-- Division -->
                     <div>
                         <label for="division_id" class="form-label fw-semibold text-dark small">Division</label>
@@ -256,9 +256,11 @@
                         <ul id="location-autocomplete-results" class="dropdown-menu w-100 shadow border-0 py-0" style="max-height: 250px; overflow-y: auto; z-index: 1000; font-size: 0.9rem; position: absolute; top: 100%; left: 0; display: none;">
                         </ul>
                     </div>
+                </div>
 
+                <div class="row g-3 mb-4">
                     <!-- Assigned User (Optional) - Autocomplete -->
-                    <div class="position-relative">
+                    <div class="col-12 position-relative">
                         <label for="user_search" class="form-label fw-semibold text-dark small">Assigned User (Optional)</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light text-muted small py-1 px-2.5" style="border-right: 0;">

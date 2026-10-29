@@ -58,16 +58,15 @@ npm run build
 ```
 
 ### Testing
+> **Rule - Targeted Unit Testing Only**: Do NOT run the entire test suite on the whole application. Always identify and run only the targeted test file(s) or method(s) relevant to the code you touched, changed, or created to prevent wasted testing time.
+
 Run PHPUnit tests using the in-memory SQLite database:
 ```bash
-# Run all tests
-DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit
+# Run a specific targeted test file
+DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit tests/Feature/TicketManagementTest.php
 
-# Run a specific test file
-DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit tests/Feature/DashboardTest.php
-
-# Run a specific test method
-DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit tests/Feature/DashboardTest.php --filter=test_dashboard_open_tickets_card_only_counts_tickets_in_open_stage
+# Run a specific targeted test method
+DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit tests/Feature/TicketManagementTest.php --filter=test_ticket_creator_can_view_edit_page
 ```
 
 ### Code Formatting & Quality
@@ -95,7 +94,7 @@ php artisan user:create-admin
 1. **PHP 8.3 Features**: Use typed properties, return type declarations, constructor property promotion, and PHP 8 attributes (`#[Fillable]`, `#[ObservedBy]`) consistently.
 2. **Database Transactions**: Any multi-step database action (e.g., ticket creation/update + attachment handling + comments) must be wrapped in `DB::transaction()`.
 3. **Validation**: Validate requests with explicit validation rules and authorization checks before executing operations.
-4. **Testing Mandatory**: Every new feature or bug fix must include comprehensive tests in `tests/Feature` or `tests/Unit`.
+4. **Targeted Testing Mandatory**: Do NOT waste time running unit tests on the whole application. Always perform targeted testing by identifying and running only the specific test(s) relevant to the code touched, changed, or created.
    - Verify both positive and negative cases.
    - Ensure tests use `RefreshDatabase` and execute cleanly against SQLite in-memory without external database dependencies.
 5. **UI & Blade Consistency**:
