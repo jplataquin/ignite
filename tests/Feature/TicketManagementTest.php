@@ -926,9 +926,11 @@ class TicketManagementTest extends TestCase
         $comments = $ticket->comments;
         $this->assertEquals([$newestComment->id, $middleComment->id, $oldComment->id], $comments->pluck('id')->all());
 
-        // 2. Verify ticket show view receives comments in descending order
+        // 2. Verify ticket show view receives comments in descending order and displays Copy Link button
         $response = $this->actingAs($creator)->get("/tickets/{$ticket->id}");
         $response->assertStatus(200);
+        $response->assertSee('Copy Link');
+        $response->assertSee('btn-copy-ticket-link');
         $loadedTicket = $response->viewData('ticket');
         $this->assertEquals([$newestComment->id, $middleComment->id, $oldComment->id], $loadedTicket->comments->pluck('id')->all());
     }

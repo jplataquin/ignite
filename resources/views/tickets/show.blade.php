@@ -10,8 +10,16 @@
         </a>
         <h1 class="h2 fw-bold text-dark mb-0">{{ $ticket->ticket_number }}</h1>
     </div>
-    @if(Auth::id() === $ticket->created_by || (Auth::user() && Auth::user()->user_type === 'admin'))
-        <div>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" id="btn-copy-ticket-link" class="btn btn-outline-secondary d-flex align-items-center gap-2" style="min-height: 38px;" title="Copy ticket link to clipboard">
+            <svg id="copy-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-link-45deg" viewBox="0 0 16 16">
+                <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1 1 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4 4 0 0 1-.128-1.287z"/>
+                <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 0 0-4.243-4.243z"/>
+            </svg>
+            <span id="copy-text">Copy Link</span>
+        </button>
+
+        @if(Auth::id() === $ticket->created_by || (Auth::user() && Auth::user()->user_type === 'admin'))
             <a href="{{ route('tickets.edit', $ticket) }}" class="btn btn-primary d-flex align-items-center gap-2" style="min-height: 38px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
                     <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
@@ -19,8 +27,8 @@
                 </svg>
                 <span>Edit Ticket</span>
             </a>
-        </div>
-    @endif
+        @endif
+    </div>
 </div>
 
 @if(session('success'))
@@ -1183,6 +1191,45 @@
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
+        }
+
+        // Copy Ticket Link
+        const btnCopy = document.getElementById('btn-copy-ticket-link');
+        if (btnCopy) {
+            btnCopy.addEventListener('click', function () {
+                const url = window.location.href;
+                const copyText = document.getElementById('copy-text');
+                const copyIcon = document.getElementById('copy-icon');
+
+                function onSuccess() {
+                    btnCopy.classList.remove('btn-outline-secondary');
+                    btnCopy.classList.add('btn-success');
+                    copyText.textContent = 'Copied!';
+                    copyIcon.innerHTML = `<path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>`;
+                    setTimeout(() => {
+                        btnCopy.classList.remove('btn-success');
+                        btnCopy.classList.add('btn-outline-secondary');
+                        copyText.textContent = 'Copy Link';
+                        copyIcon.innerHTML = `<path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1 1 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4 4 0 0 1-.128-1.287z"/><path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 0 0-4.243-4.243z"/>`;
+                    }, 2000);
+                }
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(onSuccess).catch(() => fallbackCopy(url, onSuccess));
+                } else {
+                    fallbackCopy(url, onSuccess);
+                }
+            });
+        }
+
+        function fallbackCopy(text, callback) {
+            const tempInput = document.createElement('input');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            if (callback) callback();
         }
     });
 </script>

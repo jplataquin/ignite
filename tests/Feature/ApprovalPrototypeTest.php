@@ -148,6 +148,8 @@ class ApprovalPrototypeTest extends TestCase
         $showResponse->assertStatus(200);
         $showResponse->assertViewIs('tickets.show-approval');
         $showResponse->assertSee('Clearance Sign-off Checklist');
+        $showResponse->assertSee('Copy Link');
+        $showResponse->assertSee('btn-copy-ticket-link');
 
         // Edit view
         $editResponse = $this->actingAs($d['creator'])->get("/tickets/{$ticket->id}/edit");
