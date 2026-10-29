@@ -14,6 +14,7 @@ class TicketType extends Model
     protected $fillable = [
         'name',
         'code',
+        'prototype',
         'description',
         'threshold_days',
     ];

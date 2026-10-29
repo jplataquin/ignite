@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use App\Observers\TicketObserver;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\ObservedBy;
-use App\Observers\TicketObserver;
 
 #[ObservedBy([TicketObserver::class])]
 class Ticket extends Model
@@ -16,9 +16,9 @@ class Ticket extends Model
 
     #[Fillable]
     protected $fillable = [
-        'ticket_number', 'title', 'description', 'ticket_type_id', 'priority_option_id', 'stage_id', 'status',
+        'ticket_number', 'title', 'description', 'ticket_type_id', 'priority_option_id', 'stage_id', 'status', 'approval_mode',
         'division_id', 'department_id', 'location_id', 'created_by', 'assigned_id',
-        'deadline_date', 'category_1_id', 'category_2_id', 'category_3_id'
+        'deadline_date', 'category_1_id', 'category_2_id', 'category_3_id',
     ];
 
     protected $casts = [
@@ -90,9 +90,14 @@ class Ticket extends Model
         return $this->hasMany(TicketSubscription::class);
     }
 
+    public function approvals(): HasMany
+    {
+        return $this->hasMany(TicketApproval::class)->orderBy('sequence_order', 'asc');
+    }
+
     public function comments(): HasMany
     {
-        return $this->hasMany(TicketComment::class);
+        return $this->hasMany(TicketComment::class)->orderBy('created_at', 'desc')->orderBy('id', 'desc');
     }
 
     /**
@@ -105,12 +110,13 @@ class Ticket extends Model
         }
 
         $ticketType = $this->ticketType;
-        if ($ticketType && !empty($ticketType->code)) {
+        if ($ticketType && ! empty($ticketType->code)) {
             $prefix = $ticketType->code;
             $parts = explode('-', $value);
             if (count($parts) >= 2) {
                 array_shift($parts); // Remove old prefix
-                return $prefix . '-' . implode('-', $parts);
+
+                return $prefix.'-'.implode('-', $parts);
             }
         }
 
@@ -126,17 +132,17 @@ class Ticket extends Model
             return $this->deadline_date;
         }
 
-        if (!$this->created_at || !$this->priorityOption) {
+        if (! $this->created_at || ! $this->priorityOption) {
             return null;
         }
 
         $priorityName = strtolower($this->priorityOption->name);
-        if (!in_array($priorityName, ['low', 'high', 'critical'])) {
+        if (! in_array($priorityName, ['low', 'high', 'critical'])) {
             return null;
         }
 
         $settingKey = "sla_days_{$priorityName}";
-        $days = \App\Models\Setting::where('key', $settingKey)->value('value');
+        $days = Setting::where('key', $settingKey)->value('value');
 
         if (is_numeric($days)) {
             return $this->created_at->copy()->addDays((int) $days);

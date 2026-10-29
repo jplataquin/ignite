@@ -9,6 +9,7 @@ use App\Models\Division;
 use App\Models\Location;
 use App\Models\Priority;
 use App\Models\Ticket;
+use App\Models\TicketApproval;
 use App\Models\TicketComment;
 use App\Models\TicketStage;
 use App\Models\TicketType;
@@ -58,6 +59,11 @@ class TicketController extends Controller
 
                     // Also allow tickets created by this user
                     $q->orWhere('created_by', $user->id);
+
+                    // Also allow tickets where this user is designated as an approver
+                    $q->orWhereHas('approvals', function ($sub) use ($user) {
+                        $sub->where('user_id', $user->id);
+                    });
                 });
             }
         }
@@ -184,7 +190,10 @@ class TicketController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $ticketType = TicketType::find($request->input('ticket_type_id'));
+        $isApproval = $ticketType && $ticketType->prototype === 'approval_clearance';
+
+        $rules = [
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'ticket_type_id' => [
@@ -229,7 +238,15 @@ class TicketController extends Controller
             'category_3_id' => 'nullable|exists:categories,id',
             'assigned_id' => 'nullable|exists:users,id',
             'attachments_json' => 'nullable|string',
-        ]);
+        ];
+
+        if ($isApproval) {
+            $rules['approval_mode'] = 'required|in:sequential,parallel';
+            $rules['approver_ids'] = 'required|array|min:1';
+            $rules['approver_ids.*'] = 'required|exists:users,id';
+        }
+
+        $validated = $request->validate($rules);
 
         $attachments = [];
         if ($request->filled('attachments_json')) {
@@ -252,7 +269,7 @@ class TicketController extends Controller
             }
         }
 
-        return DB::transaction(function () use ($validated, $attachments) {
+        return DB::transaction(function () use ($validated, $attachments, $isApproval) {
             // Generate ticket number with lock
             $latest = Ticket::lockForUpdate()->latest('id')->first();
             $nextId = $latest ? $latest->id + 1 : 1;
@@ -261,15 +278,21 @@ class TicketController extends Controller
             $prefix = ($ticketType && ! empty($ticketType->code)) ? $ticketType->code : 'IGN';
             $ticketNumber = $prefix.'-'.Carbon::now()->format('Y').'-'.str_pad($nextId, 4, '0', STR_PAD_LEFT);
 
-            // Default to Open stage if stage_id is not specified
+            // Default stage
             $stageId = $validated['stage_id'] ?? null;
             if (! $stageId) {
-                $openStage = TicketStage::where('slug', 'open')->first();
-                $stageId = $openStage ? $openStage->id : null;
+                if ($isApproval) {
+                    $pendingStage = TicketStage::where('slug', 'pending-approval')->first();
+                    $stageId = $pendingStage ? $pendingStage->id : null;
+                }
+                if (! $stageId) {
+                    $openStage = TicketStage::where('slug', 'open')->first();
+                    $stageId = $openStage ? $openStage->id : null;
+                }
             }
 
             if (! $stageId) {
-                throw new \Exception('Default Open stage not found in database.');
+                throw new \Exception('Default stage not found in database.');
             }
 
             $ticket = Ticket::create([
@@ -280,6 +303,7 @@ class TicketController extends Controller
                 'priority_option_id' => $validated['priority_option_id'],
                 'stage_id' => $stageId,
                 'status' => 'Valid',
+                'approval_mode' => $isApproval ? ($validated['approval_mode'] ?? null) : null,
                 'division_id' => $validated['division_id'],
                 'department_id' => $validated['department_id'] ?? null,
                 'location_id' => $validated['location_id'],
@@ -289,6 +313,17 @@ class TicketController extends Controller
                 'category_3_id' => $validated['category_3_id'] ?? null,
                 'assigned_id' => $validated['assigned_id'] ?? null,
             ]);
+
+            if ($isApproval && ! empty($validated['approver_ids'])) {
+                foreach ($validated['approver_ids'] as $idx => $approverId) {
+                    TicketApproval::create([
+                        'ticket_id' => $ticket->id,
+                        'user_id' => $approverId,
+                        'sequence_order' => $idx + 1,
+                        'status' => 'pending',
+                    ]);
+                }
+            }
 
             // Merge File Chunks for each attachment
             foreach ($attachments as $attachment) {
@@ -347,6 +382,12 @@ class TicketController extends Controller
             $departments = Department::orderBy('name')->get();
         }
 
+        if ($ticket->ticketType?->prototype === 'approval_clearance') {
+            $ticket->load(['approvals.user']);
+
+            return view('tickets.show-approval', compact('ticket', 'divisions', 'departments'));
+        }
+
         return view('tickets.show', compact('ticket', 'divisions', 'departments'));
     }
 
@@ -382,6 +423,14 @@ class TicketController extends Controller
         $categories = Category::where('ticket_type_id', $ticket->ticket_type_id)->get();
 
         $users = User::orderBy('name')->get();
+
+        if ($ticket->ticketType?->prototype === 'approval_clearance') {
+            $ticket->load(['approvals.user']);
+
+            return view('tickets.edit-approval', compact(
+                'ticket', 'ticketTypes', 'priorities', 'stages', 'divisions', 'departments', 'locations', 'categories', 'users'
+            ));
+        }
 
         return view('tickets.edit', compact(
             'ticket', 'ticketTypes', 'priorities', 'stages', 'divisions', 'departments', 'locations', 'categories', 'users'

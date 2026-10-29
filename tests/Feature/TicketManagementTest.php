@@ -872,6 +872,68 @@ class TicketManagementTest extends TestCase
     }
 
     /**
+     * Test that ticket comments are ordered in descending order by created_at by default.
+     */
+    public function test_ticket_comments_are_ordered_descending_by_created_at_by_default(): void
+    {
+        $creator = User::factory()->create(['user_type' => 'user', 'is_approved' => true]);
+
+        $division = Division::create(['name' => 'IT']);
+        $department = Department::create(['name' => 'Support', 'division_id' => $division->id]);
+        $stage = TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+        $priorityOption = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Support', 'slug' => 'support']);
+        $category = Category::create(['name' => 'Software', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'INC-99889',
+            'title' => 'Comment order test ticket',
+            'description' => 'Test ticket description',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityOption->id,
+            'stage_id' => $stage->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'created_by' => $creator->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $oldComment = TicketComment::create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $creator->id,
+            'type' => 'comment',
+            'content' => 'First older comment',
+            'created_at' => now()->subMinutes(10),
+        ]);
+
+        $middleComment = TicketComment::create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $creator->id,
+            'type' => 'comment',
+            'content' => 'Second middle comment',
+            'created_at' => now()->subMinutes(5),
+        ]);
+
+        $newestComment = TicketComment::create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $creator->id,
+            'type' => 'comment',
+            'content' => 'Third newest comment',
+            'created_at' => now(),
+        ]);
+
+        // 1. Verify model relationship order
+        $comments = $ticket->comments;
+        $this->assertEquals([$newestComment->id, $middleComment->id, $oldComment->id], $comments->pluck('id')->all());
+
+        // 2. Verify ticket show view receives comments in descending order
+        $response = $this->actingAs($creator)->get("/tickets/{$ticket->id}");
+        $response->assertStatus(200);
+        $loadedTicket = $response->viewData('ticket');
+        $this->assertEquals([$newestComment->id, $middleComment->id, $oldComment->id], $loadedTicket->comments->pluck('id')->all());
+    }
+
+    /**
      * Test that involved users can comment on an open ticket with attachments.
      */
     public function test_users_can_comment_with_attachments(): void

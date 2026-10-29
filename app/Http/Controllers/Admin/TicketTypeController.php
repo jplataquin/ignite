@@ -14,6 +14,7 @@ class TicketTypeController extends Controller
     public function index()
     {
         $ticketTypes = TicketType::withCount('tickets')->latest()->paginate(10);
+
         return view('admin.ticket-types.index', compact('ticketTypes'));
     }
 
@@ -33,11 +34,13 @@ class TicketTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:ticket_types,name',
             'code' => 'required|string|size:3|regex:/^[A-Za-z]{3}$/',
+            'prototype' => 'nullable|string|in:request_response,approval_clearance',
             'description' => 'nullable|string',
             'threshold_days' => 'nullable|integer|min:1',
         ]);
 
         $validated['code'] = strtoupper($validated['code']);
+        $validated['prototype'] = $validated['prototype'] ?? 'request_response';
 
         TicketType::create($validated);
 
@@ -59,13 +62,17 @@ class TicketTypeController extends Controller
     public function update(Request $request, TicketType $ticketType)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:ticket_types,name,' . $ticketType->id,
+            'name' => 'required|string|max:255|unique:ticket_types,name,'.$ticketType->id,
             'code' => 'required|string|size:3|regex:/^[A-Za-z]{3}$/',
+            'prototype' => 'nullable|string|in:request_response,approval_clearance',
             'description' => 'nullable|string',
             'threshold_days' => 'nullable|integer|min:1',
         ]);
 
         $validated['code'] = strtoupper($validated['code']);
+        if (isset($validated['prototype'])) {
+            $ticketType->prototype = $validated['prototype'];
+        }
 
         $ticketType->update($validated);
 

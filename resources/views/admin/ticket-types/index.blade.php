@@ -44,6 +44,7 @@
                 <tr>
                     <th scope="col" class="px-4 py-3 text-muted fw-bold text-uppercase small">Name</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small" style="width: 100px;">Code</th>
+                    <th scope="col" class="py-3 text-muted fw-bold text-uppercase small" style="width: 170px;">Prototype</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small">Description</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small" style="width: 250px;">SLA Resolution (Days)</th>
                     <th scope="col" class="py-3 text-muted fw-bold text-uppercase small text-center">Active Tickets</th>
@@ -58,6 +59,13 @@
                         </td>
                         <td class="py-3">
                             <span class="badge bg-dark text-white rounded px-2 py-1.5 fw-bold">{{ $type->code ?: 'IGN' }}</span>
+                        </td>
+                        <td class="py-3">
+                            @if(($type->prototype ?? 'request_response') === 'approval_clearance')
+                                <span class="badge bg-primary text-white px-2 py-1">Approval / Clearance</span>
+                            @else
+                                <span class="badge bg-light text-secondary border px-2 py-1">Request / Response</span>
+                            @endif
                         </td>
                         <td class="py-3 text-muted">
                             {{ $type->description ?: 'No description provided.' }}

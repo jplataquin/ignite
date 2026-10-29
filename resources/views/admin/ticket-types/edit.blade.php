@@ -46,6 +46,21 @@
                     @enderror
                 </div>
 
+                <!-- Prototype / Behavior -->
+                <div class="mb-3">
+                    <label for="prototype" class="form-label fw-semibold text-dark small">Workflow Prototype</label>
+                    <select id="prototype" class="form-select @error('prototype') is-invalid @enderror" name="prototype" required>
+                        <option value="request_response" {{ old('prototype', $ticketType->prototype ?? 'request_response') === 'request_response' ? 'selected' : '' }}>Request / Response (Standard Ticket)</option>
+                        <option value="approval_clearance" {{ old('prototype', $ticketType->prototype) === 'approval_clearance' ? 'selected' : '' }}>Approval / Clearance (Checklist Sign-off)</option>
+                    </select>
+                    <span class="text-muted small">Select whether tickets of this type follow standard Request/Response or the Approval/Clearance sign-off checklist workflow.</span>
+                    @error('prototype')
+                        <span class="invalid-feedback" role="alert">
+                            <strong>{{ $message }}</strong>
+                        </span>
+                    @enderror
+                </div>
+
                 <!-- Description -->
                 <div class="mb-3">
                     <label for="description" class="form-label fw-semibold text-dark small">Description</label>

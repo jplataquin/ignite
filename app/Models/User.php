@@ -98,6 +98,6 @@ class User extends Authenticatable
      */
     public function comments(): HasMany
     {
-        return $this->hasMany(TicketComment::class);
+        return $this->hasMany(TicketComment::class)->orderBy('created_at', 'desc')->orderBy('id', 'desc');
     }
 }

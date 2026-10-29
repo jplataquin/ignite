@@ -73,7 +73,7 @@
                         <select id="ticket_type_id" class="form-select @error('ticket_type_id') is-invalid @enderror" name="ticket_type_id" required>
                             <option value="">Select Type</option>
                             @foreach($ticketTypes as $type)
-                                <option value="{{ $type->id }}" {{ old('ticket_type_id') == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
+                                <option value="{{ $type->id }}" data-prototype="{{ $type->prototype ?? 'request_response' }}" {{ old('ticket_type_id') == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
                             @endforeach
                         </select>
                         @error('ticket_type_id')
@@ -234,6 +234,64 @@
                         </ul>
                     </div>
                 </div>
+
+                <!-- Approval / Clearance Configuration -->
+                <div id="approval-settings-section" class="border rounded-3 p-3 mb-4 bg-light" style="display: none;">
+                    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                        <div>
+                            <h6 class="fw-bold text-dark mb-0">Approval & Clearance Checklist</h6>
+                            <small class="text-muted">Define the sign-off sequence and approvers for this clearance ticket.</small>
+                        </div>
+                        <span class="badge bg-primary text-white">Approval Prototype</span>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark small">Sign-off Mode</label>
+                            <div class="d-flex gap-3 mt-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="approval_mode" id="mode_sequential" value="sequential" {{ old('approval_mode', 'sequential') === 'sequential' ? 'checked' : '' }}>
+                                    <label class="form-check-label small" for="mode_sequential">
+                                        <strong>Sequential</strong> (Strict order 1-by-1)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="approval_mode" id="mode_parallel" value="parallel" {{ old('approval_mode') === 'parallel' ? 'checked' : '' }}>
+                                    <label class="form-check-label small" for="mode_parallel">
+                                        <strong>Parallel</strong> (Any order)
+                                    </label>
+                                </div>
+                            </div>
+                            @error('approval_mode')
+                                <span class="text-danger small d-block mt-1"><strong>{{ $message }}</strong></span>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-dark small">Add Approver</label>
+                            <div class="input-group">
+                                <select id="approver_selector" class="form-select form-select-sm">
+                                    <option value="">Select User to Add as Approver...</option>
+                                    @foreach($users as $userOption)
+                                        <option value="{{ $userOption->id }}" data-name="{{ $userOption->name }}">{{ $userOption->name }} ({{ ucfirst($userOption->user_type) }})</option>
+                                    @endforeach
+                                </select>
+                                <button type="button" id="btn-add-approver" class="btn btn-sm btn-primary">Add</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold text-dark small">Required Approvers</label>
+                        <ul id="approvers-list" class="list-group list-group-flush border rounded bg-white">
+                            <li id="no-approvers-placeholder" class="list-group-item text-muted small py-3 text-center">No approvers added yet. Please select users above.</li>
+                        </ul>
+                        @error('approver_ids')
+                            <span class="text-danger small d-block mt-1"><strong>{{ $message }}</strong></span>
+                        @enderror
+                    </div>
+                </div>
+
                 <!-- Submit and Cancel Actions -->
                 <div class="d-flex justify-content-end gap-2">
                     <a href="{{ route('tickets.index') }}" class="btn btn-outline-secondary">Cancel</a>
@@ -251,6 +309,81 @@
         const category1Select = document.getElementById('category_1_id');
         const category2Select = document.getElementById('category_2_id');
         const category3Select = document.getElementById('category_3_id');
+
+        const approvalSection = document.getElementById('approval-settings-section');
+        const approverSelector = document.getElementById('approver_selector');
+        const btnAddApprover = document.getElementById('btn-add-approver');
+        const approversList = document.getElementById('approvers-list');
+        const noApproversPlaceholder = document.getElementById('no-approvers-placeholder');
+
+        let selectedApprovers = [];
+
+        function checkPrototype() {
+            const selectedOpt = ticketTypeSelect.options[ticketTypeSelect.selectedIndex];
+            const prototype = selectedOpt ? selectedOpt.getAttribute('data-prototype') : 'request_response';
+            if (prototype === 'approval_clearance') {
+                approvalSection.style.display = 'block';
+            } else {
+                approvalSection.style.display = 'none';
+            }
+        }
+
+        checkPrototype();
+        ticketTypeSelect.addEventListener('change', checkPrototype);
+
+        function renderApproversList() {
+            if (selectedApprovers.length === 0) {
+                noApproversPlaceholder.style.display = 'block';
+                return;
+            }
+            noApproversPlaceholder.style.display = 'none';
+
+            const rows = approversList.querySelectorAll('.approver-item');
+            rows.forEach(r => r.remove());
+
+            selectedApprovers.forEach((appr, index) => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex align-items-center justify-content-between py-2 approver-item';
+                li.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-secondary me-2">#${index + 1}</span>
+                        <span class="fw-semibold text-dark small">${escapeHtml(appr.name)}</span>
+                        <input type="hidden" name="approver_ids[]" value="${appr.id}">
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 btn-remove-approver" data-index="${index}">&times;</button>
+                `;
+                approversList.appendChild(li);
+            });
+
+            approversList.querySelectorAll('.btn-remove-approver').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const idx = parseInt(this.getAttribute('data-index'));
+                    selectedApprovers.splice(idx, 1);
+                    renderApproversList();
+                });
+            });
+        }
+
+        if (btnAddApprover) {
+            btnAddApprover.addEventListener('click', function () {
+                const userId = approverSelector.value;
+                const selectedOpt = approverSelector.options[approverSelector.selectedIndex];
+                if (!userId) return;
+
+                if (selectedApprovers.some(a => a.id == userId)) {
+                    alert('This user is already added to the approvers list.');
+                    return;
+                }
+
+                selectedApprovers.push({
+                    id: userId,
+                    name: selectedOpt.getAttribute('data-name') || selectedOpt.text,
+                });
+
+                approverSelector.value = '';
+                renderApproversList();
+            });
+        }
 
         // Initial setup/load if values exist (e.g. on validation error)
         if (ticketTypeSelect.value) {

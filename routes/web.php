@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\ChunkUploadController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\TicketApprovalController;
 use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
 
@@ -52,6 +53,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'serveAttachment'])->name('tickets.attachments.serve');
     Route::delete('/tickets/{ticket}/attachments/{attachment}', [TicketController::class, 'destroyAttachment'])->name('tickets.attachments.destroy');
     Route::post('/tickets/{ticket}/comments', [TicketController::class, 'storeComment'])->name('tickets.comments.store');
+    Route::post('/tickets/{ticket}/approvals/{approval}/approve', [TicketApprovalController::class, 'approve'])->name('tickets.approvals.approve');
+    Route::post('/tickets/{ticket}/approvals/{approval}/reject', [TicketApprovalController::class, 'reject'])->name('tickets.approvals.reject');
     Route::post('/tickets/{ticket}/accept', [TicketController::class, 'accept'])->name('tickets.accept');
     Route::post('/tickets/{ticket}/for-review', [TicketController::class, 'forReview'])->name('tickets.for-review');
     Route::post('/tickets/{ticket}/close-review', [TicketController::class, 'closeReview'])->name('tickets.close-review');
