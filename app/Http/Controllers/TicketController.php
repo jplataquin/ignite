@@ -326,15 +326,17 @@ class TicketController extends Controller
             // Default stage
             $stageId = $validated['stage_id'] ?? null;
             if (! $stageId) {
-                if ($isApproval) {
-                    $pendingStage = TicketStage::where('slug', 'pending-approval')->first();
-                    $stageId = $pendingStage ? $pendingStage->id : null;
-                } elseif ($ticketType && ! empty($ticketType->template_json['stages']) && is_array($ticketType->template_json['stages'])) {
+                if ($ticketType && ! empty($ticketType->template_json['stages']) && is_array($ticketType->template_json['stages'])) {
                     // If custom stage route exists on the ticket type template, default to the first stage in the route
                     $firstStage = $ticketType->template_json['stages'][0] ?? null;
                     if ($firstStage && ! empty($firstStage['id'])) {
                         $stageId = $firstStage['id'];
                     }
+                }
+
+                if (! $stageId && $isApproval) {
+                    $pendingStage = TicketStage::where('slug', 'pending-approval')->first();
+                    $stageId = $pendingStage ? $pendingStage->id : null;
                 }
 
                 if (! $stageId) {
@@ -1173,9 +1175,11 @@ class TicketController extends Controller
             return redirect()->back()->with('error', 'Completed or canceled tickets cannot be advanced.');
         }
 
-        // Authorization: Assignee, Staff in same division (if unassigned and not creator), or Admin
+        // Authorization: Assignee, Assigned Approver, Staff in same division (if unassigned and not creator), or Admin
+        $isApprover = $ticket->approvals()->where('user_id', $user->id)->exists();
         $canAdvance = $user->user_type === 'admin' ||
             ($ticket->assigned_id && $ticket->assigned_id === $user->id) ||
+            $isApprover ||
             (! $ticket->assigned_id && $user->division_id && $user->division_id === $ticket->division_id && $user->id !== $ticket->created_by);
 
         if (! $canAdvance) {

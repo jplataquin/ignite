@@ -398,10 +398,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (approvalSection) {
             approvalSection.style.display = isApproval ? 'block' : 'none';
         }
-        const stageRouteSection = document.getElementById('tpl-stage-route-section');
-        if (stageRouteSection) {
-            stageRouteSection.style.display = isApproval ? 'none' : 'block';
-        }
     }
 
     if (prototypeSelect) {
@@ -884,7 +880,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        if (!isApproval && enableStageRoute && enableStageRoute.checked && tplStages.length > 0) {
+        if (enableStageRoute && enableStageRoute.checked && tplStages.length > 0) {
             hasActive = true;
             result.stages = tplStages.map((s, idx) => ({
                 id: parseInt(s.id),

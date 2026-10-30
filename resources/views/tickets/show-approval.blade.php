@@ -61,6 +61,59 @@
     </div>
 @endif
 
+@php
+    $customStages = $ticket->ticketType?->template_json['stages'] ?? [];
+    $hasCustomRoute = !empty($customStages) && is_array($customStages);
+
+    if ($hasCustomRoute) {
+        $totalSteps = count($customStages);
+        $currentStepIndex = 0;
+        foreach ($customStages as $idx => $stg) {
+            if ($stg['id'] == $ticket->stage_id) {
+                $currentStepIndex = $idx;
+                break;
+            }
+        }
+        $progressPercent = $totalSteps > 1 ? ($currentStepIndex / ($totalSteps - 1)) * 100 : 100;
+    }
+@endphp
+
+@if($hasCustomRoute)
+<!-- Ticket Progress Stepper -->
+<div class="card fd-card p-4 shadow-sm mb-4">
+    <div class="position-relative py-2">
+        <!-- Custom Stage Route Connecting Track -->
+        <div class="progress position-absolute top-50 start-0 end-0 translate-middle-y" style="height: 4px; z-index: 0; transform: translateY(-50%) !important;">
+            <div class="progress-bar {{ in_array($ticket->stage?->slug, ['canceled', 'lapsed', 'rejected']) ? 'bg-danger' : 'bg-primary' }}" role="progressbar" style="width: {{ $progressPercent }}%;" aria-valuenow="{{ $progressPercent }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+
+        <!-- Custom Stage Route Nodes -->
+        <div class="d-flex justify-content-between position-relative" style="z-index: 1;">
+            @foreach($customStages as $idx => $stg)
+                @php
+                    $isCompleted = $idx < $currentStepIndex;
+                    $isCurrent = $idx === $currentStepIndex;
+                    $isFinalStage = $idx === $totalSteps - 1;
+                    $nodeFinished = $isCompleted || ($isCurrent && ($isFinalStage || $ticket->status === 'Done'));
+                @endphp
+                <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $nodeFinished || $isCurrent ? ($isCurrent && in_array($ticket->stage?->slug, ['closed', 'approved']) ? 'bg-success border-success text-white' : ($isCurrent && in_array($ticket->stage?->slug, ['canceled', 'lapsed', 'rejected']) ? 'bg-danger border-danger text-white' : 'bg-primary border-primary text-white')) : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $nodeFinished || $isCurrent ? '' : '#cbd5e1 !important' }};">
+                        @if($nodeFinished)
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                                <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                            </svg>
+                        @else
+                            {{ $idx + 1 }}
+                        @endif
+                    </div>
+                    <span class="mt-2 small fw-bold {{ $isCurrent && in_array($ticket->stage?->slug, ['closed', 'approved']) ? 'text-success' : ($isCurrent && in_array($ticket->stage?->slug, ['canceled', 'lapsed', 'rejected']) ? 'text-danger' : ($nodeFinished || $isCurrent ? 'text-primary' : 'text-muted')) }}" style="font-size: 0.78rem;">{{ $stg['name'] }}</span>
+                </div>
+            @endforeach
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Clearance / Sign-off Checklist Card -->
 <div class="card fd-card p-4 shadow-sm mb-4 border-start border-4 border-primary">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -283,6 +336,50 @@
 
     <!-- Metadata Sidebar -->
     <div class="col-12 col-lg-4">
+        @if($hasCustomRoute)
+            <!-- Stage Route Actions Card -->
+            <div class="card fd-card p-4 shadow-sm mb-4">
+                <h5 class="fw-bold text-dark mb-3">Workflow Progression</h5>
+                @php
+                    $isDoneOrTerminal = $ticket->status === 'Done' || in_array($ticket->stage?->slug, ['closed', 'canceled', 'rejected']);
+                    $hasNextStage = isset($customStages[$currentStepIndex + 1]) && !$isDoneOrTerminal;
+                    $nextStageName = $hasNextStage ? $customStages[$currentStepIndex + 1]['name'] : null;
+                    $isApprover = $ticket->approvals->where('user_id', Auth::id())->count() > 0;
+                    $canAdvance = Auth::user()->user_type === 'admin' ||
+                                  ($ticket->assigned_id && $ticket->assigned_id === Auth::id()) ||
+                                  $isApprover ||
+                                  (! $ticket->assigned_id && Auth::user()->division_id && Auth::user()->division_id === $ticket->division_id && Auth::id() !== $ticket->created_by);
+                @endphp
+
+                <div>
+                    @if($hasNextStage)
+                        @if($canAdvance)
+                            <form action="{{ route('tickets.advance-stage', $ticket) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-primary w-100 d-flex align-items-center justify-content-center" style="min-height: 38px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-arrow-right-circle me-1.5" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8m15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0M4.5 7.5a.5.5 0 0 0 0 1h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5z"/>
+                                    </svg>
+                                    Advance to {{ $nextStageName }}
+                                </button>
+                            </form>
+                        @else
+                            <div class="alert alert-info border-0 p-2.5 rounded text-dark small mb-0">
+                                Only assigned approvers, assignees, or an administrator can advance this ticket.
+                            </div>
+                        @endif
+                    @else
+                        <div class="alert alert-success border-0 p-2.5 rounded text-dark small mb-0 d-flex align-items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-circle-fill text-success me-1.5" viewBox="0 0 16 16">
+                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                            </svg>
+                            Ticket has reached the final stage of its route.
+                        </div>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <div class="card fd-card p-4 shadow-sm mb-4">
             <h5 class="fw-bold text-dark mb-3">Ticket Information</h5>
             
