@@ -94,6 +94,27 @@ class TicketManagementTest extends TestCase
     }
 
     /**
+     * Test that assigned user autocomplete suggestion list is anchored inside a position-relative container.
+     */
+    public function test_assigned_user_autocomplete_is_anchored_in_position_relative_container(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/tickets/create');
+        $response->assertStatus(200);
+
+        $content = $response->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<div class="position-relative">\s*<div class="input-group">[\s\S]*?id="user_search"[\s\S]*?<\/div>\s*<ul id="autocomplete-results"/i',
+            $content
+        );
+        $this->assertMatchesRegularExpression(
+            '/<div class="position-relative">\s*<div class="input-group">[\s\S]*?id="location_search"[\s\S]*?<\/div>\s*<ul id="location-autocomplete-results"/i',
+            $content
+        );
+    }
+
+    /**
      * Test that users can successfully create a new ticket.
      */
     public function test_users_can_create_a_new_ticket(): void
