@@ -87,6 +87,12 @@ php artisan purge:staging-files
 php artisan user:create-admin
 ```
 
+### Git & Remote Workflow
+When requested by the user to push changes to the remote repository, pass `-c credential.helper=store` to utilize the stored credentials and avoid non-interactive terminal prompts:
+```bash
+git -c credential.helper=store push origin main
+```
+
 ---
 
 ## 4. Coding Standards & Conventions

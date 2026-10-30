@@ -25,3 +25,12 @@ DB_CONNECTION=sqlite DB_DATABASE=:memory: ./vendor/bin/phpunit tests/Feature/Tic
 - **Transactions**: Multi-step database actions must be wrapped in `DB::transaction()`.
 - **Validation**: Enforce authorization and explicit request validation.
 - **UI & Blade Consistency**: Use Bootstrap 5 utility classes and project conventions (`.fd-card`, `.badge-open`, `.badge-assigned`, `.badge-review`, `.badge-critical`). No direct DB queries inside Blade views.
+
+---
+
+## 3. Git & Remote Workflow
+
+When requested by the user to push changes to the remote repository, pass `-c credential.helper=store` to utilize the stored credentials in the environment without prompting:
+```bash
+git -c credential.helper=store push origin main
+```
