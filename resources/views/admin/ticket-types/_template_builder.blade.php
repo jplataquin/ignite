@@ -230,30 +230,47 @@
 
             <!-- Approvers Checklist -->
             <div class="mt-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="tpl_enable_approvers">
                         <label class="form-check-label fw-semibold text-dark small" for="tpl_enable_approvers">Default Approvers Checklist</label>
                     </div>
-                    <div class="form-check d-inline-block">
-                        <input class="form-check-input" type="checkbox" id="tpl_lock_approvers" disabled>
-                        <label class="form-check-label small text-muted" for="tpl_lock_approvers">Lock Approvers (Prevent user edits)</label>
+                    <div class="d-flex flex-wrap gap-3">
+                        <div class="form-check d-inline-block">
+                            <input class="form-check-input" type="checkbox" id="tpl_lock_add_approvers" disabled>
+                            <label class="form-check-label small text-muted" for="tpl_lock_add_approvers">Lock Adding Users (Do not allow adding more users)</label>
+                        </div>
+                        <div class="form-check d-inline-block">
+                            <input class="form-check-input" type="checkbox" id="tpl_lock_approvers" disabled>
+                            <label class="form-check-label small text-muted" for="tpl_lock_approvers">Lock Approvers (Prevent user edits)</label>
+                        </div>
                     </div>
                 </div>
 
                 <div id="tpl-approver-controls" class="p-3 bg-light rounded border mb-2" style="display: none;">
-                    <label class="form-label fw-semibold text-dark small">Add Approver to Checklist</label>
-                    <div class="d-flex flex-column flex-sm-row gap-2 mb-3">
-                        <select id="tpl_approver_selector" class="form-select form-select-sm" style="flex: 1 1 50%;" disabled>
-                            <option value="">Select User to Add as Approver...</option>
-                            @if(isset($users))
-                                @foreach($users as $userOption)
-                                    <option value="{{ $userOption->id }}" data-name="{{ $userOption->name }}">{{ $userOption->name }} ({{ ucfirst($userOption->user_type) }})</option>
-                                @endforeach
-                            @endif
-                        </select>
-                        <input type="text" id="tpl_approver_desc" class="form-control form-control-sm" placeholder="Sign-off description (e.g. IT Equipment, Finance)..." style="flex: 1 1 40%;" disabled>
-                        <button type="button" id="tpl_btn_add_approver" class="btn btn-sm btn-primary text-nowrap" disabled>Add to Checklist</button>
+                    <div class="row g-2 mb-3 align-items-start">
+                        <div class="col-md-5">
+                            <label for="tpl_approver_search" class="form-label fw-semibold text-dark small mb-1">Add Approver</label>
+                            <div class="position-relative">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light text-muted small py-1 px-2.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                                            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+                                        </svg>
+                                    </span>
+                                    <input type="text" id="tpl_approver_search" class="form-control form-control-sm" placeholder="Type to search users..." autocomplete="off" disabled>
+                                    <input type="hidden" id="tpl_approver_id">
+                                </div>
+                                <ul id="tpl-approver-autocomplete" class="dropdown-menu w-100 shadow border-0 py-0" style="max-height: 220px; overflow-y: auto; z-index: 1050; font-size: 0.85rem; position: absolute; top: 100%; left: 0; display: none;"></ul>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <label for="tpl_approver_desc" class="form-label fw-semibold text-dark small mb-1">Checklist Description</label>
+                            <textarea id="tpl_approver_desc" class="form-control form-control-sm" rows="2" placeholder="Sign-off description / requirements (e.g. IT Equipment, Finance clearance)..." disabled></textarea>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="button" id="tpl_btn_add_approver" class="btn btn-sm btn-primary w-100 text-nowrap" style="margin-top: 24px;" disabled>Add to Checklist</button>
+                        </div>
                     </div>
 
                     <label class="form-label fw-semibold text-dark small">Checklist Sequence</label>
@@ -359,17 +376,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         tplApprovers.forEach((appr, index) => {
             const li = document.createElement('li');
-            li.className = 'list-group-item d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 tpl-approver-item';
+            li.className = 'list-group-item d-flex flex-wrap align-items-start justify-content-between gap-2 py-2 tpl-approver-item';
             li.innerHTML = `
-                <div class="d-flex align-items-center flex-grow-1 gap-2 flex-wrap">
-                    <span class="badge bg-secondary">#${index + 1}</span>
-                    <span class="fw-semibold text-dark small" style="min-width: 140px;">${escapeHtml(appr.name)}</span>
-                    <div class="input-group input-group-sm" style="max-width: 320px;">
-                        <span class="input-group-text bg-light text-muted small py-0">Sign-off For</span>
-                        <input type="text" class="form-control form-control-sm tpl-signoff-desc" data-index="${index}" value="${escapeHtml(appr.signoff_description || '')}" placeholder="e.g. IT Equipment, Finance...">
+                <div class="d-flex align-items-start flex-grow-1 gap-2 flex-wrap">
+                    <span class="badge bg-secondary mt-1">#${index + 1}</span>
+                    <span class="fw-semibold text-dark small mt-1" style="min-width: 140px;">${escapeHtml(appr.name)}</span>
+                    <div class="flex-grow-1" style="min-width: 260px; max-width: 450px;">
+                        <textarea class="form-control form-control-sm tpl-signoff-desc" rows="2" data-index="${index}" placeholder="Sign-off description / instructions...">${escapeHtml(appr.signoff_description || '')}</textarea>
                     </div>
                 </div>
-                <div class="btn-group btn-group-sm">
+                <div class="btn-group btn-group-sm mt-1">
                     <button type="button" class="btn btn-outline-secondary py-0 px-2 btn-move-up" data-index="${index}" title="Move Up" ${index === 0 ? 'disabled' : ''}>&uarr;</button>
                     <button type="button" class="btn btn-outline-secondary py-0 px-2 btn-move-down" data-index="${index}" title="Move Down" ${index === tplApprovers.length - 1 ? 'disabled' : ''}>&darr;</button>
                     <button type="button" class="btn btn-outline-danger py-0 px-2 btn-remove-tpl-approver" data-index="${index}" title="Remove">&times;</button>
@@ -424,15 +440,85 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const tplApproverSelector = document.getElementById('tpl_approver_selector');
+    @php
+        $allTplUsersData = isset($users) ? $users->map(fn($u) => [
+            'id' => (string)$u->id,
+            'name' => $u->name,
+            'user_type' => ucfirst($u->user_type ?? 'User'),
+        ])->values() : collect();
+    @endphp
+    const allTplUsers = {!! json_encode($allTplUsersData) !!};
+
+    const tplApproverSearch = document.getElementById('tpl_approver_search');
+    const tplApproverId = document.getElementById('tpl_approver_id');
+    const tplApproverAutocomplete = document.getElementById('tpl-approver-autocomplete');
     const tplApproverDesc = document.getElementById('tpl_approver_desc');
     const tplBtnAddApprover = document.getElementById('tpl_btn_add_approver');
 
-    if (tplBtnAddApprover && tplApproverSelector) {
+    function renderTplUserAutocomplete() {
+        if (!tplApproverSearch || !tplApproverAutocomplete) return;
+        const query = tplApproverSearch.value.trim().toLowerCase();
+        const filtered = query
+            ? allTplUsers.filter(u => u.name.toLowerCase().includes(query))
+            : allTplUsers;
+
+        if (filtered.length === 0) {
+            tplApproverAutocomplete.innerHTML = '<li class="dropdown-item text-muted disabled py-2">No users found</li>';
+            tplApproverAutocomplete.style.display = 'block';
+            return;
+        }
+
+        let html = '';
+        filtered.slice(0, 50).forEach(u => {
+            html += `
+                <li class="dropdown-item py-1.5 px-3 border-bottom tpl-user-suggestion-item" style="cursor: pointer;" data-id="${u.id}" data-name="${escapeHtml(u.name)}">
+                    <div class="fw-semibold text-dark small">${escapeHtml(u.name)}</div>
+                    <small class="text-muted" style="font-size: 0.75rem;">${escapeHtml(u.user_type)}</small>
+                </li>
+            `;
+        });
+        tplApproverAutocomplete.innerHTML = html;
+        tplApproverAutocomplete.style.display = 'block';
+
+        tplApproverAutocomplete.querySelectorAll('.tpl-user-suggestion-item').forEach(item => {
+            item.addEventListener('click', function () {
+                const id = this.getAttribute('data-id');
+                const name = this.getAttribute('data-name');
+                tplApproverId.value = id;
+                tplApproverSearch.value = name;
+                tplApproverAutocomplete.style.display = 'none';
+            });
+        });
+    }
+
+    if (tplApproverSearch) {
+        tplApproverSearch.addEventListener('focus', function () {
+            if (!this.disabled) {
+                renderTplUserAutocomplete();
+            }
+        });
+
+        tplApproverSearch.addEventListener('input', function () {
+            tplApproverId.value = '';
+            renderTplUserAutocomplete();
+        });
+
+        document.addEventListener('click', function (e) {
+            if (tplApproverAutocomplete && !tplApproverSearch.contains(e.target) && !tplApproverAutocomplete.contains(e.target)) {
+                tplApproverAutocomplete.style.display = 'none';
+            }
+        });
+    }
+
+    if (tplBtnAddApprover) {
         tplBtnAddApprover.addEventListener('click', function () {
-            const userId = tplApproverSelector.value;
-            const opt = tplApproverSelector.options[tplApproverSelector.selectedIndex];
-            if (!userId) return;
+            const userId = tplApproverId ? tplApproverId.value : '';
+            const userName = tplApproverSearch ? tplApproverSearch.value.trim() : '';
+            if (!userId) {
+                alert('Please search and select a user to add as approver.');
+                if (tplApproverSearch) tplApproverSearch.focus();
+                return;
+            }
 
             if (tplApprovers.some(a => a.id == userId)) {
                 alert('This user is already in the approvers checklist.');
@@ -443,11 +529,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             tplApprovers.push({
                 id: userId,
-                name: opt.getAttribute('data-name') || opt.text,
+                name: userName,
                 signoff_description: signoffDesc,
             });
 
-            tplApproverSelector.value = '';
+            if (tplApproverId) tplApproverId.value = '';
+            if (tplApproverSearch) tplApproverSearch.value = '';
             if (tplApproverDesc) tplApproverDesc.value = '';
             renderTplApproversList();
             serializeTemplate();
@@ -479,6 +566,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const enableApprovers = document.getElementById('tpl_enable_approvers');
+    const lockAddApprovers = document.getElementById('tpl_lock_add_approvers');
     const lockApprovers = document.getElementById('tpl_lock_approvers');
     const approverControls = document.getElementById('tpl-approver-controls');
 
@@ -486,9 +574,14 @@ document.addEventListener('DOMContentLoaded', function () {
         enableApprovers.addEventListener('change', function () {
             const isEnabled = this.checked;
             if (approverControls) approverControls.style.display = isEnabled ? 'block' : 'none';
-            if (tplApproverSelector) tplApproverSelector.disabled = !isEnabled;
+            if (tplApproverSearch) tplApproverSearch.disabled = !isEnabled;
             if (tplApproverDesc) tplApproverDesc.disabled = !isEnabled;
             if (tplBtnAddApprover) tplBtnAddApprover.disabled = !isEnabled;
+            if (!isEnabled && tplApproverAutocomplete) tplApproverAutocomplete.style.display = 'none';
+            if (lockAddApprovers) {
+                lockAddApprovers.disabled = !isEnabled || (lockApprovers && lockApprovers.checked);
+                if (!isEnabled) lockAddApprovers.checked = false;
+            }
             if (lockApprovers) {
                 lockApprovers.disabled = !isEnabled;
                 if (!isEnabled) lockApprovers.checked = false;
@@ -498,7 +591,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (lockApprovers) {
-        lockApprovers.addEventListener('change', serializeTemplate);
+        lockApprovers.addEventListener('change', function () {
+            if (this.checked) {
+                if (lockAddApprovers) {
+                    lockAddApprovers.checked = true;
+                    lockAddApprovers.disabled = true;
+                }
+            } else {
+                if (lockAddApprovers && enableApprovers && enableApprovers.checked) {
+                    lockAddApprovers.disabled = false;
+                }
+            }
+            serializeTemplate();
+        });
+    }
+
+    if (lockAddApprovers) {
+        lockAddApprovers.addEventListener('change', serializeTemplate);
     }
 
     // Load initial approval data if present
@@ -521,12 +630,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (enableApprovers) {
             enableApprovers.checked = true;
             if (approverControls) approverControls.style.display = 'block';
-            if (tplApproverSelector) tplApproverSelector.disabled = false;
+            if (tplApproverSearch) tplApproverSearch.disabled = false;
             if (tplApproverDesc) tplApproverDesc.disabled = false;
             if (tplBtnAddApprover) tplBtnAddApprover.disabled = false;
+            if (lockAddApprovers) {
+                lockAddApprovers.disabled = false;
+                lockAddApprovers.checked = !!approvalData.lock_add_approvers || !!approvalData.approvers_locked;
+            }
             if (lockApprovers) {
                 lockApprovers.disabled = false;
                 lockApprovers.checked = !!approvalData.approvers_locked;
+                if (lockApprovers.checked && lockAddApprovers) {
+                    lockAddApprovers.disabled = true;
+                }
             }
             if (Array.isArray(approvalData.approvers)) {
                 tplApprovers = approvalData.approvers.map(a => ({
@@ -570,16 +686,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 approvalObj.mode_locked = lockMode ? lockMode.checked : false;
             }
 
-            if (enableApprovers && enableApprovers.checked && tplApprovers.length > 0) {
-                hasActive = true;
-                approvalObj.has_approvers = true;
-                approvalObj.approvers = tplApprovers.map((a, idx) => ({
-                    id: a.id,
-                    name: a.name,
-                    sequence_order: idx + 1,
-                    signoff_description: a.signoff_description || ''
-                }));
-                approvalObj.approvers_locked = lockApprovers ? lockApprovers.checked : false;
+            if (enableApprovers && enableApprovers.checked) {
+                const isAddLocked = lockAddApprovers ? lockAddApprovers.checked : false;
+                const isAllLocked = lockApprovers ? lockApprovers.checked : false;
+
+                if (tplApprovers.length > 0 || isAddLocked || isAllLocked) {
+                    hasActive = true;
+                    approvalObj.has_approvers = true;
+                    approvalObj.approvers = tplApprovers.map((a, idx) => ({
+                        id: a.id,
+                        name: a.name,
+                        sequence_order: idx + 1,
+                        signoff_description: a.signoff_description || ''
+                    }));
+                    approvalObj.lock_add_approvers = isAddLocked || isAllLocked;
+                    approvalObj.approvers_locked = isAllLocked;
+                }
             }
 
             if (Object.keys(approvalObj).length > 0) {

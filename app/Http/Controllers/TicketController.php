@@ -272,6 +272,24 @@ class TicketController extends Controller
                 $validated['signoff_descriptions'] = array_map(function ($a) {
                     return is_array($a) ? ($a['signoff_description'] ?? null) : null;
                 }, $tplApproval['approvers']);
+            } elseif (! empty($tplApproval['has_approvers']) && ! empty($tplApproval['lock_add_approvers'])) {
+                $allowedTplApprovers = $tplApproval['approvers'] ?? [];
+                $allowedIds = array_map(function ($a) {
+                    return (int) (is_array($a) ? $a['id'] : $a);
+                }, $allowedTplApprovers);
+
+                $filteredIds = [];
+                $filteredDescs = [];
+                if (! empty($validated['approver_ids']) && is_array($validated['approver_ids'])) {
+                    foreach ($validated['approver_ids'] as $idx => $submittedId) {
+                        if (in_array((int) $submittedId, $allowedIds, true)) {
+                            $filteredIds[] = $submittedId;
+                            $filteredDescs[] = $validated['signoff_descriptions'][$idx] ?? null;
+                        }
+                    }
+                }
+                $validated['approver_ids'] = $filteredIds;
+                $validated['signoff_descriptions'] = $filteredDescs;
             }
         }
 

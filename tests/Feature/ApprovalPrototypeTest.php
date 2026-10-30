@@ -458,4 +458,93 @@ class ApprovalPrototypeTest extends TestCase
         $editResponse->assertSee('Laptop &amp; Asset Return', false);
         $editResponse->assertSee('Final Payroll Clearance');
     }
+
+    /**
+     * Test template maker UI renders the lock add approvers checkbox.
+     */
+    public function test_template_maker_ui_renders_lock_add_approvers_checkbox(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        $response = $this->actingAs($admin)->get('/admin/ticket-types/create');
+        $response->assertStatus(200);
+        $response->assertSee('id="tpl_lock_add_approvers"', false);
+        $response->assertSee('Lock Adding Users (Do not allow adding more users)');
+    }
+
+    /**
+     * Test ticket creation enforces lock_add_approvers by rejecting additional unauthorized approvers.
+     */
+    public function test_ticket_creation_enforces_lock_add_approvers_by_disallowing_extra_approvers(): void
+    {
+        $d = $this->createDependencies();
+
+        $enforcedApprover = User::factory()->create(['name' => 'Designated Auditor']);
+        $unauthorizedApprover = User::factory()->create(['name' => 'Unauthorized Extra User']);
+
+        $d['approvalType']->update([
+            'template_json' => [
+                'approval' => [
+                    'has_approvers' => true,
+                    'approvers' => [
+                        ['id' => $enforcedApprover->id, 'name' => $enforcedApprover->name, 'sequence_order' => 1, 'signoff_description' => 'Security Audit'],
+                    ],
+                    'lock_add_approvers' => true,
+                    'approvers_locked' => false,
+                ],
+            ],
+        ]);
+
+        // Submit form attempting to add an unauthorized extra approver
+        $response = $this->actingAs($d['creator'])->post('/tickets', [
+            'title' => 'Clearance Request with Extra User Attempt',
+            'description' => 'Testing lock_add_approvers enforcement',
+            'ticket_type_id' => $d['approvalType']->id,
+            'priority_option_id' => $d['priority']->id,
+            'category_1_id' => $d['category']->id,
+            'approval_mode' => 'sequential',
+            'approver_ids' => [$enforcedApprover->id, $unauthorizedApprover->id],
+            'signoff_descriptions' => ['Security Audit', 'Unauthorized Signoff'],
+        ]);
+
+        $response->assertRedirect();
+
+        $ticket = Ticket::where('title', 'Clearance Request with Extra User Attempt')->first();
+        $this->assertNotNull($ticket);
+        // Only the allowed template approver should be persisted; extra user filtered out
+        $this->assertEquals(1, $ticket->approvals()->count());
+        $this->assertEquals($enforcedApprover->id, $ticket->approvals()->first()->user_id);
+    }
+
+    /**
+     * Test ticket creation page renders searchable users and handles multiline checklist descriptions.
+     */
+    public function test_ticket_creation_renders_searchable_approvers_and_supports_multiline_descriptions(): void
+    {
+        $d = $this->createDependencies();
+
+        $response = $this->actingAs($d['creator'])->get('/tickets/create');
+        $response->assertStatus(200);
+        $response->assertSee('id="approver_search"', false);
+        $response->assertSee('<textarea id="approver_signoff_desc"', false);
+
+        $multilineDesc = "1. Return company laptop and badge.\n2. Revoke AWS and GitHub access.\n3. Complete exit interview.";
+        $postResponse = $this->actingAs($d['creator'])->post('/tickets', [
+            'title' => 'Multiline Clearance Test',
+            'description' => 'Testing multiline checklist descriptions',
+            'ticket_type_id' => $d['approvalType']->id,
+            'priority_option_id' => $d['priority']->id,
+            'category_1_id' => $d['category']->id,
+            'approval_mode' => 'sequential',
+            'approver_ids' => [$d['creator']->id],
+            'signoff_descriptions' => [$multilineDesc],
+        ]);
+
+        $postResponse->assertRedirect();
+
+        $ticket = Ticket::where('title', 'Multiline Clearance Test')->first();
+        $this->assertNotNull($ticket);
+        $approval = $ticket->approvals()->first();
+        $this->assertEquals($multilineDesc, $approval->signoff_description);
+    }
 }

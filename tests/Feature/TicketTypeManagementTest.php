@@ -277,4 +277,22 @@ class TicketTypeManagementTest extends TestCase
         $editResponse->assertStatus(200);
         $editResponse->assertSee('Ticket Form Template (Visual Builder)');
     }
+
+    /**
+     * Test template builder renders text searchable user input and textarea for checklist description.
+     */
+    public function test_ticket_type_template_builder_renders_searchable_users_and_textarea_description(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        $response = $this->actingAs($admin)->get('/admin/ticket-types/create');
+        $response->assertStatus(200);
+
+        // Assert searchable user input and autocomplete container
+        $response->assertSee('id="tpl_approver_search"', false);
+        $response->assertSee('id="tpl-approver-autocomplete"', false);
+
+        // Assert textarea for checklist description
+        $response->assertSee('<textarea id="tpl_approver_desc"', false);
+    }
 }

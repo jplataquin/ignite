@@ -274,16 +274,22 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold text-dark small">Add Approver</label>
+                            <label class="form-label fw-semibold text-dark small mb-1">Add Approver</label>
                             <div class="d-flex flex-column flex-sm-row gap-2">
-                                <select id="approver_selector" class="form-select form-select-sm" style="flex: 1 1 50%;">
-                                    <option value="">Select Approver User...</option>
-                                    @foreach($users as $userOption)
-                                        <option value="{{ $userOption->id }}" data-name="{{ $userOption->name }}">{{ $userOption->name }} ({{ ucfirst($userOption->user_type) }})</option>
-                                    @endforeach
-                                </select>
-                                <input type="text" id="approver_signoff_desc" class="form-control form-control-sm" placeholder="Sign-off description (e.g. IT Equipment, Finance)..." style="flex: 1 1 40%;">
-                                <button type="button" id="btn-add-approver" class="btn btn-sm btn-primary text-nowrap">Add</button>
+                                <div class="position-relative flex-grow-1" style="min-width: 180px;">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light text-muted small py-1 px-2.5">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                                                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+                                            </svg>
+                                        </span>
+                                        <input type="text" id="approver_search" class="form-control form-control-sm" placeholder="Type to search user..." autocomplete="off">
+                                        <input type="hidden" id="approver_id">
+                                    </div>
+                                    <ul id="approver-autocomplete-results" class="dropdown-menu w-100 shadow border-0 py-0" style="max-height: 220px; overflow-y: auto; z-index: 1050; font-size: 0.85rem; position: absolute; top: 100%; left: 0; display: none;"></ul>
+                                </div>
+                                <textarea id="approver_signoff_desc" class="form-control form-control-sm flex-grow-1" rows="1" placeholder="Sign-off description (e.g. IT Equipment, Finance)..." style="min-width: 180px;"></textarea>
+                                <button type="button" id="btn-add-approver" class="btn btn-sm btn-primary text-nowrap align-self-start">Add</button>
                             </div>
                         </div>
                     </div>
@@ -390,18 +396,17 @@
 
             selectedApprovers.forEach((appr, index) => {
                 const li = document.createElement('li');
-                li.className = 'list-group-item d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 approver-item';
+                li.className = 'list-group-item d-flex flex-wrap align-items-start justify-content-between gap-2 py-2 approver-item';
                 li.innerHTML = `
-                    <div class="d-flex align-items-center flex-grow-1 gap-2 flex-wrap">
-                        <span class="badge bg-secondary">#${index + 1}</span>
-                        <span class="fw-semibold text-dark small" style="min-width: 140px;">${escapeHtml(appr.name)}</span>
+                    <div class="d-flex align-items-start flex-grow-1 gap-2 flex-wrap">
+                        <span class="badge bg-secondary mt-1">#${index + 1}</span>
+                        <span class="fw-semibold text-dark small mt-1" style="min-width: 140px;">${escapeHtml(appr.name)}</span>
                         <input type="hidden" name="approver_ids[]" value="${appr.id}">
-                        <div class="input-group input-group-sm" style="max-width: 360px;">
-                            <span class="input-group-text bg-light text-muted small py-0">Sign-off For</span>
-                            <input type="text" name="signoff_descriptions[]" class="form-control form-control-sm signoff-desc-input" value="${escapeHtml(appr.signoff_description || '')}" placeholder="e.g. IT Equipment, Finance, HR...">
+                        <div class="flex-grow-1" style="min-width: 260px; max-width: 450px;">
+                            <textarea name="signoff_descriptions[]" class="form-control form-control-sm signoff-desc-input" rows="2" placeholder="e.g. IT Equipment, Finance, HR...">${escapeHtml(appr.signoff_description || '')}</textarea>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 btn-remove-approver" data-index="${index}">&times;</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 btn-remove-approver mt-1" data-index="${index}">&times;</button>
                 `;
                 approversList.appendChild(li);
             });
@@ -423,12 +428,84 @@
             });
         }
 
+        @php
+            $allApproverUsersData = isset($users) ? $users->map(fn($u) => [
+                'id' => (string)$u->id,
+                'name' => $u->name,
+                'user_type' => ucfirst($u->user_type ?? 'User'),
+            ])->values() : collect();
+        @endphp
+        const allApproverUsers = {!! json_encode($allApproverUsersData) !!};
+
+        const approverSearch = document.getElementById('approver_search');
+        const approverId = document.getElementById('approver_id');
+        const approverAutocompleteResults = document.getElementById('approver-autocomplete-results');
         const approverSignoffDesc = document.getElementById('approver_signoff_desc');
+
+        function renderApproverSearchAutocomplete() {
+            if (!approverSearch || !approverAutocompleteResults) return;
+            const query = approverSearch.value.trim().toLowerCase();
+            const filtered = query
+                ? allApproverUsers.filter(u => u.name.toLowerCase().includes(query))
+                : allApproverUsers;
+
+            if (filtered.length === 0) {
+                approverAutocompleteResults.innerHTML = '<li class="dropdown-item text-muted disabled py-2">No users found</li>';
+                approverAutocompleteResults.style.display = 'block';
+                return;
+            }
+
+            let html = '';
+            filtered.slice(0, 50).forEach(u => {
+                html += `
+                    <li class="dropdown-item py-1.5 px-3 border-bottom approver-user-suggestion" style="cursor: pointer;" data-id="${u.id}" data-name="${escapeHtml(u.name)}">
+                        <div class="fw-semibold text-dark small">${escapeHtml(u.name)}</div>
+                        <small class="text-muted" style="font-size: 0.75rem;">${escapeHtml(u.user_type)}</small>
+                    </li>
+                `;
+            });
+            approverAutocompleteResults.innerHTML = html;
+            approverAutocompleteResults.style.display = 'block';
+
+            approverAutocompleteResults.querySelectorAll('.approver-user-suggestion').forEach(item => {
+                item.addEventListener('click', function () {
+                    const id = this.getAttribute('data-id');
+                    const name = this.getAttribute('data-name');
+                    approverId.value = id;
+                    approverSearch.value = name;
+                    approverAutocompleteResults.style.display = 'none';
+                });
+            });
+        }
+
+        if (approverSearch) {
+            approverSearch.addEventListener('focus', function () {
+                if (!this.disabled) {
+                    renderApproverSearchAutocomplete();
+                }
+            });
+
+            approverSearch.addEventListener('input', function () {
+                approverId.value = '';
+                renderApproverSearchAutocomplete();
+            });
+
+            document.addEventListener('click', function (e) {
+                if (approverAutocompleteResults && !approverSearch.contains(e.target) && !approverAutocompleteResults.contains(e.target)) {
+                    approverAutocompleteResults.style.display = 'none';
+                }
+            });
+        }
+
         if (btnAddApprover) {
             btnAddApprover.addEventListener('click', function () {
-                const userId = approverSelector.value;
-                const selectedOpt = approverSelector.options[approverSelector.selectedIndex];
-                if (!userId) return;
+                const userId = approverId ? approverId.value : '';
+                const userName = approverSearch ? approverSearch.value.trim() : '';
+                if (!userId) {
+                    alert('Please search and select a user to add as approver.');
+                    if (approverSearch) approverSearch.focus();
+                    return;
+                }
 
                 if (selectedApprovers.some(a => a.id == userId)) {
                     alert('This user is already added to the approvers list.');
@@ -439,11 +516,12 @@
 
                 selectedApprovers.push({
                     id: userId,
-                    name: selectedOpt.getAttribute('data-name') || selectedOpt.text,
+                    name: userName,
                     signoff_description: signoffDesc,
                 });
 
-                approverSelector.value = '';
+                if (approverId) approverId.value = '';
+                if (approverSearch) approverSearch.value = '';
                 if (approverSignoffDesc) approverSignoffDesc.value = '';
                 renderApproversList();
             });
@@ -544,6 +622,7 @@
 
             document.querySelectorAll('input[name="approval_mode"]').forEach(r => r.disabled = false);
             if (approverSelector) approverSelector.disabled = false;
+            if (approverSearch) approverSearch.disabled = false;
             const appSignoffDesc = document.getElementById('approver_signoff_desc');
             if (appSignoffDesc) appSignoffDesc.disabled = false;
             if (btnAddApprover) btnAddApprover.disabled = false;
@@ -590,8 +669,8 @@
                 return;
             }
 
-            if (!template || !template.fields) return;
-            const fields = template.fields;
+            if (!template) return;
+            const fields = template.fields || {};
 
             // Title
             if (fields.title && fields.title.value !== undefined) {
@@ -687,16 +766,20 @@
                     }
                 }
 
-                if (approval.has_approvers && Array.isArray(approval.approvers) && approval.approvers.length > 0) {
-                    selectedApprovers = approval.approvers.map(a => ({
-                        id: a.id,
-                        name: a.name,
-                        signoff_description: a.signoff_description || ''
-                    }));
-                    renderApproversList();
+                if (approval.has_approvers) {
+                    if (Array.isArray(approval.approvers) && approval.approvers.length > 0) {
+                        selectedApprovers = approval.approvers.map(a => ({
+                            id: a.id,
+                            name: a.name,
+                            signoff_description: a.signoff_description || ''
+                        }));
+                        renderApproversList();
+                    }
 
                     if (approval.approvers_locked) {
                         if (approverSelector) approverSelector.disabled = true;
+                        if (approverSearch) approverSearch.disabled = true;
+                        if (approverAutocompleteResults) approverAutocompleteResults.style.display = 'none';
                         const appSignoffDesc = document.getElementById('approver_signoff_desc');
                         if (appSignoffDesc) appSignoffDesc.disabled = true;
                         if (btnAddApprover) btnAddApprover.disabled = true;
@@ -709,6 +792,21 @@
                         const badge = document.createElement('span');
                         badge.className = 'badge bg-secondary ms-2 template-locked-hidden';
                         badge.innerText = 'Checklist Locked by Template';
+                        const header = document.querySelector('#approval-settings-section h6');
+                        if (header && !header.querySelector('.template-locked-hidden')) {
+                            header.appendChild(badge);
+                        }
+                    } else if (approval.lock_add_approvers) {
+                        if (approverSelector) approverSelector.disabled = true;
+                        if (approverSearch) approverSearch.disabled = true;
+                        if (approverAutocompleteResults) approverAutocompleteResults.style.display = 'none';
+                        const appSignoffDesc = document.getElementById('approver_signoff_desc');
+                        if (appSignoffDesc) appSignoffDesc.disabled = true;
+                        if (btnAddApprover) btnAddApprover.disabled = true;
+
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-secondary ms-2 template-locked-hidden';
+                        badge.innerText = 'Adding Users Locked by Template';
                         const header = document.querySelector('#approval-settings-section h6');
                         if (header && !header.querySelector('.template-locked-hidden')) {
                             header.appendChild(badge);
