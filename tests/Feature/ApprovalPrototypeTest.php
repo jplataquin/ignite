@@ -555,16 +555,27 @@ class ApprovalPrototypeTest extends TestCase
     {
         $d = $this->createDependencies();
 
+        $openStage = TicketStage::firstOrCreate(['slug' => 'open'], ['name' => 'Open', 'color_code' => '#F59E0B']);
+        $closedStage = TicketStage::firstOrCreate(['slug' => 'closed'], ['name' => 'Closed', 'color_code' => '#6B7280']);
+
         $stage1 = TicketStage::create(['name' => 'Initial Review', 'slug' => 'initial-review', 'color_code' => '#111111']);
         $stage2 = TicketStage::create(['name' => 'Clearance In Progress', 'slug' => 'clearance-in-progress', 'color_code' => '#222222']);
-        $stage3 = TicketStage::create(['name' => 'Archived', 'slug' => 'closed', 'color_code' => '#333333']);
 
         $d['approvalType']->update([
             'template_json' => [
-                'stages' => [
-                    ['id' => $stage1->id, 'name' => $stage1->name, 'color_code' => $stage1->color_code, 'sequence_order' => 1],
-                    ['id' => $stage2->id, 'name' => $stage2->name, 'color_code' => $stage2->color_code, 'sequence_order' => 2],
-                    ['id' => $stage3->id, 'name' => $stage3->name, 'color_code' => $stage3->color_code, 'sequence_order' => 3],
+                'steps' => [
+                    [
+                        'step_number' => 1,
+                        'stages' => [
+                            ['id' => $stage1->id, 'name' => $stage1->name, 'color_code' => $stage1->color_code],
+                        ],
+                    ],
+                    [
+                        'step_number' => 2,
+                        'stages' => [
+                            ['id' => $stage2->id, 'name' => $stage2->name, 'color_code' => $stage2->color_code],
+                        ],
+                    ],
                 ],
                 'approval' => [
                     'has_mode' => true,
@@ -573,7 +584,7 @@ class ApprovalPrototypeTest extends TestCase
             ],
         ]);
 
-        // 1. Create ticket -> should default to stage1 (Initial Review)
+        // 1. Create ticket -> should default to Open stage
         $postResponse = $this->actingAs($d['creator'])->post('/tickets', [
             'title' => 'Approval With Custom Route',
             'description' => 'Testing stage route on approval ticket',
@@ -587,27 +598,41 @@ class ApprovalPrototypeTest extends TestCase
         $postResponse->assertRedirect();
         $ticket = Ticket::where('title', 'Approval With Custom Route')->first();
         $this->assertNotNull($ticket);
-        $this->assertEquals($stage1->id, $ticket->stage_id);
+        $this->assertEquals($openStage->id, $ticket->stage_id);
 
-        // 2. View ticket show page -> should render custom route stepper and Advance button
+        // 2. View ticket show page -> should render Open and Advance button
         $viewResponse = $this->actingAs($d['approver1'])->get("/tickets/{$ticket->id}");
         $viewResponse->assertStatus(200);
-        $viewResponse->assertSee('Initial Review');
-        $viewResponse->assertSee('Clearance In Progress');
-        $viewResponse->assertSee('Archived');
-        $viewResponse->assertSee('Advance to Clearance In Progress');
+        $viewResponse->assertSee('Open');
+        $viewResponse->assertSee('Advance to Initial Review');
+        $viewResponse->assertDontSee('Close Ticket');
 
-        // 3. Approver advances stage to Clearance In Progress
-        $advanceResponse = $this->actingAs($d['approver1'])->post("/tickets/{$ticket->id}/advance-stage");
+        // Creator should see 'Close Ticket'
+        $creatorViewResponse = $this->actingAs($d['creator'])->get("/tickets/{$ticket->id}");
+        $creatorViewResponse->assertSee('Close Ticket');
+
+        // 3. Approver advances stage to Initial Review
+        $advanceResponse = $this->actingAs($d['approver1'])->post("/tickets/{$ticket->id}/advance-stage", [
+            'target_stage_id' => $stage1->id,
+        ]);
         $advanceResponse->assertRedirect();
         $advanceResponse->assertSessionHas('success');
+        $this->assertEquals($stage1->id, $ticket->fresh()->stage_id);
+
+        // 4. Approver advances to Clearance In Progress
+        $advanceResponse2 = $this->actingAs($d['approver1'])->post("/tickets/{$ticket->id}/advance-stage", [
+            'target_stage_id' => $stage2->id,
+        ]);
+        $advanceResponse2->assertRedirect();
         $this->assertEquals($stage2->id, $ticket->fresh()->stage_id);
 
-        // 4. Admin advances to Archived (closed slug) -> Status transitions to Done
+        // 5. Admin advances to Closed -> Status transitions to Done
         $admin = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
-        $advanceResponse2 = $this->actingAs($admin)->post("/tickets/{$ticket->id}/advance-stage");
-        $advanceResponse2->assertRedirect();
-        $this->assertEquals($stage3->id, $ticket->fresh()->stage_id);
+        $advanceResponse3 = $this->actingAs($admin)->post("/tickets/{$ticket->id}/advance-stage", [
+            'target_stage_id' => $closedStage->id,
+        ]);
+        $advanceResponse3->assertRedirect();
+        $this->assertEquals($closedStage->id, $ticket->fresh()->stage_id);
         $this->assertEquals('Done', $ticket->fresh()->status);
     }
 }

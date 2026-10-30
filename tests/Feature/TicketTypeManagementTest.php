@@ -310,16 +310,29 @@ class TicketTypeManagementTest extends TestCase
         $createResponse->assertStatus(200);
         $createResponse->assertSee('Custom Stage Route');
         $createResponse->assertSee('id="tpl_enable_stage_route"', false);
-        $createResponse->assertSee('id="tpl_stage_selector"', false);
+        $createResponse->assertSee('id="tpl_btn_add_step"', false);
 
-        // Store ticket type with a stage route
+        $stage3 = TicketStage::create(['name' => 'Custom Stage 3', 'slug' => 'custom-3', 'color_code' => '#aabbcc']);
+
+        // Store ticket type with a multi-stage step route
         $response = $this->actingAs($admin)->post('/admin/ticket-types', [
             'name' => 'Custom Routed Ticket Type',
             'code' => 'CRT',
             'template_json' => json_encode([
-                'stages' => [
-                    ['id' => $stage1->id, 'name' => $stage1->name, 'color_code' => $stage1->color_code, 'sequence_order' => 1],
-                    ['id' => $stage2->id, 'name' => $stage2->name, 'color_code' => $stage2->color_code, 'sequence_order' => 2],
+                'steps' => [
+                    [
+                        'step_number' => 1,
+                        'stages' => [
+                            ['id' => $stage1->id, 'name' => $stage1->name, 'color_code' => $stage1->color_code],
+                        ],
+                    ],
+                    [
+                        'step_number' => 2,
+                        'stages' => [
+                            ['id' => $stage2->id, 'name' => $stage2->name, 'color_code' => $stage2->color_code],
+                            ['id' => $stage3->id, 'name' => $stage3->name, 'color_code' => $stage3->color_code],
+                        ],
+                    ],
                 ],
             ]),
         ]);
@@ -329,9 +342,8 @@ class TicketTypeManagementTest extends TestCase
         $ticketType = TicketType::where('name', 'Custom Routed Ticket Type')->first();
         $this->assertNotNull($ticketType);
         $this->assertIsArray($ticketType->template_json);
-        $this->assertArrayHasKey('stages', $ticketType->template_json);
-        $this->assertCount(2, $ticketType->template_json['stages']);
-        $this->assertEquals($stage1->id, $ticketType->template_json['stages'][0]['id']);
-        $this->assertEquals($stage2->id, $ticketType->template_json['stages'][1]['id']);
+        $this->assertArrayHasKey('steps', $ticketType->template_json);
+        $this->assertCount(2, $ticketType->template_json['steps']);
+        $this->assertCount(2, $ticketType->template_json['steps'][1]['stages']);
     }
 }

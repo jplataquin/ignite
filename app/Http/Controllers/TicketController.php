@@ -326,20 +326,19 @@ class TicketController extends Controller
             // Default stage
             $stageId = $validated['stage_id'] ?? null;
             if (! $stageId) {
-                if ($ticketType && ! empty($ticketType->template_json['stages']) && is_array($ticketType->template_json['stages'])) {
-                    // If custom stage route exists on the ticket type template, default to the first stage in the route
-                    $firstStage = $ticketType->template_json['stages'][0] ?? null;
-                    if ($firstStage && ! empty($firstStage['id'])) {
-                        $stageId = $firstStage['id'];
-                    }
-                }
+                $hasCustomSteps = $ticketType && (
+                    (! empty($ticketType->template_json['steps']) && is_array($ticketType->template_json['steps'])) ||
+                    (! empty($ticketType->template_json['stages']) && is_array($ticketType->template_json['stages']))
+                );
 
-                if (! $stageId && $isApproval) {
+                if ($hasCustomSteps) {
+                    // With custom stage route, tickets ALWAYS start at Open stage
+                    $openStage = TicketStage::where('slug', 'open')->first();
+                    $stageId = $openStage ? $openStage->id : null;
+                } elseif ($isApproval) {
                     $pendingStage = TicketStage::where('slug', 'pending-approval')->first();
                     $stageId = $pendingStage ? $pendingStage->id : null;
-                }
-
-                if (! $stageId) {
+                } else {
                     $openStage = TicketStage::where('slug', 'open')->first();
                     $stageId = $openStage ? $openStage->id : null;
                 }
@@ -1161,7 +1160,7 @@ class TicketController extends Controller
     }
 
     /**
-     * Advance a ticket with a custom stage route to its next sequential stage.
+     * Advance a ticket with a custom step route to its next step/stage.
      */
     public function advanceStage(Request $request, Ticket $ticket)
     {
@@ -1186,38 +1185,87 @@ class TicketController extends Controller
             abort(403, 'You are not authorized to advance the stage of this ticket.');
         }
 
-        $stages = $ticket->ticketType?->template_json['stages'] ?? [];
-        if (empty($stages) || ! is_array($stages)) {
-            return redirect()->back()->with('error', 'This ticket does not follow a custom stage route.');
-        }
-
-        $currentIndex = -1;
-        foreach ($stages as $idx => $stg) {
-            if ($stg['id'] == $ticket->stage_id) {
-                $currentIndex = $idx;
-                break;
+        $templateJson = $ticket->ticketType?->template_json ?? [];
+        $steps = [];
+        if (! empty($templateJson['steps']) && is_array($templateJson['steps'])) {
+            $steps = $templateJson['steps'];
+        } elseif (! empty($templateJson['stages']) && is_array($templateJson['stages'])) {
+            // Backward compatibility with flat stages format
+            foreach ($templateJson['stages'] as $idx => $stg) {
+                $steps[] = [
+                    'step_number' => $idx + 1,
+                    'stages' => [$stg],
+                ];
             }
         }
 
-        if ($currentIndex === -1) {
-            // If current stage is not in the route, advance to the first stage
-            $nextStageData = $stages[0];
-        } elseif (isset($stages[$currentIndex + 1])) {
-            $nextStageData = $stages[$currentIndex + 1];
+        if (empty($steps)) {
+            return redirect()->back()->with('error', 'This ticket does not have a custom stage route configured.');
+        }
+
+        // Determine current step index
+        // If current stage is 'open' (or slug 'open'), current step index is -1 (Start: Open). Next step is index 0.
+        $currentStepIndex = -1;
+        if ($ticket->stage?->slug !== 'open') {
+            foreach ($steps as $idx => $st) {
+                $stageIds = collect($st['stages'] ?? [])->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+                if (in_array((int) $ticket->stage_id, $stageIds)) {
+                    $currentStepIndex = $idx;
+                    break;
+                }
+            }
+        }
+
+        // Determine allowed target stages for next step
+        $nextStepIndex = $currentStepIndex + 1;
+        $allowedStages = [];
+
+        if (isset($steps[$nextStepIndex])) {
+            $allowedStages = $steps[$nextStepIndex]['stages'] ?? [];
         } else {
-            return redirect()->back()->with('error', 'Ticket is already at the final stage of its route.');
+            // Reached the end of intermediate steps -> target is the fixed 'Closed' stage
+            $closedStage = TicketStage::where('slug', 'closed')->first();
+            if (! $closedStage) {
+                return redirect()->back()->with('error', 'Closed stage could not be found.');
+            }
+            $allowedStages = [[
+                'id' => $closedStage->id,
+                'name' => $closedStage->name,
+                'color_code' => $closedStage->color_code,
+                'slug' => 'closed',
+            ]];
         }
 
-        $nextStage = TicketStage::find($nextStageData['id']);
-        if (! $nextStage) {
-            return redirect()->back()->with('error', 'Next stage record could not be found.');
+        if (empty($allowedStages)) {
+            return redirect()->back()->with('error', 'No valid stages found for the next step.');
         }
 
-        return DB::transaction(function () use ($ticket, $nextStage, $request, $user) {
-            $updateData = ['stage_id' => $nextStage->id];
+        // Determine target stage
+        $targetStageId = $request->input('target_stage_id');
+        if (! $targetStageId) {
+            // If only one stage is available in the next step, auto-select it
+            if (count($allowedStages) === 1) {
+                $targetStageId = $allowedStages[0]['id'];
+            } else {
+                return redirect()->back()->with('error', 'Please select which stage to advance to.');
+            }
+        }
+
+        $allowedIds = collect($allowedStages)->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+        if (! in_array((int) $targetStageId, $allowedIds)) {
+            return redirect()->back()->with('error', 'Selected stage is not a valid transition for this step.');
+        }
+
+        $targetStage = TicketStage::find($targetStageId);
+        if (! $targetStage) {
+            return redirect()->back()->with('error', 'Target stage record could not be found.');
+        }
+
+        return DB::transaction(function () use ($ticket, $targetStage, $request, $user) {
+            $updateData = ['stage_id' => $targetStage->id];
 
             // If advanced to closed or canceled stage, mark status as Done
-            if (in_array($nextStage->slug, ['closed', 'canceled'])) {
+            if (in_array($targetStage->slug, ['closed', 'canceled'])) {
                 $updateData['status'] = 'Done';
             }
 
@@ -1232,7 +1280,49 @@ class TicketController extends Controller
                 ]);
             }
 
-            return redirect()->back()->with('success', "Ticket advanced to '{$nextStage->name}'.");
+            return redirect()->back()->with('success', "Ticket advanced to '{$targetStage->name}'.");
+        });
+    }
+
+    /**
+     * Early close a ticket by creator or administrator.
+     */
+    public function closeTicket(Request $request, Ticket $ticket)
+    {
+        $user = Auth::user();
+        if (! $user) {
+            abort(403);
+        }
+
+        $canClose = $user->user_type === 'admin' || $ticket->created_by === $user->id;
+        if (! $canClose) {
+            abort(403, 'Only the ticket requester or an administrator can close this ticket.');
+        }
+
+        if ($ticket->status === 'Done' || $ticket->stage?->slug === 'closed') {
+            return redirect()->back()->with('error', 'This ticket is already closed.');
+        }
+
+        $closedStage = TicketStage::where('slug', 'closed')->first();
+        if (! $closedStage) {
+            return redirect()->back()->with('error', 'Closed stage record could not be found.');
+        }
+
+        return DB::transaction(function () use ($ticket, $closedStage, $request, $user) {
+            $ticket->update([
+                'stage_id' => $closedStage->id,
+                'status' => 'Done',
+            ]);
+
+            $commentContent = $request->input('comment') ?? 'Ticket closed early by requester/administrator.';
+            TicketComment::create([
+                'ticket_id' => $ticket->id,
+                'user_id' => $user->id,
+                'type' => 'comment',
+                'content' => $commentContent,
+            ]);
+
+            return redirect()->back()->with('success', 'Ticket closed successfully.');
         });
     }
 }

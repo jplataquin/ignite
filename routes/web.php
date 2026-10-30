@@ -61,6 +61,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets/{ticket}/cancel-review', [TicketController::class, 'cancelReview'])->name('tickets.cancel-review');
     Route::post('/tickets/{ticket}/reassign-review', [TicketController::class, 'reassignReview'])->name('tickets.reassign-review');
     Route::post('/tickets/{ticket}/advance-stage', [TicketController::class, 'advanceStage'])->name('tickets.advance-stage');
+    Route::post('/tickets/{ticket}/close', [TicketController::class, 'closeTicket'])->name('tickets.close');
     Route::get('/api/categories', [TicketController::class, 'getCategories'])->name('api.categories');
     Route::get('/api/users', [TicketController::class, 'getUsers'])->name('api.users');
 

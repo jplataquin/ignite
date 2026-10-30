@@ -56,19 +56,98 @@
 @endif
 
 @php
-    $customStages = $ticket->ticketType?->template_json['stages'] ?? [];
-    $hasCustomRoute = !empty($customStages) && is_array($customStages);
+    $templateJson = $ticket->ticketType?->template_json ?? [];
+    $customSteps = [];
+    if (! empty($templateJson['steps']) && is_array($templateJson['steps'])) {
+        $customSteps = $templateJson['steps'];
+    } elseif (! empty($templateJson['stages']) && is_array($templateJson['stages'])) {
+        foreach ($templateJson['stages'] as $idx => $stg) {
+            $customSteps[] = [
+                'step_number' => $idx + 1,
+                'stages' => [$stg],
+            ];
+        }
+    }
+    $hasCustomRoute = !empty($customSteps);
 
     if ($hasCustomRoute) {
-        $totalSteps = count($customStages);
-        $currentStepIndex = 0;
-        foreach ($customStages as $idx => $stg) {
-            if ($stg['id'] == $ticket->stage_id) {
-                $currentStepIndex = $idx;
-                break;
+        $openStage = \App\Models\TicketStage::where('slug', 'open')->first();
+        $closedStage = \App\Models\TicketStage::where('slug', 'closed')->first();
+
+        $displaySteps = [];
+        $displaySteps[] = [
+            'type' => 'start',
+            'name' => 'Open',
+            'slug' => 'open',
+            'stage_id' => $openStage?->id,
+        ];
+
+        foreach ($customSteps as $idx => $st) {
+            $matchedStage = null;
+            foreach ($st['stages'] ?? [] as $stg) {
+                if ($stg['id'] == $ticket->stage_id) {
+                    $matchedStage = $stg;
+                    break;
+                }
+            }
+
+            $stepLabel = $matchedStage ? $matchedStage['name'] : ('Step ' . ($idx + 1));
+            $displaySteps[] = [
+                'type' => 'step',
+                'name' => $stepLabel,
+                'step_index' => $idx,
+                'stages' => $st['stages'] ?? [],
+                'matched_stage' => $matchedStage,
+            ];
+        }
+
+        $displaySteps[] = [
+            'type' => 'end',
+            'name' => 'Closed',
+            'slug' => 'closed',
+            'stage_id' => $closedStage?->id,
+        ];
+
+        $totalDisplaySteps = count($displaySteps);
+
+        $activeStepIndex = 0;
+        if ($ticket->stage?->slug === 'closed' || $ticket->status === 'Done') {
+            $activeStepIndex = $totalDisplaySteps - 1;
+        } elseif ($ticket->stage?->slug === 'open') {
+            $activeStepIndex = 0;
+        } else {
+            foreach ($customSteps as $idx => $st) {
+                $stageIds = collect($st['stages'] ?? [])->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+                if (in_array((int) $ticket->stage_id, $stageIds)) {
+                    $activeStepIndex = $idx + 1;
+                    break;
+                }
             }
         }
-        $progressPercent = $totalSteps > 1 ? ($currentStepIndex / ($totalSteps - 1)) * 100 : 100;
+
+        $progressPercent = $totalDisplaySteps > 1 ? ($activeStepIndex / ($totalDisplaySteps - 1)) * 100 : 100;
+
+        $isClosedOrDone = $ticket->status === 'Done' || in_array($ticket->stage?->slug, ['closed', 'canceled']);
+        $nextAllowedStages = [];
+        if (! $isClosedOrDone) {
+            if ($activeStepIndex === 0) {
+                $nextAllowedStages = $customSteps[0]['stages'] ?? [];
+            } elseif ($activeStepIndex >= 1 && $activeStepIndex <= count($customSteps)) {
+                $nextStepArrIndex = $activeStepIndex;
+                if (isset($customSteps[$nextStepArrIndex])) {
+                    $nextAllowedStages = $customSteps[$nextStepArrIndex]['stages'] ?? [];
+                } else {
+                    if ($closedStage) {
+                        $nextAllowedStages = [[
+                            'id' => $closedStage->id,
+                            'name' => 'Closed',
+                            'color_code' => '#10B981',
+                            'slug' => 'closed',
+                        ]];
+                    }
+                }
+            }
+        }
     } else {
         $stageSlug = $ticket->stage?->slug ?? 'open';
         $currentStep = 1;
@@ -93,15 +172,15 @@
 
             <!-- Custom Stage Route Nodes -->
             <div class="d-flex justify-content-between position-relative" style="z-index: 1;">
-                @foreach($customStages as $idx => $stg)
+                @foreach($displaySteps as $idx => $dst)
                     @php
-                        $isCompleted = $idx < $currentStepIndex;
-                        $isCurrent = $idx === $currentStepIndex;
-                        $isFinalStage = $idx === $totalSteps - 1;
-                        $nodeFinished = $isCompleted || ($isCurrent && ($isFinalStage || $ticket->status === 'Done'));
+                        $isCompleted = $idx < $activeStepIndex;
+                        $isCurrent = $idx === $activeStepIndex;
+                        $isLast = $idx === $totalDisplaySteps - 1;
+                        $nodeFinished = $isCompleted || ($isCurrent && ($isLast || $ticket->status === 'Done'));
                     @endphp
                     <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
-                        <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $nodeFinished || $isCurrent ? ($isCurrent && $ticket->stage?->slug === 'closed' ? 'bg-success border-success text-white' : ($isCurrent && in_array($ticket->stage?->slug, ['canceled', 'lapsed']) ? 'bg-danger border-danger text-white' : 'bg-primary border-primary text-white')) : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $nodeFinished || $isCurrent ? '' : '#cbd5e1 !important' }};">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $nodeFinished || $isCurrent ? ($isCurrent && ($dst['slug'] ?? '') === 'closed' ? 'bg-success border-success text-white' : ($isCurrent && in_array($ticket->stage?->slug, ['canceled', 'lapsed']) ? 'bg-danger border-danger text-white' : 'bg-primary border-primary text-white')) : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $nodeFinished || $isCurrent ? '' : '#cbd5e1 !important' }};">
                             @if($nodeFinished)
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
                                     <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
@@ -110,7 +189,7 @@
                                 {{ $idx + 1 }}
                             @endif
                         </div>
-                        <span class="mt-2 small fw-bold {{ $isCurrent && $ticket->stage?->slug === 'closed' ? 'text-success' : ($isCurrent && in_array($ticket->stage?->slug, ['canceled', 'lapsed']) ? 'text-danger' : ($nodeFinished || $isCurrent ? 'text-primary' : 'text-muted')) }}" style="font-size: 0.78rem;">{{ $stg['name'] }}</span>
+                        <span class="mt-2 small fw-bold {{ $isCurrent && ($dst['slug'] ?? '') === 'closed' ? 'text-success' : ($isCurrent && in_array($ticket->stage?->slug, ['canceled', 'lapsed']) ? 'text-danger' : ($nodeFinished || $isCurrent ? 'text-primary' : 'text-muted')) }}" style="font-size: 0.78rem;">{{ $dst['name'] }}</span>
                     </div>
                 @endforeach
             </div>
@@ -512,25 +591,29 @@
             @if($hasCustomRoute)
                 @php
                     $isDoneOrTerminal = $ticket->status === 'Done' || in_array($ticket->stage?->slug, ['closed', 'canceled']);
-                    $hasNextStage = isset($customStages[$currentStepIndex + 1]) && !$isDoneOrTerminal;
-                    $nextStageName = $hasNextStage ? $customStages[$currentStepIndex + 1]['name'] : null;
+                    $hasAvailableNext = !empty($nextAllowedStages) && !$isDoneOrTerminal;
                     $canAdvance = Auth::user()->user_type === 'admin' ||
                                   ($ticket->assigned_id && $ticket->assigned_id === Auth::id()) ||
                                   (!$ticket->assigned_id && Auth::user()->division_id && Auth::user()->division_id === $ticket->division_id && Auth::id() !== $ticket->created_by);
                 @endphp
 
                 <div class="mb-3">
-                    @if($hasNextStage)
+                    @if($hasAvailableNext)
                         @if($canAdvance)
-                            <form action="{{ route('tickets.advance-stage', $ticket) }}" method="POST">
-                                @csrf
-                                <button type="submit" class="btn btn-sm btn-primary w-100 d-flex align-items-center justify-content-center" style="min-height: 38px;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-arrow-right-circle me-1.5" viewBox="0 0 16 16">
-                                        <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8m15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0M4.5 7.5a.5.5 0 0 0 0 1h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5z"/>
-                                    </svg>
-                                    Advance to {{ $nextStageName }}
-                                </button>
-                            </form>
+                            <div class="d-flex flex-column gap-2">
+                                @foreach($nextAllowedStages as $nxtStg)
+                                    <form action="{{ route('tickets.advance-stage', $ticket) }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="target_stage_id" value="{{ $nxtStg['id'] }}">
+                                        <button type="submit" class="btn btn-sm w-100 d-flex align-items-center justify-content-center text-white" style="min-height: 38px; background-color: {{ $nxtStg['color_code'] ?? '#0284c7' }}; border-color: {{ $nxtStg['color_code'] ?? '#0284c7' }};">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-arrow-right-circle me-1.5" viewBox="0 0 16 16">
+                                                <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8m15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0M4.5 7.5a.5.5 0 0 0 0 1h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5z"/>
+                                            </svg>
+                                            Advance to {{ $nxtStg['name'] }}
+                                        </button>
+                                    </form>
+                                @endforeach
+                            </div>
                         @else
                             <div class="alert alert-info border-0 p-2.5 rounded text-dark small mb-0">
                                 @if($ticket->assigned_id)
@@ -549,6 +632,23 @@
                         </div>
                     @endif
                 </div>
+
+                @if(! $isDoneOrTerminal)
+                    @if(Auth::id() === $ticket->created_by || (Auth::user() && Auth::user()->user_type === 'admin'))
+                        <div class="mt-2 pt-2 border-top">
+                            <form action="{{ route('tickets.close', $ticket) }}" method="POST" onsubmit="return confirm('Are you sure you want to close this ticket?');">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-outline-danger w-100 d-flex align-items-center justify-content-center" style="min-height: 36px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-x-circle me-1.5" viewBox="0 0 16 16">
+                                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                                        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+                                    </svg>
+                                    Close Ticket
+                                </button>
+                            </form>
+                        </div>
+                    @endif
+                @endif
             @else
                 <div class="mb-3">
                     @if($ticket->stage?->slug !== 'open')
