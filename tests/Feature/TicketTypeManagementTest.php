@@ -295,4 +295,43 @@ class TicketTypeManagementTest extends TestCase
         // Assert textarea for checklist description
         $response->assertSee('<textarea id="tpl_approver_desc"', false);
     }
+
+    /**
+     * Test admin can configure custom stage route in ticket type template.
+     */
+    public function test_admin_can_configure_custom_stage_route_in_ticket_type_template(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $stage1 = TicketStage::create(['name' => 'Custom Stage 1', 'slug' => 'custom-1', 'color_code' => '#123456']);
+        $stage2 = TicketStage::create(['name' => 'Custom Stage 2', 'slug' => 'custom-2', 'color_code' => '#654321']);
+
+        // Assert builder renders the stage route section
+        $createResponse = $this->actingAs($admin)->get('/admin/ticket-types/create');
+        $createResponse->assertStatus(200);
+        $createResponse->assertSee('Custom Stage Route');
+        $createResponse->assertSee('id="tpl_enable_stage_route"', false);
+        $createResponse->assertSee('id="tpl_stage_selector"', false);
+
+        // Store ticket type with a stage route
+        $response = $this->actingAs($admin)->post('/admin/ticket-types', [
+            'name' => 'Custom Routed Ticket Type',
+            'code' => 'CRT',
+            'template_json' => json_encode([
+                'stages' => [
+                    ['id' => $stage1->id, 'name' => $stage1->name, 'color_code' => $stage1->color_code, 'sequence_order' => 1],
+                    ['id' => $stage2->id, 'name' => $stage2->name, 'color_code' => $stage2->color_code, 'sequence_order' => 2],
+                ],
+            ]),
+        ]);
+
+        $response->assertRedirect('/admin/ticket-types');
+
+        $ticketType = TicketType::where('name', 'Custom Routed Ticket Type')->first();
+        $this->assertNotNull($ticketType);
+        $this->assertIsArray($ticketType->template_json);
+        $this->assertArrayHasKey('stages', $ticketType->template_json);
+        $this->assertCount(2, $ticketType->template_json['stages']);
+        $this->assertEquals($stage1->id, $ticketType->template_json['stages'][0]['id']);
+        $this->assertEquals($stage2->id, $ticketType->template_json['stages'][1]['id']);
+    }
 }

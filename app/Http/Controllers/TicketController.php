@@ -329,7 +329,14 @@ class TicketController extends Controller
                 if ($isApproval) {
                     $pendingStage = TicketStage::where('slug', 'pending-approval')->first();
                     $stageId = $pendingStage ? $pendingStage->id : null;
+                } elseif ($ticketType && ! empty($ticketType->template_json['stages']) && is_array($ticketType->template_json['stages'])) {
+                    // If custom stage route exists on the ticket type template, default to the first stage in the route
+                    $firstStage = $ticketType->template_json['stages'][0] ?? null;
+                    if ($firstStage && ! empty($firstStage['id'])) {
+                        $stageId = $firstStage['id'];
+                    }
                 }
+
                 if (! $stageId) {
                     $openStage = TicketStage::where('slug', 'open')->first();
                     $stageId = $openStage ? $openStage->id : null;
@@ -1148,6 +1155,80 @@ class TicketController extends Controller
             ]);
 
             return redirect()->back()->with('success', 'Ticket reassigned successfully.');
+        });
+    }
+
+    /**
+     * Advance a ticket with a custom stage route to its next sequential stage.
+     */
+    public function advanceStage(Request $request, Ticket $ticket)
+    {
+        $user = Auth::user();
+        if (! $user) {
+            abort(403);
+        }
+
+        // Prevent advancing completed or canceled tickets
+        if ($ticket->status === 'Done' || in_array($ticket->stage?->slug, ['closed', 'canceled'])) {
+            return redirect()->back()->with('error', 'Completed or canceled tickets cannot be advanced.');
+        }
+
+        // Authorization: Assignee, Staff in same division (if unassigned and not creator), or Admin
+        $canAdvance = $user->user_type === 'admin' ||
+            ($ticket->assigned_id && $ticket->assigned_id === $user->id) ||
+            (! $ticket->assigned_id && $user->division_id && $user->division_id === $ticket->division_id && $user->id !== $ticket->created_by);
+
+        if (! $canAdvance) {
+            abort(403, 'You are not authorized to advance the stage of this ticket.');
+        }
+
+        $stages = $ticket->ticketType?->template_json['stages'] ?? [];
+        if (empty($stages) || ! is_array($stages)) {
+            return redirect()->back()->with('error', 'This ticket does not follow a custom stage route.');
+        }
+
+        $currentIndex = -1;
+        foreach ($stages as $idx => $stg) {
+            if ($stg['id'] == $ticket->stage_id) {
+                $currentIndex = $idx;
+                break;
+            }
+        }
+
+        if ($currentIndex === -1) {
+            // If current stage is not in the route, advance to the first stage
+            $nextStageData = $stages[0];
+        } elseif (isset($stages[$currentIndex + 1])) {
+            $nextStageData = $stages[$currentIndex + 1];
+        } else {
+            return redirect()->back()->with('error', 'Ticket is already at the final stage of its route.');
+        }
+
+        $nextStage = TicketStage::find($nextStageData['id']);
+        if (! $nextStage) {
+            return redirect()->back()->with('error', 'Next stage record could not be found.');
+        }
+
+        return DB::transaction(function () use ($ticket, $nextStage, $request, $user) {
+            $updateData = ['stage_id' => $nextStage->id];
+
+            // If advanced to closed or canceled stage, mark status as Done
+            if (in_array($nextStage->slug, ['closed', 'canceled'])) {
+                $updateData['status'] = 'Done';
+            }
+
+            $ticket->update($updateData);
+
+            if ($request->filled('comment')) {
+                TicketComment::create([
+                    'ticket_id' => $ticket->id,
+                    'user_id' => $user->id,
+                    'type' => 'comment',
+                    'content' => $request->input('comment'),
+                ]);
+            }
+
+            return redirect()->back()->with('success', "Ticket advanced to '{$nextStage->name}'.");
         });
     }
 }

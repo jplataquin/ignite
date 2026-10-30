@@ -3641,4 +3641,107 @@ class TicketManagementTest extends TestCase
         $responseOpen->assertDontSee('Closed Lapsed Ticket Feature');
         $responseOpen->assertDontSee('Canceled Lapsed Ticket Feature');
     }
+
+    /**
+     * Test ticket with custom stage route initializes to first stage and can be advanced sequentially.
+     */
+    public function test_ticket_with_custom_stage_route_initializes_to_first_stage_and_can_be_advanced(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $assignee = User::factory()->create(['user_type' => 'regular']);
+        $priority = Priority::create(['name' => 'High', 'level' => 1]);
+        $division = Division::create(['name' => 'Engineering']);
+        $department = Department::create(['name' => 'QA', 'division_id' => $division->id]);
+
+        $stage1 = TicketStage::create(['name' => 'Triage', 'slug' => 'triage', 'color_code' => '#111111']);
+        $stage2 = TicketStage::create(['name' => 'Investigation', 'slug' => 'investigation', 'color_code' => '#222222']);
+        $stage3 = TicketStage::create(['name' => 'Closed', 'slug' => 'closed', 'color_code' => '#333333']);
+
+        $ticketType = TicketType::create([
+            'name' => 'Bug Track Route',
+            'code' => 'BUG',
+            'template_json' => [
+                'stages' => [
+                    ['id' => $stage1->id, 'name' => $stage1->name, 'color_code' => $stage1->color_code, 'sequence_order' => 1],
+                    ['id' => $stage2->id, 'name' => $stage2->name, 'color_code' => $stage2->color_code, 'sequence_order' => 2],
+                    ['id' => $stage3->id, 'name' => $stage3->name, 'color_code' => $stage3->color_code, 'sequence_order' => 3],
+                ],
+            ],
+        ]);
+
+        $category = Category::create(['name' => 'Backend', 'ticket_type_id' => $ticketType->id]);
+
+        $role = Role::create(['name' => 'QA Specialist', 'slug' => 'qa-specialist']);
+        $role->ticketTypes()->attach($ticketType->id);
+
+        $regularCreator = User::factory()->create([
+            'user_type' => 'regular',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+        ]);
+        $regularCreator->roles()->attach($role->id);
+
+        // 1. Create ticket without providing stage_id -> should default to stage1 (Triage)
+        $createResponse = $this->actingAs($regularCreator)->post('/tickets', [
+            'title' => 'Custom Route Ticket Test',
+            'description' => 'Verifying custom stage route initialization',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priority->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'assigned_id' => $assignee->id,
+        ]);
+
+        $createResponse->assertRedirect();
+        $ticket = Ticket::where('title', 'Custom Route Ticket Test')->first();
+        $this->assertNotNull($ticket);
+        $this->assertEquals($stage1->id, $ticket->stage_id);
+        $this->assertEquals('Valid', $ticket->status);
+
+        // 2. Creator (regular user) attempting to advance assigned ticket should receive 403 Forbidden
+        $unauthorizedResponse = $this->actingAs($regularCreator)->post("/tickets/{$ticket->id}/advance-stage");
+        $unauthorizedResponse->assertStatus(403);
+
+        // 3. View ticket show page as assignee -> should render custom route stepper and Advance button
+        $viewResponse = $this->actingAs($assignee)->get("/tickets/{$ticket->id}");
+        $viewResponse->assertStatus(200);
+        $viewResponse->assertSee('Triage');
+        $viewResponse->assertSee('Investigation');
+        $viewResponse->assertSee('Closed');
+        $viewResponse->assertSee('Advance to Investigation');
+
+        // 4. Advance to Stage 2 (Investigation) with optional note
+        $advanceResponse1 = $this->actingAs($assignee)->post("/tickets/{$ticket->id}/advance-stage", [
+            'comment' => 'Investigating root cause.',
+        ]);
+        $advanceResponse1->assertRedirect();
+        $advanceResponse1->assertSessionHas('success');
+        $this->assertEquals($stage2->id, $ticket->fresh()->stage_id);
+
+        // Verify comment was logged
+        $this->assertDatabaseHas('ticket_comments', [
+            'ticket_id' => $ticket->id,
+            'user_id' => $assignee->id,
+            'type' => 'comment',
+            'content' => 'Investigating root cause.',
+        ]);
+
+        // View ticket show page again -> should prompt advance to Closed
+        $viewResponse2 = $this->actingAs($assignee)->get("/tickets/{$ticket->id}");
+        $viewResponse2->assertSee('Advance to Closed');
+
+        // 5. Advance to Stage 3 (Closed) -> Status should automatically update to Done
+        $advanceResponse2 = $this->actingAs($assignee)->post("/tickets/{$ticket->id}/advance-stage");
+        $advanceResponse2->assertRedirect();
+        $this->assertEquals($stage3->id, $ticket->fresh()->stage_id);
+        $this->assertEquals('Done', $ticket->fresh()->status);
+
+        // 6. Attempt advancing after completion -> should be prevented
+        $advanceResponse3 = $this->actingAs($assignee)->post("/tickets/{$ticket->id}/advance-stage");
+        $advanceResponse3->assertRedirect();
+        $advanceResponse3->assertSessionHas('error');
+        $this->assertEquals($stage3->id, $ticket->fresh()->stage_id);
+    }
 }

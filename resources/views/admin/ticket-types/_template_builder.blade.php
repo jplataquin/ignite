@@ -280,6 +280,44 @@
                 </div>
             </div>
         </div>
+
+        <!-- Custom Stage Route Configuration -->
+        <div id="tpl-stage-route-section" class="mt-4 border-top pt-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <h6 class="fw-bold text-dark mb-0">Custom Stage Route</h6>
+                    <small class="text-muted">Define a custom sequence of stages for tickets of this type.</small>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="tpl_enable_stage_route">
+                    <label class="form-check-label fw-semibold text-dark small" for="tpl_enable_stage_route">Enable Custom Route</label>
+                </div>
+            </div>
+
+            <div id="tpl-stage-route-controls" class="p-3 bg-light rounded border mb-2" style="display: none;">
+                <div class="row g-2 mb-3 align-items-start">
+                    <div class="col-md-9">
+                        <label for="tpl_stage_selector" class="form-label fw-semibold text-dark small mb-1">Select Stage to Add</label>
+                        <select id="tpl_stage_selector" class="form-select form-select-sm" disabled>
+                            <option value="">Choose a stage...</option>
+                            @if(isset($ticketStages))
+                                @foreach($ticketStages as $stg)
+                                    <option value="{{ $stg->id }}" data-name="{{ $stg->name }}" data-color="{{ $stg->color_code }}">{{ $stg->name }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="button" id="tpl_btn_add_stage" class="btn btn-sm btn-primary w-100 text-nowrap" style="margin-top: 24px;" disabled>Add to Route</button>
+                    </div>
+                </div>
+
+                <label class="form-label fw-semibold text-dark small">Stage Route Sequence</label>
+                <ul id="tpl-stage-route-list" class="list-group list-group-flush border rounded bg-white">
+                    <li id="tpl-no-stages-placeholder" class="list-group-item text-muted small py-3 text-center">No stages added to the route yet.</li>
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -350,6 +388,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const isApproval = prototypeSelect && prototypeSelect.value === 'approval_clearance';
         if (approvalSection) {
             approvalSection.style.display = isApproval ? 'block' : 'none';
+        }
+        const stageRouteSection = document.getElementById('tpl-stage-route-section');
+        if (stageRouteSection) {
+            stageRouteSection.style.display = isApproval ? 'none' : 'block';
         }
     }
 
@@ -655,6 +697,130 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // --- STAGE ROUTE MANAGEMENT ---
+    let tplStages = [];
+    const enableStageRoute = document.getElementById('tpl_enable_stage_route');
+    const stageRouteControls = document.getElementById('tpl-stage-route-controls');
+    const tplStageSelector = document.getElementById('tpl_stage_selector');
+    const tplBtnAddStage = document.getElementById('tpl_btn_add_stage');
+    const stageRouteList = document.getElementById('tpl-stage-route-list');
+    const noStagesPlaceholder = document.getElementById('tpl-no-stages-placeholder');
+
+    function renderTplStagesList() {
+        if (!stageRouteList) return;
+        const items = stageRouteList.querySelectorAll('.tpl-stage-item');
+        items.forEach(el => el.remove());
+
+        if (tplStages.length === 0) {
+            if (noStagesPlaceholder) noStagesPlaceholder.style.display = 'block';
+            return;
+        }
+        if (noStagesPlaceholder) noStagesPlaceholder.style.display = 'none';
+
+        tplStages.forEach((stg, index) => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 tpl-stage-item';
+            li.innerHTML = `
+                <div class="d-flex align-items-center flex-grow-1 gap-2 flex-wrap">
+                    <span class="badge bg-secondary">#${index + 1}</span>
+                    <span class="badge rounded-pill px-3 py-1.5 fw-semibold text-white" style="background-color: ${stg.color_code || '#6b7280'};">
+                        ${escapeHtml(stg.name)}
+                    </span>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-secondary py-0 px-2 btn-move-up" data-index="${index}" title="Move Up" ${index === 0 ? 'disabled' : ''}>&uarr;</button>
+                    <button type="button" class="btn btn-outline-secondary py-0 px-2 btn-move-down" data-index="${index}" title="Move Down" ${index === tplStages.length - 1 ? 'disabled' : ''}>&darr;</button>
+                    <button type="button" class="btn btn-outline-danger py-0 px-2 btn-remove-tpl-stage" data-index="${index}" title="Remove">&times;</button>
+                </div>
+            `;
+            stageRouteList.appendChild(li);
+        });
+
+        stageRouteList.querySelectorAll('.btn-move-up').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const idx = parseInt(this.getAttribute('data-index'));
+                if (idx > 0) {
+                    const temp = tplStages[idx];
+                    tplStages[idx] = tplStages[idx - 1];
+                    tplStages[idx - 1] = temp;
+                    renderTplStagesList();
+                    serializeTemplate();
+                }
+            });
+        });
+
+        stageRouteList.querySelectorAll('.btn-move-down').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const idx = parseInt(this.getAttribute('data-index'));
+                if (idx < tplStages.length - 1) {
+                    const temp = tplStages[idx];
+                    tplStages[idx] = tplStages[idx + 1];
+                    tplStages[idx + 1] = temp;
+                    renderTplStagesList();
+                    serializeTemplate();
+                }
+            });
+        });
+
+        stageRouteList.querySelectorAll('.btn-remove-tpl-stage').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const idx = parseInt(this.getAttribute('data-index'));
+                tplStages.splice(idx, 1);
+                renderTplStagesList();
+                serializeTemplate();
+            });
+        });
+    }
+
+    if (enableStageRoute) {
+        enableStageRoute.addEventListener('change', function () {
+            const isEnabled = this.checked;
+            if (stageRouteControls) stageRouteControls.style.display = isEnabled ? 'block' : 'none';
+            if (tplStageSelector) tplStageSelector.disabled = !isEnabled;
+            if (tplBtnAddStage) tplBtnAddStage.disabled = !isEnabled;
+            serializeTemplate();
+        });
+    }
+
+    if (tplBtnAddStage && tplStageSelector) {
+        tplBtnAddStage.addEventListener('click', function () {
+            const stageId = tplStageSelector.value;
+            const opt = tplStageSelector.options[tplStageSelector.selectedIndex];
+            if (!stageId) return;
+
+            if (tplStages.some(s => String(s.id) === String(stageId))) {
+                alert('This stage is already added to the route.');
+                return;
+            }
+
+            tplStages.push({
+                id: stageId,
+                name: opt.getAttribute('data-name') || opt.text,
+                color_code: opt.getAttribute('data-color') || '#6b7280',
+            });
+
+            tplStageSelector.value = '';
+            renderTplStagesList();
+            serializeTemplate();
+        });
+    }
+
+    // Load initial stage route if present
+    if (Array.isArray(initialTemplate.stages) && initialTemplate.stages.length > 0) {
+        if (enableStageRoute) {
+            enableStageRoute.checked = true;
+            if (stageRouteControls) stageRouteControls.style.display = 'block';
+            if (tplStageSelector) tplStageSelector.disabled = false;
+            if (tplBtnAddStage) tplBtnAddStage.disabled = false;
+        }
+        tplStages = initialTemplate.stages.map(s => ({
+            id: s.id,
+            name: s.name,
+            color_code: s.color_code || '#6b7280'
+        }));
+        renderTplStagesList();
+    }
+
     function serializeTemplate() {
         const result = { fields: {} };
         let hasActive = false;
@@ -707,6 +873,16 @@ document.addEventListener('DOMContentLoaded', function () {
             if (Object.keys(approvalObj).length > 0) {
                 result.approval = approvalObj;
             }
+        }
+
+        if (!isApproval && enableStageRoute && enableStageRoute.checked && tplStages.length > 0) {
+            hasActive = true;
+            result.stages = tplStages.map((s, idx) => ({
+                id: parseInt(s.id),
+                name: s.name,
+                color_code: s.color_code,
+                sequence_order: idx + 1
+            }));
         }
 
         hiddenInput.value = hasActive ? JSON.stringify(result) : '';

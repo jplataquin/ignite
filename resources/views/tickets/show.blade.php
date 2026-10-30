@@ -56,91 +56,137 @@
 @endif
 
 @php
-    $stageSlug = $ticket->stage?->slug ?? 'open';
-    $currentStep = 1;
-    if ($stageSlug === 'assigned') {
-        $currentStep = 2;
-    } elseif ($stageSlug === 'review') {
-        $currentStep = 3;
-    } elseif (in_array($stageSlug, ['closed', 'canceled', 'lapsed'])) {
-        $currentStep = 4;
+    $customStages = $ticket->ticketType?->template_json['stages'] ?? [];
+    $hasCustomRoute = !empty($customStages) && is_array($customStages);
+
+    if ($hasCustomRoute) {
+        $totalSteps = count($customStages);
+        $currentStepIndex = 0;
+        foreach ($customStages as $idx => $stg) {
+            if ($stg['id'] == $ticket->stage_id) {
+                $currentStepIndex = $idx;
+                break;
+            }
+        }
+        $progressPercent = $totalSteps > 1 ? ($currentStepIndex / ($totalSteps - 1)) * 100 : 100;
+    } else {
+        $stageSlug = $ticket->stage?->slug ?? 'open';
+        $currentStep = 1;
+        if ($stageSlug === 'assigned') {
+            $currentStep = 2;
+        } elseif ($stageSlug === 'review') {
+            $currentStep = 3;
+        } elseif (in_array($stageSlug, ['closed', 'canceled', 'lapsed'])) {
+            $currentStep = 4;
+        }
     }
 @endphp
 
 <!-- Ticket Progress Stepper -->
 <div class="card fd-card p-4 shadow-sm mb-4">
     <div class="position-relative py-2">
-        <!-- Connecting Line Track -->
-        <div class="progress position-absolute top-50 start-0 end-0 translate-middle-y" style="height: 4px; z-index: 0; transform: translateY(-50%) !important;">
-            <div class="progress-bar {{ $currentStep == 4 && in_array($stageSlug, ['canceled', 'lapsed']) ? 'bg-danger' : 'bg-primary' }}" role="progressbar" style="width: {{ (($currentStep - 1) / 3) * 100 }}%;" aria-valuenow="{{ (($currentStep - 1) / 3) * 100 }}" aria-valuemin="0" aria-valuemax="100"></div>
-        </div>
-        
-        <!-- Stepper Nodes -->
-        <div class="d-flex justify-content-between position-relative" style="z-index: 1;">
-            <!-- Step 1: Open -->
-            <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
-                <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 1 ? 'bg-primary border-primary text-white' : 'bg-white border-secondary text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem;">
-                    @if($currentStep > 1)
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
-                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
-                        </svg>
-                    @else
-                        1
-                    @endif
-                </div>
-                <span class="mt-2 small fw-bold {{ $currentStep >= 1 ? 'text-primary' : 'text-muted' }}" style="font-size: 0.78rem;">Open</span>
+        @if($hasCustomRoute)
+            <!-- Custom Stage Route Connecting Track -->
+            <div class="progress position-absolute top-50 start-0 end-0 translate-middle-y" style="height: 4px; z-index: 0; transform: translateY(-50%) !important;">
+                <div class="progress-bar {{ in_array($ticket->stage?->slug, ['canceled', 'lapsed']) ? 'bg-danger' : 'bg-primary' }}" role="progressbar" style="width: {{ $progressPercent }}%;" aria-valuenow="{{ $progressPercent }}" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
 
-            <!-- Step 2: Assigned -->
-            <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
-                <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 2 ? 'bg-primary border-primary text-white' : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $currentStep >= 2 ? '' : '#cbd5e1 !important' }};">
-                    @if($currentStep > 2)
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
-                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
-                        </svg>
-                    @else
-                        2
-                    @endif
-                </div>
-                <span class="mt-2 small fw-bold {{ $currentStep >= 2 ? 'text-primary' : 'text-muted' }}" style="font-size: 0.78rem;">Assigned</span>
+            <!-- Custom Stage Route Nodes -->
+            <div class="d-flex justify-content-between position-relative" style="z-index: 1;">
+                @foreach($customStages as $idx => $stg)
+                    @php
+                        $isCompleted = $idx < $currentStepIndex;
+                        $isCurrent = $idx === $currentStepIndex;
+                        $isFinalStage = $idx === $totalSteps - 1;
+                        $nodeFinished = $isCompleted || ($isCurrent && ($isFinalStage || $ticket->status === 'Done'));
+                    @endphp
+                    <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $nodeFinished || $isCurrent ? ($isCurrent && $ticket->stage?->slug === 'closed' ? 'bg-success border-success text-white' : ($isCurrent && in_array($ticket->stage?->slug, ['canceled', 'lapsed']) ? 'bg-danger border-danger text-white' : 'bg-primary border-primary text-white')) : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $nodeFinished || $isCurrent ? '' : '#cbd5e1 !important' }};">
+                            @if($nodeFinished)
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                                    <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                                </svg>
+                            @else
+                                {{ $idx + 1 }}
+                            @endif
+                        </div>
+                        <span class="mt-2 small fw-bold {{ $isCurrent && $ticket->stage?->slug === 'closed' ? 'text-success' : ($isCurrent && in_array($ticket->stage?->slug, ['canceled', 'lapsed']) ? 'text-danger' : ($nodeFinished || $isCurrent ? 'text-primary' : 'text-muted')) }}" style="font-size: 0.78rem;">{{ $stg['name'] }}</span>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <!-- Default Connecting Line Track -->
+            <div class="progress position-absolute top-50 start-0 end-0 translate-middle-y" style="height: 4px; z-index: 0; transform: translateY(-50%) !important;">
+                <div class="progress-bar {{ $currentStep == 4 && in_array($stageSlug, ['canceled', 'lapsed']) ? 'bg-danger' : 'bg-primary' }}" role="progressbar" style="width: {{ (($currentStep - 1) / 3) * 100 }}%;" aria-valuenow="{{ (($currentStep - 1) / 3) * 100 }}" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
 
-            <!-- Step 3: Review -->
-            <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
-                <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 3 ? 'bg-primary border-primary text-white' : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $currentStep >= 3 ? '' : '#cbd5e1 !important' }};">
-                    @if($currentStep > 3)
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
-                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
-                        </svg>
-                    @else
-                        3
-                    @endif
+            <!-- Default Stepper Nodes -->
+            <div class="d-flex justify-content-between position-relative" style="z-index: 1;">
+                <!-- Step 1: Open -->
+                <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 1 ? 'bg-primary border-primary text-white' : 'bg-white border-secondary text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem;">
+                        @if($currentStep > 1)
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                                <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                            </svg>
+                        @else
+                            1
+                        @endif
+                    </div>
+                    <span class="mt-2 small fw-bold {{ $currentStep >= 1 ? 'text-primary' : 'text-muted' }}" style="font-size: 0.78rem;">Open</span>
                 </div>
-                <span class="mt-2 small fw-bold {{ $currentStep >= 3 ? 'text-primary' : 'text-muted' }}" style="font-size: 0.78rem;">Review</span>
-            </div>
 
-            <!-- Step 4: Closed / Canceled -->
-            <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
-                <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 4 ? ($stageSlug === 'closed' ? 'bg-success border-success text-white' : 'bg-danger border-danger text-white') : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $currentStep >= 4 ? '' : '#cbd5e1 !important' }};">
-                    @if($currentStep == 4)
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
-                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
-                        </svg>
-                    @else
-                        4
-                    @endif
+                <!-- Step 2: Assigned -->
+                <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 2 ? 'bg-primary border-primary text-white' : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $currentStep >= 2 ? '' : '#cbd5e1 !important' }};">
+                        @if($currentStep > 2)
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                                <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                            </svg>
+                        @else
+                            2
+                        @endif
+                    </div>
+                    <span class="mt-2 small fw-bold {{ $currentStep >= 2 ? 'text-primary' : 'text-muted' }}" style="font-size: 0.78rem;">Assigned</span>
                 </div>
-                <span class="mt-2 small fw-bold {{ $currentStep >= 4 ? ($stageSlug === 'closed' ? 'text-success' : 'text-danger') : 'text-muted' }}" style="font-size: 0.78rem;">
-                    @if($stageSlug === 'canceled')
-                        Canceled
-                    @elseif($stageSlug === 'lapsed')
-                        Lapsed
-                    @else
-                        Closed
-                    @endif
-                </span>
+
+                <!-- Step 3: Review -->
+                <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 3 ? 'bg-primary border-primary text-white' : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $currentStep >= 3 ? '' : '#cbd5e1 !important' }};">
+                        @if($currentStep > 3)
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                                <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                            </svg>
+                        @else
+                            3
+                        @endif
+                    </div>
+                    <span class="mt-2 small fw-bold {{ $currentStep >= 3 ? 'text-primary' : 'text-muted' }}" style="font-size: 0.78rem;">Review</span>
+                </div>
+
+                <!-- Step 4: Closed / Canceled -->
+                <div class="text-center d-flex flex-column align-items-center" style="width: 80px;">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center border border-3 {{ $currentStep >= 4 ? ($stageSlug === 'closed' ? 'bg-success border-success text-white' : 'bg-danger border-danger text-white') : 'bg-white text-muted' }}" style="width: 38px; height: 38px; font-weight: bold; font-size: 0.9rem; border-color: {{ $currentStep >= 4 ? '' : '#cbd5e1 !important' }};">
+                        @if($currentStep == 4)
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-lg" viewBox="0 0 16 16">
+                                <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                            </svg>
+                        @else
+                            4
+                        @endif
+                    </div>
+                    <span class="mt-2 small fw-bold {{ $currentStep >= 4 ? ($stageSlug === 'closed' ? 'text-success' : 'text-danger') : 'text-muted' }}" style="font-size: 0.78rem;">
+                        @if($stageSlug === 'canceled')
+                            Canceled
+                        @elseif($stageSlug === 'lapsed')
+                            Lapsed
+                        @else
+                            Closed
+                        @endif
+                    </span>
+                </div>
             </div>
-        </div>
+        @endif
     </div>
 </div>
 
@@ -462,91 +508,134 @@
         <!-- Assignee & Owner Card -->
         <div class="card fd-card p-4 shadow-sm mb-4">
             <h5 class="fw-bold text-dark mb-3">Actions</h5>
-            <div class="mb-3">
-                @if($ticket->stage?->slug !== 'open')
-                    @if($ticket->assigned_id === Auth::id() && $ticket->stage?->slug === 'assigned')
-                        <button type="button" class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-center mt-3" style="min-height: 38px;" data-bs-toggle="modal" data-bs-target="#forReviewModal">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-send-fill me-1.5" viewBox="0 0 16 16">
-                                <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471z"/>
-                            </svg>
-                            For Review
-                        </button>
-                    @endif
-                @else
-                    <span class="text-warning fw-semibold small d-inline-flex align-items-center mb-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-exclamation-triangle-fill me-1" viewBox="0 0 16 16">
-                            <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
-                        </svg>
-                        Unassigned Queue
-                    </span>
 
-                    @if($ticket->created_by === Auth::id())
-                        <div class="alert alert-info border-0 p-2.5 rounded text-dark small mt-2 mb-0 d-flex align-items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-info-circle-fill text-info me-1.5" viewBox="0 0 16 16">
-                                <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+            @if($hasCustomRoute)
+                @php
+                    $isDoneOrTerminal = $ticket->status === 'Done' || in_array($ticket->stage?->slug, ['closed', 'canceled']);
+                    $hasNextStage = isset($customStages[$currentStepIndex + 1]) && !$isDoneOrTerminal;
+                    $nextStageName = $hasNextStage ? $customStages[$currentStepIndex + 1]['name'] : null;
+                    $canAdvance = Auth::user()->user_type === 'admin' ||
+                                  ($ticket->assigned_id && $ticket->assigned_id === Auth::id()) ||
+                                  (!$ticket->assigned_id && Auth::user()->division_id && Auth::user()->division_id === $ticket->division_id && Auth::id() !== $ticket->created_by);
+                @endphp
+
+                <div class="mb-3">
+                    @if($hasNextStage)
+                        @if($canAdvance)
+                            <form action="{{ route('tickets.advance-stage', $ticket) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-primary w-100 d-flex align-items-center justify-content-center" style="min-height: 38px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-arrow-right-circle me-1.5" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8m15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0M4.5 7.5a.5.5 0 0 0 0 1h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5z"/>
+                                    </svg>
+                                    Advance to {{ $nextStageName }}
+                                </button>
+                            </form>
+                        @else
+                            <div class="alert alert-info border-0 p-2.5 rounded text-dark small mb-0">
+                                @if($ticket->assigned_id)
+                                    Only the assignee or an administrator can advance this ticket.
+                                @else
+                                    Only authorized division staff or an administrator can advance this ticket.
+                                @endif
+                            </div>
+                        @endif
+                    @else
+                        <div class="alert alert-success border-0 p-2.5 rounded text-dark small mb-0 d-flex align-items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-circle-fill text-success me-1.5" viewBox="0 0 16 16">
+                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
                             </svg>
-                            You cannot accept your own ticket.
+                            Ticket has reached the final stage of its route.
                         </div>
-                    @elseif(!$ticket->assigned_id || $ticket->assigned_id === Auth::id())
-                        @php
-                            $matchesDivision = Auth::user()->division_id && Auth::user()->division_id === $ticket->division_id;
-                            $matchesDepartment = Auth::user()->department_id && Auth::user()->department_id === $ticket->department_id;
-                        @endphp
-                        @if(!$ticket->assigned_id && !$matchesDivision && !$matchesDepartment)
+                    @endif
+                </div>
+            @else
+                <div class="mb-3">
+                    @if($ticket->stage?->slug !== 'open')
+                        @if($ticket->assigned_id === Auth::id() && $ticket->stage?->slug === 'assigned')
+                            <button type="button" class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-center mt-3" style="min-height: 38px;" data-bs-toggle="modal" data-bs-target="#forReviewModal">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-send-fill me-1.5" viewBox="0 0 16 16">
+                                    <path d="M15.964.686a.5.5 0 0 0-.65-.65L.767 5.855H.766l-.452.18a.5.5 0 0 0-.082.887l.41.26.001.002 4.995 3.178 3.178 4.995.002.002.26.41a.5.5 0 0 0 .886-.083zm-1.833 1.89L6.637 10.07l-.215-.338a.5.5 0 0 0-.154-.154l-.338-.215 7.494-7.494 1.178-.471z"/>
+                                </svg>
+                                For Review
+                            </button>
+                        @endif
+                    @else
+                        <span class="text-warning fw-semibold small d-inline-flex align-items-center mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-exclamation-triangle-fill me-1" viewBox="0 0 16 16">
+                                <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+                            </svg>
+                            Unassigned Queue
+                        </span>
+
+                        @if($ticket->created_by === Auth::id())
+                            <div class="alert alert-info border-0 p-2.5 rounded text-dark small mt-2 mb-0 d-flex align-items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-info-circle-fill text-info me-1.5" viewBox="0 0 16 16">
+                                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+                                </svg>
+                                You cannot accept your own ticket.
+                            </div>
+                        @elseif(!$ticket->assigned_id || $ticket->assigned_id === Auth::id())
+                            @php
+                                $matchesDivision = Auth::user()->division_id && Auth::user()->division_id === $ticket->division_id;
+                                $matchesDepartment = Auth::user()->department_id && Auth::user()->department_id === $ticket->department_id;
+                            @endphp
+                            @if(!$ticket->assigned_id && !$matchesDivision && !$matchesDepartment)
+                                <div class="alert alert-warning border-0 p-2.5 rounded text-dark small mt-2 mb-0 d-flex align-items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-lock-fill text-warning me-1.5" viewBox="0 0 16 16">
+                                        <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                                    </svg>
+                                    Must be in ticket's division or department to accept.
+                                </div>
+                            @else
+                                <form action="{{ route('tickets.accept', $ticket) }}" method="POST" class="mt-2">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-primary w-100 d-flex align-items-center justify-content-center" style="min-height: 38px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-check-lg me-1.5" viewBox="0 0 16 16">
+                                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
+                                        </svg>
+                                        Accept Ticket
+                                    </button>
+                                </form>
+                            @endif
+                        @else
                             <div class="alert alert-warning border-0 p-2.5 rounded text-dark small mt-2 mb-0 d-flex align-items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-lock-fill text-warning me-1.5" viewBox="0 0 16 16">
                                     <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
                                 </svg>
-                                Must be in ticket's division or department to accept.
+                                Reserved for {{ $ticket->assignee->name }}
                             </div>
-                        @else
-                            <form action="{{ route('tickets.accept', $ticket) }}" method="POST" class="mt-2">
-                                @csrf
-                                <button type="submit" class="btn btn-sm btn-primary w-100 d-flex align-items-center justify-content-center" style="min-height: 38px;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-check-lg me-1.5" viewBox="0 0 16 16">
-                                        <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-5.425a.247.247 0 0 1 .02-.022Z"/>
-                                    </svg>
-                                    Accept Ticket
-                                </button>
-                            </form>
                         @endif
-                    @else
-                        <div class="alert alert-warning border-0 p-2.5 rounded text-dark small mt-2 mb-0 d-flex align-items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-lock-fill text-warning me-1.5" viewBox="0 0 16 16">
-                                <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
-                            </svg>
-                            Reserved for {{ $ticket->assignee->name }}
-                        </div>
                     @endif
-                @endif
-            </div>
-
-            @if($ticket->stage?->slug === 'review' && $ticket->created_by === Auth::id())
-                <div class="mt-4 border-top pt-3">
-                    <h6 class="fw-bold text-dark mb-2">Review Action Required</h6>
-                    <p class="text-muted small mb-3">As the creator, please review the resolution details and choose an action:</p>
-                    <div class="d-grid gap-2">
-                        <button type="button" class="btn btn-sm btn-success d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#closeReviewModal" style="min-height: 38px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-check-circle-fill me-1.5" viewBox="0 0 16 16">
-                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
-                            </svg>
-                            Close Ticket
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#cancelReviewModal" style="min-height: 38px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-x-circle-fill me-1.5" viewBox="0 0 16 16">
-                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z"/>
-                            </svg>
-                            Cancel Ticket
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#reassignReviewModal" style="min-height: 38px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-arrow-repeat me-1.5" viewBox="0 0 16 16">
-                                <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-1.1 2c.135-.786.06-1.594-.253-2.31a.25.25 0 0 1 .01-.25l1.39-2.28a.25.25 0 0 1 .459.13a6.5 6.5 0 0 1-1.606 4.71z"/>
-                                <path fill-rule="evenodd" d="M1.534 9H.5a.5.5 0 0 0 0 1h2.5a.5.5 0 0 0 .5-.5V7a.5.5 0 0 0-1 0v1.5a5.503 5.503 0 0 1 9.873-2.583a.5.5 0 1 0 .802-.6a6.5 6.5 0 0 0-11.64 3.083"/>
-                            </svg>
-                            Reassign Ticket
-                        </button>
-                    </div>
                 </div>
+
+                @if($ticket->stage?->slug === 'review' && $ticket->created_by === Auth::id())
+                    <div class="mt-4 border-top pt-3">
+                        <h6 class="fw-bold text-dark mb-2">Review Action Required</h6>
+                        <p class="text-muted small mb-3">As the creator, please review the resolution details and choose an action:</p>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-sm btn-success d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#closeReviewModal" style="min-height: 38px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-check-circle-fill me-1.5" viewBox="0 0 16 16">
+                                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+                                </svg>
+                                Close Ticket
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#cancelReviewModal" style="min-height: 38px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-x-circle-fill me-1.5" viewBox="0 0 16 16">
+                                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z"/>
+                                </svg>
+                                Cancel Ticket
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center" data-bs-toggle="modal" data-bs-target="#reassignReviewModal" style="min-height: 38px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-arrow-repeat me-1.5" viewBox="0 0 16 16">
+                                    <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-1.1 2c.135-.786.06-1.594-.253-2.31a.25.25 0 0 1 .01-.25l1.39-2.28a.25.25 0 0 1 .459.13a6.5 6.5 0 0 1-1.606 4.71z"/>
+                                    <path fill-rule="evenodd" d="M1.534 9H.5a.5.5 0 0 0 0 1h2.5a.5.5 0 0 0 .5-.5V7a.5.5 0 0 0-1 0v1.5a5.503 5.503 0 0 1 9.873-2.583a.5.5 0 1 0 .802-.6a6.5 6.5 0 0 0-11.64 3.083"/>
+                                </svg>
+                                Reassign Ticket
+                            </button>
+                        </div>
+                    </div>
+                @endif
             @endif
 
             <hr class="my-3 text-muted">
