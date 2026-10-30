@@ -316,4 +316,96 @@ class ApprovalPrototypeTest extends TestCase
         $this->assertEquals('rejected', $freshTicket->stage->slug);
         $this->assertEquals('Done', $freshTicket->status);
     }
+
+    /**
+     * Test admin can configure Approval & Clearance checklist in template.
+     */
+    public function test_admin_can_configure_approval_checklist_in_ticket_type_template(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $approverUser = User::factory()->create(['name' => 'Department Head']);
+
+        $template = [
+            'approval' => [
+                'has_mode' => true,
+                'mode' => 'parallel',
+                'mode_locked' => true,
+                'has_approvers' => true,
+                'approvers' => [
+                    ['id' => $approverUser->id, 'name' => $approverUser->name, 'sequence_order' => 1],
+                ],
+                'approvers_locked' => true,
+            ],
+        ];
+
+        $response = $this->actingAs($admin)->post('/admin/ticket-types', [
+            'name' => 'Clearance With Template',
+            'code' => 'CWT',
+            'prototype' => 'approval_clearance',
+            'template_json' => json_encode($template),
+        ]);
+
+        $response->assertRedirect('/admin/ticket-types');
+
+        $type = TicketType::where('name', 'Clearance With Template')->first();
+        $this->assertNotNull($type);
+        $this->assertEquals($template, $type->template_json);
+
+        // Verify edit view renders the saved template and approval section
+        $editResponse = $this->actingAs($admin)->get("/admin/ticket-types/{$type->id}/edit");
+        $editResponse->assertStatus(200);
+        $editResponse->assertSee('Approval & Clearance Checklist', false);
+        $editResponse->assertSee('id="tpl-approval-checklist-section"', false);
+    }
+
+    /**
+     * Test locked approval checklist template enforces approval_mode and approvers on ticket store.
+     */
+    public function test_locked_approval_checklist_template_is_enforced_on_ticket_creation(): void
+    {
+        $d = $this->createDependencies();
+
+        $enforcedApprover = User::factory()->create(['name' => 'Mandatory Auditor']);
+        $otherUser = User::factory()->create(['name' => 'Attempted Rogue Approver']);
+
+        $d['approvalType']->update([
+            'template_json' => [
+                'fields' => [
+                    'title' => ['value' => 'Templated Clearance Request', 'locked' => true],
+                ],
+                'approval' => [
+                    'has_mode' => true,
+                    'mode' => 'parallel',
+                    'mode_locked' => true,
+                    'has_approvers' => true,
+                    'approvers' => [
+                        ['id' => $enforcedApprover->id, 'name' => $enforcedApprover->name, 'sequence_order' => 1],
+                    ],
+                    'approvers_locked' => true,
+                ],
+            ],
+        ]);
+
+        // Submit form with tampered mode and tampered approvers
+        $response = $this->actingAs($d['creator'])->post('/tickets', [
+            'title' => 'Tampered Title',
+            'description' => 'Clearance notes',
+            'ticket_type_id' => $d['approvalType']->id,
+            'priority_option_id' => $d['priority']->id,
+            'category_1_id' => $d['category']->id,
+            'approval_mode' => 'sequential', // Tampered! Should be overwritten with parallel
+            'approver_ids' => [$otherUser->id], // Tampered! Should be overwritten with enforcedApprover
+        ]);
+
+        $response->assertRedirect();
+
+        $ticket = Ticket::where('ticket_type_id', $d['approvalType']->id)->latest('id')->first();
+        $this->assertNotNull($ticket);
+        $this->assertEquals('Templated Clearance Request', $ticket->title);
+        $this->assertEquals('parallel', $ticket->approval_mode);
+        $this->assertEquals(1, $ticket->approvals()->count());
+
+        $approval = $ticket->approvals()->first();
+        $this->assertEquals($enforcedApprover->id, $approval->user_id);
+    }
 }

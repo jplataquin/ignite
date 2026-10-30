@@ -8,6 +8,7 @@ use App\Models\Division;
 use App\Models\Location;
 use App\Models\Priority;
 use App\Models\TicketType;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class TicketTypeController extends Controller
@@ -32,8 +33,9 @@ class TicketTypeController extends Controller
         $departments = Department::orderBy('name')->get();
         $locations = Location::orderBy('name')->get();
         $categories = collect();
+        $users = User::orderBy('name')->get();
 
-        return view('admin.ticket-types.create', compact('priorities', 'divisions', 'departments', 'locations', 'categories'));
+        return view('admin.ticket-types.create', compact('priorities', 'divisions', 'departments', 'locations', 'categories', 'users'));
     }
 
     /**
@@ -81,8 +83,9 @@ class TicketTypeController extends Controller
         $departments = Department::orderBy('name')->get();
         $locations = Location::orderBy('name')->get();
         $categories = $ticketType->categories()->get();
+        $users = User::orderBy('name')->get();
 
-        return view('admin.ticket-types.edit', compact('ticketType', 'priorities', 'divisions', 'departments', 'locations', 'categories'));
+        return view('admin.ticket-types.edit', compact('ticketType', 'priorities', 'divisions', 'departments', 'locations', 'categories', 'users'));
     }
 
     /**

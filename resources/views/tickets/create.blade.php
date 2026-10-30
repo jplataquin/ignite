@@ -446,6 +446,8 @@
             resetSelect(category1Select, 'Category 1');
             resetSelect(category2Select, 'Category 2');
             resetSelect(category3Select, 'Category 3');
+            selectedApprovers = [];
+            renderApproversList();
 
             if (ticketTypeId) {
                 loadCategories(ticketTypeId, null, category1Select).then(() => {
@@ -499,6 +501,11 @@
                 category1Select.disabled = false;
                 category1Select.classList.remove('bg-light');
             }
+
+            document.querySelectorAll('input[name="approval_mode"]').forEach(r => r.disabled = false);
+            if (approverSelector) approverSelector.disabled = false;
+            if (btnAddApprover) btnAddApprover.disabled = false;
+            approversList.querySelectorAll('.btn-remove-approver').forEach(b => b.style.display = '');
         }
 
         function lockField(element, name, value) {
@@ -608,6 +615,52 @@
                 category1Select.value = cat1Id;
                 if (fields.category_1_id.locked) {
                     lockField(category1Select, 'category_1_id', cat1Id);
+                }
+            }
+
+            // Approval & Clearance Checklist Template
+            if (template.approval) {
+                const approval = template.approval;
+
+                if (approval.has_mode && approval.mode) {
+                    const modeRadio = document.querySelector(`input[name="approval_mode"][value="${approval.mode}"]`);
+                    if (modeRadio) {
+                        modeRadio.checked = true;
+                    }
+                    if (approval.mode_locked) {
+                        document.querySelectorAll('input[name="approval_mode"]').forEach(r => r.disabled = true);
+                        const form = document.querySelector('form');
+                        if (form) {
+                            const hidden = document.createElement('input');
+                            hidden.type = 'hidden';
+                            hidden.name = 'approval_mode';
+                            hidden.value = approval.mode;
+                            hidden.className = 'template-locked-hidden';
+                            form.appendChild(hidden);
+                        }
+                    }
+                }
+
+                if (approval.has_approvers && Array.isArray(approval.approvers) && approval.approvers.length > 0) {
+                    selectedApprovers = approval.approvers.map(a => ({
+                        id: a.id,
+                        name: a.name
+                    }));
+                    renderApproversList();
+
+                    if (approval.approvers_locked) {
+                        if (approverSelector) approverSelector.disabled = true;
+                        if (btnAddApprover) btnAddApprover.disabled = true;
+                        approversList.querySelectorAll('.btn-remove-approver').forEach(b => b.style.display = 'none');
+
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-secondary ms-2 template-locked-hidden';
+                        badge.innerText = 'Checklist Locked by Template';
+                        const header = document.querySelector('#approval-settings-section h6');
+                        if (header && !header.querySelector('.template-locked-hidden')) {
+                            header.appendChild(badge);
+                        }
+                    }
                 }
             }
         }

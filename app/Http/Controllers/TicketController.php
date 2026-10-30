@@ -257,6 +257,19 @@ class TicketController extends Controller
             }
         }
 
+        // Enforce locked approval template settings
+        if ($isApproval && $ticketType && ! empty($ticketType->template_json['approval'])) {
+            $tplApproval = $ticketType->template_json['approval'];
+            if (! empty($tplApproval['has_mode']) && ! empty($tplApproval['mode_locked']) && ! empty($tplApproval['mode'])) {
+                $validated['approval_mode'] = $tplApproval['mode'];
+            }
+            if (! empty($tplApproval['has_approvers']) && ! empty($tplApproval['approvers_locked']) && ! empty($tplApproval['approvers'])) {
+                $validated['approver_ids'] = array_map(function ($a) {
+                    return is_array($a) ? $a['id'] : $a;
+                }, $tplApproval['approvers']);
+            }
+        }
+
         $attachments = [];
         if ($request->filled('attachments_json')) {
             $attachments = json_decode($request->input('attachments_json'), true);
