@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Department;
+use App\Models\Division;
+use App\Models\Location;
+use App\Models\Priority;
 use App\Models\TicketType;
 use Illuminate\Http\Request;
 
@@ -23,7 +27,13 @@ class TicketTypeController extends Controller
      */
     public function create()
     {
-        return view('admin.ticket-types.create');
+        $priorities = Priority::orderBy('level')->get();
+        $divisions = Division::with('departments')->orderBy('name')->get();
+        $departments = Department::orderBy('name')->get();
+        $locations = Location::orderBy('name')->get();
+        $categories = collect();
+
+        return view('admin.ticket-types.create', compact('priorities', 'divisions', 'departments', 'locations', 'categories'));
     }
 
     /**
@@ -37,10 +47,23 @@ class TicketTypeController extends Controller
             'prototype' => 'nullable|string|in:request_response,approval_clearance',
             'description' => 'nullable|string',
             'threshold_days' => 'nullable|integer|min:1',
+            'template_json' => 'nullable',
         ]);
 
         $validated['code'] = strtoupper($validated['code']);
         $validated['prototype'] = $validated['prototype'] ?? 'request_response';
+
+        if ($request->filled('template_json')) {
+            $val = $request->input('template_json');
+            if (is_string($val)) {
+                $decoded = json_decode($val, true);
+                $validated['template_json'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : null;
+            } elseif (is_array($val)) {
+                $validated['template_json'] = $val;
+            }
+        } else {
+            $validated['template_json'] = null;
+        }
 
         TicketType::create($validated);
 
@@ -53,7 +76,13 @@ class TicketTypeController extends Controller
      */
     public function edit(TicketType $ticketType)
     {
-        return view('admin.ticket-types.edit', compact('ticketType'));
+        $priorities = Priority::orderBy('level')->get();
+        $divisions = Division::with('departments')->orderBy('name')->get();
+        $departments = Department::orderBy('name')->get();
+        $locations = Location::orderBy('name')->get();
+        $categories = $ticketType->categories()->get();
+
+        return view('admin.ticket-types.edit', compact('ticketType', 'priorities', 'divisions', 'departments', 'locations', 'categories'));
     }
 
     /**
@@ -67,11 +96,24 @@ class TicketTypeController extends Controller
             'prototype' => 'nullable|string|in:request_response,approval_clearance',
             'description' => 'nullable|string',
             'threshold_days' => 'nullable|integer|min:1',
+            'template_json' => 'nullable',
         ]);
 
         $validated['code'] = strtoupper($validated['code']);
         if (isset($validated['prototype'])) {
             $ticketType->prototype = $validated['prototype'];
+        }
+
+        if ($request->filled('template_json')) {
+            $val = $request->input('template_json');
+            if (is_string($val)) {
+                $decoded = json_decode($val, true);
+                $validated['template_json'] = (json_last_error() === JSON_ERROR_NONE) ? $decoded : null;
+            } elseif (is_array($val)) {
+                $validated['template_json'] = $val;
+            }
+        } else {
+            $validated['template_json'] = null;
         }
 
         $ticketType->update($validated);

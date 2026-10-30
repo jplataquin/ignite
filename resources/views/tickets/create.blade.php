@@ -73,7 +73,7 @@
                         <select id="ticket_type_id" class="form-select @error('ticket_type_id') is-invalid @enderror" name="ticket_type_id" required>
                             <option value="">Select Type</option>
                             @foreach($ticketTypes as $type)
-                                <option value="{{ $type->id }}" data-prototype="{{ $type->prototype ?? 'request_response' }}" {{ old('ticket_type_id') == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
+                                <option value="{{ $type->id }}" data-prototype="{{ $type->prototype ?? 'request_response' }}" data-template="{{ $type->template_json ? json_encode($type->template_json) : '' }}" {{ old('ticket_type_id') == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
                             @endforeach
                         </select>
                         @error('ticket_type_id')
@@ -152,14 +152,16 @@
                     if (old('location_id')) {
                         $oldLocation = $locations->firstWhere('id', old('location_id'));
                     }
+                    $selectedInitialType = $ticketTypes->firstWhere('id', old('ticket_type_id'));
+                    $isApprovalInitial = $selectedInitialType && ($selectedInitialType->prototype ?? 'request_response') === 'approval_clearance';
                 @endphp
 
-                <div class="row mb-4">
+                <div class="row mb-4" id="division-department-location-section" style="{{ $isApprovalInitial ? 'display: none !important;' : '' }}">
                     
                     <!-- Division -->
                     <div class="col-4">
                         <label for="division_id" class="form-label fw-semibold text-dark small">Division</label>
-                        <select id="division_id" class="form-select @error('division_id') is-invalid @enderror" name="division_id" required>
+                        <select id="division_id" class="form-select @error('division_id') is-invalid @enderror" name="division_id" {{ $isApprovalInitial ? 'disabled' : 'required' }}>
                             <option value="">Select Division</option>
                             @foreach($divisions as $division)
                                 <option value="{{ $division->id }}" {{ old('division_id') == $division->id ? 'selected' : '' }}>{{ $division->name }}</option>
@@ -197,8 +199,8 @@
                                     <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/>
                                 </svg>
                             </span>
-                            <input type="text" id="location_search" class="form-control @error('location_id') is-invalid @enderror" placeholder="Type to search location..." autocomplete="off" required value="{{ $oldLocation ? $oldLocation->name : '' }}" style="border-left: 0; border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem;">
-                            <input type="hidden" id="location_id" name="location_id" value="{{ old('location_id') }}">
+                            <input type="text" id="location_search" class="form-control @error('location_id') is-invalid @enderror" placeholder="Type to search location..." autocomplete="off" {{ $isApprovalInitial ? 'disabled' : 'required' }} value="{{ $oldLocation ? $oldLocation->name : '' }}" style="border-left: 0; border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem;">
+                            <input type="hidden" id="location_id" name="location_id" value="{{ old('location_id') }}" {{ $isApprovalInitial ? 'disabled' : '' }}>
                             @error('location_id')
                                 <span class="invalid-feedback" role="alert">
                                     <strong>{{ $message }}</strong>
@@ -318,13 +320,53 @@
 
         let selectedApprovers = [];
 
+        const orgLocationSection = document.getElementById('division-department-location-section');
+
         function checkPrototype() {
             const selectedOpt = ticketTypeSelect.options[ticketTypeSelect.selectedIndex];
             const prototype = selectedOpt ? selectedOpt.getAttribute('data-prototype') : 'request_response';
+            const divisionSel = document.getElementById('division_id');
+            const departmentSel = document.getElementById('department_id');
+            const locationSearch = document.getElementById('location_search');
+            const locationId = document.getElementById('location_id');
+
             if (prototype === 'approval_clearance') {
                 approvalSection.style.display = 'block';
+                if (orgLocationSection) orgLocationSection.style.setProperty('display', 'none', 'important');
+                if (divisionSel) {
+                    divisionSel.removeAttribute('required');
+                    divisionSel.disabled = true;
+                }
+                if (departmentSel) {
+                    departmentSel.disabled = true;
+                }
+                if (locationSearch) {
+                    locationSearch.removeAttribute('required');
+                    locationSearch.disabled = true;
+                }
+                if (locationId) {
+                    locationId.disabled = true;
+                }
+                if (typeof fetchAndFilterUsers === 'function') {
+                    fetchAndFilterUsers(false);
+                }
             } else {
                 approvalSection.style.display = 'none';
+                if (orgLocationSection) orgLocationSection.style.removeProperty('display');
+                if (divisionSel) {
+                    divisionSel.setAttribute('required', 'required');
+                    divisionSel.disabled = false;
+                }
+                if (departmentSel) {
+                    departmentSel.disabled = !divisionSel.value;
+                }
+                if (locationSearch) {
+                    locationSearch.setAttribute('required', 'required');
+                    locationSearch.disabled = false;
+                }
+                if (locationId) {
+                    locationId.disabled = false;
+                }
             }
         }
 
@@ -406,9 +448,173 @@
             resetSelect(category3Select, 'Category 3');
 
             if (ticketTypeId) {
-                loadCategories(ticketTypeId, null, category1Select);
+                loadCategories(ticketTypeId, null, category1Select).then(() => {
+                    applyTicketTemplate();
+                });
+            } else {
+                unlockAllTemplateFields();
             }
         });
+
+        function unlockAllTemplateFields() {
+            document.querySelectorAll('.template-locked-hidden').forEach(el => el.remove());
+
+            const titleInput = document.getElementById('title');
+            if (titleInput) {
+                titleInput.readOnly = false;
+                titleInput.classList.remove('bg-light');
+            }
+
+            const descInput = document.getElementById('description');
+            if (descInput) {
+                descInput.readOnly = false;
+                descInput.classList.remove('bg-light');
+            }
+
+            const prioritySelect = document.getElementById('priority_option_id');
+            if (prioritySelect) {
+                prioritySelect.disabled = false;
+                prioritySelect.classList.remove('bg-light');
+            }
+
+            const divisionSelect = document.getElementById('division_id');
+            if (divisionSelect) {
+                divisionSelect.disabled = false;
+                divisionSelect.classList.remove('bg-light');
+            }
+
+            const departmentSelect = document.getElementById('department_id');
+            if (departmentSelect) {
+                departmentSelect.disabled = !divisionSelect || !divisionSelect.value;
+                departmentSelect.classList.remove('bg-light');
+            }
+
+            const locationSearch = document.getElementById('location_search');
+            if (locationSearch) {
+                locationSearch.readOnly = false;
+                locationSearch.classList.remove('bg-light');
+            }
+
+            if (category1Select) {
+                category1Select.disabled = false;
+                category1Select.classList.remove('bg-light');
+            }
+        }
+
+        function lockField(element, name, value) {
+            if (!element) return;
+            if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                element.readOnly = true;
+                element.classList.add('bg-light');
+            } else if (element.tagName === 'SELECT') {
+                element.disabled = true;
+                element.classList.add('bg-light');
+                const form = element.closest('form');
+                if (form) {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = name;
+                    hidden.value = value;
+                    hidden.className = 'template-locked-hidden';
+                    form.appendChild(hidden);
+                }
+            }
+        }
+
+        function applyTicketTemplate() {
+            unlockAllTemplateFields();
+
+            const selectedOpt = ticketTypeSelect.options[ticketTypeSelect.selectedIndex];
+            if (!selectedOpt) return;
+
+            const templateRaw = selectedOpt.getAttribute('data-template');
+            if (!templateRaw) return;
+
+            let template = null;
+            try {
+                template = JSON.parse(templateRaw);
+            } catch (e) {
+                return;
+            }
+
+            if (!template || !template.fields) return;
+            const fields = template.fields;
+
+            // Title
+            if (fields.title && fields.title.value !== undefined) {
+                const el = document.getElementById('title');
+                if (el) {
+                    el.value = fields.title.value;
+                    if (fields.title.locked) lockField(el, 'title', fields.title.value);
+                }
+            }
+
+            // Description
+            if (fields.description && fields.description.value !== undefined) {
+                const el = document.getElementById('description');
+                if (el) {
+                    el.value = fields.description.value;
+                    if (fields.description.locked) lockField(el, 'description', fields.description.value);
+                }
+            }
+
+            // Priority
+            if (fields.priority_option_id && fields.priority_option_id.value !== undefined) {
+                const el = document.getElementById('priority_option_id');
+                if (el) {
+                    el.value = fields.priority_option_id.value;
+                    if (fields.priority_option_id.locked) lockField(el, 'priority_option_id', fields.priority_option_id.value);
+                }
+            }
+
+            // Division
+            if (fields.division_id && fields.division_id.value !== undefined) {
+                const el = document.getElementById('division_id');
+                if (el) {
+                    el.value = fields.division_id.value;
+                    if (typeof filterDepartments === 'function') filterDepartments(false);
+                    if (typeof fetchAndFilterUsers === 'function') fetchAndFilterUsers(true);
+                    if (fields.division_id.locked) lockField(el, 'division_id', fields.division_id.value);
+                }
+            }
+
+            // Department
+            if (fields.department_id && fields.department_id.value !== undefined) {
+                const el = document.getElementById('department_id');
+                if (el) {
+                    el.value = fields.department_id.value;
+                    if (fields.department_id.locked) lockField(el, 'department_id', fields.department_id.value);
+                }
+            }
+
+            // Location
+            if (fields.location_id && fields.location_id.value !== undefined) {
+                const idEl = document.getElementById('location_id');
+                const searchEl = document.getElementById('location_search');
+                if (idEl) idEl.value = fields.location_id.value;
+                if (searchEl && typeof allLocations !== 'undefined') {
+                    const loc = allLocations.find(l => l.id == fields.location_id.value);
+                    if (loc) searchEl.value = loc.name;
+                    if (fields.location_id.locked) {
+                        searchEl.readOnly = true;
+                        searchEl.classList.add('bg-light');
+                    }
+                }
+            }
+
+            // Category 1
+            if (fields.category_1_id && fields.category_1_id.value !== undefined) {
+                const cat1Id = fields.category_1_id.value;
+                category1Select.value = cat1Id;
+                if (fields.category_1_id.locked) {
+                    lockField(category1Select, 'category_1_id', cat1Id);
+                }
+            }
+        }
+
+        if (ticketTypeSelect.value) {
+            applyTicketTemplate();
+        }
 
         // On Category 1 Change
         category1Select.addEventListener('change', function () {
@@ -796,8 +1002,11 @@
         let allUsers = []; // Dynamic, loaded when division is selected
 
         function renderAutocomplete() {
+            const selectedOpt = ticketTypeSelect.options[ticketTypeSelect.selectedIndex];
+            const isApproval = selectedOpt ? selectedOpt.getAttribute('data-prototype') === 'approval_clearance' : false;
+
             const divisionId = divisionSelect.value;
-            if (!divisionId) {
+            if (!divisionId && !isApproval) {
                 autocompleteResults.innerHTML = '<li class="dropdown-item text-muted disabled py-2" style="min-height: auto;">Please select a division first</li>';
                 autocompleteResults.style.display = 'block';
                 return;
@@ -855,16 +1064,22 @@
                 userSearchInput.value = '';
             }
 
+            const selectedOpt = ticketTypeSelect.options[ticketTypeSelect.selectedIndex];
+            const isApproval = selectedOpt ? selectedOpt.getAttribute('data-prototype') === 'approval_clearance' : false;
+
             const divisionId = divisionSelect.value;
             const departmentId = departmentSelect.value;
 
-            if (!divisionId) {
+            if (!divisionId && !isApproval) {
                 allUsers = [];
                 return;
             }
 
-            let url = `/api/users?division_id=${divisionId}`;
-            if (departmentId) url += `&department_id=${departmentId}`;
+            let url = `/api/users`;
+            const params = [];
+            if (divisionId) params.push(`division_id=${divisionId}`);
+            if (departmentId) params.push(`department_id=${departmentId}`);
+            if (params.length) url += `?${params.join('&')}`;
 
             fetch(url)
                 .then(res => res.json())

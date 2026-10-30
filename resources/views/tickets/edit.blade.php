@@ -122,7 +122,7 @@
                         <select id="ticket_type_id" class="form-select @error('ticket_type_id') is-invalid @enderror" name="ticket_type_id" required>
                             <option value="">Select Type</option>
                             @foreach($ticketTypes as $type)
-                                <option value="{{ $type->id }}" {{ old('ticket_type_id', $ticket->ticket_type_id) == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
+                                <option value="{{ $type->id }}" data-template="{{ $type->template_json ? json_encode($type->template_json) : '' }}" {{ old('ticket_type_id', $ticket->ticket_type_id) == $type->id ? 'selected' : '' }}>{{ $type->name }}</option>
                             @endforeach
                         </select>
                         @error('ticket_type_id')
@@ -349,7 +349,80 @@
                         }
                     });
                 }
+                applyEditTemplateLocks();
             });
+        }
+
+        function applyEditTemplateLocks() {
+            document.querySelectorAll('.template-locked-hidden').forEach(el => el.remove());
+
+            const selectedOpt = ticketTypeSelect.options[ticketTypeSelect.selectedIndex];
+            if (!selectedOpt) return;
+
+            const templateRaw = selectedOpt.getAttribute('data-template');
+            if (!templateRaw) return;
+
+            let template = null;
+            try {
+                template = JSON.parse(templateRaw);
+            } catch (e) {
+                return;
+            }
+
+            if (!template || !template.fields) return;
+            const fields = template.fields;
+
+            function lockInput(el, name) {
+                if (!el) return;
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                    el.readOnly = true;
+                    el.classList.add('bg-light');
+                } else if (el.tagName === 'SELECT') {
+                    el.disabled = true;
+                    el.classList.add('bg-light');
+                    const form = el.closest('form');
+                    if (form) {
+                        const hidden = document.createElement('input');
+                        hidden.type = 'hidden';
+                        hidden.name = name;
+                        hidden.value = el.value;
+                        hidden.className = 'template-locked-hidden';
+                        form.appendChild(hidden);
+                    }
+                }
+            }
+
+            if (fields.title && fields.title.locked) {
+                lockInput(document.getElementById('title'), 'title');
+            }
+
+            if (fields.description && fields.description.locked) {
+                lockInput(document.getElementById('description'), 'description');
+            }
+
+            if (fields.priority_option_id && fields.priority_option_id.locked) {
+                lockInput(document.getElementById('priority_option_id'), 'priority_option_id');
+            }
+
+            if (fields.division_id && fields.division_id.locked) {
+                lockInput(document.getElementById('division_id'), 'division_id');
+            }
+
+            if (fields.department_id && fields.department_id.locked) {
+                lockInput(document.getElementById('department_id'), 'department_id');
+            }
+
+            if (fields.location_id && fields.location_id.locked) {
+                const searchEl = document.getElementById('location_search');
+                if (searchEl) {
+                    searchEl.readOnly = true;
+                    searchEl.classList.add('bg-light');
+                }
+            }
+
+            if (fields.category_1_id && fields.category_1_id.locked) {
+                lockInput(category1Select, 'category_1_id');
+            }
         }
 
         // On Ticket Type Change
@@ -360,7 +433,11 @@
             resetSelect(category3Select, 'Category 3');
 
             if (ticketTypeId) {
-                loadCategories(ticketTypeId, null, category1Select);
+                loadCategories(ticketTypeId, null, category1Select).then(() => {
+                    applyEditTemplateLocks();
+                });
+            } else {
+                document.querySelectorAll('.template-locked-hidden').forEach(el => el.remove());
             }
         });
 

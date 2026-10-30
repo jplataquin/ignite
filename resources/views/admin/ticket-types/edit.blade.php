@@ -83,6 +83,8 @@
                     @enderror
                 </div>
 
+                @include('admin.ticket-types._template_builder')
+
                 <!-- Actions -->
                 <div class="d-flex justify-content-end gap-2">
                     <a href="{{ route('admin.ticket-types.index') }}" class="btn btn-outline-secondary">Cancel</a>

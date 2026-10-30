@@ -217,7 +217,7 @@ class TicketController extends Controller
             ],
             'priority_option_id' => 'required|exists:priorities,id',
             'stage_id' => 'nullable|exists:ticket_stages,id',
-            'division_id' => 'required|exists:divisions,id',
+            'division_id' => $isApproval ? 'nullable|exists:divisions,id' : 'required|exists:divisions,id',
             'department_id' => [
                 'nullable',
                 'exists:departments,id',
@@ -232,7 +232,7 @@ class TicketController extends Controller
                     }
                 },
             ],
-            'location_id' => 'required|exists:locations,id',
+            'location_id' => $isApproval ? 'nullable|exists:locations,id' : 'required|exists:locations,id',
             'category_1_id' => 'required|exists:categories,id',
             'category_2_id' => 'nullable|exists:categories,id',
             'category_3_id' => 'nullable|exists:categories,id',
@@ -247,6 +247,15 @@ class TicketController extends Controller
         }
 
         $validated = $request->validate($rules);
+
+        // Enforce locked template fields from ticket type
+        if ($ticketType && ! empty($ticketType->template_json['fields'])) {
+            foreach ($ticketType->template_json['fields'] as $fieldKey => $fieldConfig) {
+                if (! empty($fieldConfig['locked']) && isset($fieldConfig['value']) && $fieldConfig['value'] !== '') {
+                    $validated[$fieldKey] = $fieldConfig['value'];
+                }
+            }
+        }
 
         $attachments = [];
         if ($request->filled('attachments_json')) {
@@ -304,9 +313,9 @@ class TicketController extends Controller
                 'stage_id' => $stageId,
                 'status' => 'Valid',
                 'approval_mode' => $isApproval ? ($validated['approval_mode'] ?? null) : null,
-                'division_id' => $validated['division_id'],
+                'division_id' => $isApproval ? ($validated['division_id'] ?? null) : $validated['division_id'],
                 'department_id' => $validated['department_id'] ?? null,
-                'location_id' => $validated['location_id'],
+                'location_id' => $isApproval ? ($validated['location_id'] ?? null) : $validated['location_id'],
                 'created_by' => Auth::id() ?? 1, // Fallback to 1 for tests/system
                 'category_1_id' => $validated['category_1_id'],
                 'category_2_id' => $validated['category_2_id'] ?? null,
@@ -447,6 +456,10 @@ class TicketController extends Controller
             abort(403, 'You are not authorized to edit this ticket.');
         }
 
+        $ticketType = TicketType::find($request->input('ticket_type_id'));
+        $isApproval = ($ticketType && $ticketType->prototype === 'approval_clearance')
+            || ($ticket->ticketType && $ticket->ticketType->prototype === 'approval_clearance');
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
@@ -469,7 +482,7 @@ class TicketController extends Controller
                 },
             ],
             'priority_option_id' => 'required|exists:priorities,id',
-            'division_id' => 'required|exists:divisions,id',
+            'division_id' => $isApproval ? 'nullable|exists:divisions,id' : 'required|exists:divisions,id',
             'department_id' => [
                 'nullable',
                 'exists:departments,id',
@@ -484,7 +497,7 @@ class TicketController extends Controller
                     }
                 },
             ],
-            'location_id' => 'required|exists:locations,id',
+            'location_id' => $isApproval ? 'nullable|exists:locations,id' : 'required|exists:locations,id',
             'category_1_id' => 'required|exists:categories,id',
             'category_2_id' => 'nullable|exists:categories,id',
             'category_3_id' => 'nullable|exists:categories,id',
@@ -504,6 +517,15 @@ class TicketController extends Controller
             'existing_notes' => 'nullable|array',
             'existing_notes.*' => 'nullable|string',
         ]);
+
+        // Enforce locked template fields from ticket type
+        if ($ticketType && ! empty($ticketType->template_json['fields'])) {
+            foreach ($ticketType->template_json['fields'] as $fieldKey => $fieldConfig) {
+                if (! empty($fieldConfig['locked']) && isset($fieldConfig['value']) && $fieldConfig['value'] !== '') {
+                    $validated[$fieldKey] = $fieldConfig['value'];
+                }
+            }
+        }
 
         $attachments = [];
         if ($request->filled('attachments_json')) {
@@ -534,15 +556,15 @@ class TicketController extends Controller
             }
         }
 
-        return DB::transaction(function () use ($request, $validated, $attachments, $deletedAttachmentIds, $ticket, $user) {
+        return DB::transaction(function () use ($request, $validated, $attachments, $deletedAttachmentIds, $ticket, $user, $isApproval) {
             $updateData = [
                 'title' => $validated['title'],
                 'description' => $validated['description'],
                 'ticket_type_id' => $validated['ticket_type_id'],
                 'priority_option_id' => $validated['priority_option_id'],
-                'division_id' => $validated['division_id'],
+                'division_id' => $isApproval ? ($validated['division_id'] ?? null) : $validated['division_id'],
                 'department_id' => $validated['department_id'] ?? null,
-                'location_id' => $validated['location_id'],
+                'location_id' => $isApproval ? ($validated['location_id'] ?? null) : $validated['location_id'],
                 'category_1_id' => $validated['category_1_id'],
                 'category_2_id' => $validated['category_2_id'] ?? null,
                 'category_3_id' => $validated['category_3_id'] ?? null,

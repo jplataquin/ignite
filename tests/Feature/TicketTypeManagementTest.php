@@ -5,11 +5,12 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Department;
 use App\Models\Division;
-use App\Models\Ticket;
 use App\Models\Priority;
+use App\Models\Ticket;
 use App\Models\TicketStage;
 use App\Models\TicketType;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -20,7 +21,7 @@ class TicketTypeManagementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class]);
+        $this->withoutMiddleware([PreventRequestForgery::class]);
     }
 
     /**
@@ -212,5 +213,68 @@ class TicketTypeManagementTest extends TestCase
             'name' => 'External Audit',
             'code' => 'AUD',
         ]);
+    }
+
+    /**
+     * Test that admin can store and update ticket type with template_json.
+     */
+    public function test_admin_can_store_and_update_ticket_type_with_template(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        $template = [
+            'fields' => [
+                'title' => ['value' => 'Pre-filled Title', 'locked' => true],
+                'description' => ['value' => 'Pre-filled Description', 'locked' => false],
+            ],
+        ];
+
+        // Store with template
+        $response = $this->actingAs($admin)->post('/admin/ticket-types', [
+            'name' => 'Templated Type',
+            'code' => 'TPL',
+            'template_json' => json_encode($template),
+        ]);
+
+        $response->assertRedirect('/admin/ticket-types');
+        $type = TicketType::where('name', 'Templated Type')->first();
+        $this->assertNotNull($type);
+        $this->assertEquals($template, $type->template_json);
+
+        // Update template
+        $updatedTemplate = [
+            'fields' => [
+                'title' => ['value' => 'Updated Title', 'locked' => false],
+            ],
+        ];
+
+        $updateResponse = $this->actingAs($admin)->put("/admin/ticket-types/{$type->id}", [
+            'name' => 'Templated Type',
+            'code' => 'TPL',
+            'template_json' => json_encode($updatedTemplate),
+        ]);
+
+        $updateResponse->assertRedirect('/admin/ticket-types');
+        $this->assertEquals($updatedTemplate, $type->fresh()->template_json);
+    }
+
+    /**
+     * Test that ticket type create and edit screens render the visual template builder.
+     */
+    public function test_ticket_type_screens_render_visual_template_builder(): void
+    {
+        $admin = User::factory()->create(['user_type' => 'admin']);
+        $type = TicketType::create([
+            'name' => 'Onboarding Type',
+            'code' => 'ONB',
+        ]);
+
+        $createResponse = $this->actingAs($admin)->get('/admin/ticket-types/create');
+        $createResponse->assertStatus(200);
+        $createResponse->assertSee('Ticket Form Template (Visual Builder)');
+
+        $editResponse = $this->actingAs($admin)->get("/admin/ticket-types/{$type->id}/edit");
+        $editResponse->assertStatus(200);
+        $editResponse->assertSee('Ticket Form Template (Visual Builder)');
     }
 }

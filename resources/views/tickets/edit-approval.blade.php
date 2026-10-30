@@ -111,11 +111,12 @@
                     </div>
                 </div>
 
-                <!-- Division, Department, Location in one row on desktop -->
+                <!-- Division, Department, Location in one row on desktop (Optional) -->
                 <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
                     <div>
-                        <label for="division_id" class="form-label fw-semibold text-dark small">Division</label>
-                        <select id="division_id" class="form-select" name="division_id" required>
+                        <label for="division_id" class="form-label fw-semibold text-dark small">Division (Optional)</label>
+                        <select id="division_id" class="form-select" name="division_id">
+                            <option value="">None</option>
                             @foreach($divisions as $division)
                                 <option value="{{ $division->id }}" {{ old('division_id', $ticket->division_id) == $division->id ? 'selected' : '' }}>{{ $division->name }}</option>
                             @endforeach
@@ -133,8 +134,9 @@
                     </div>
 
                     <div>
-                        <label for="location_id" class="form-label fw-semibold text-dark small">Location</label>
-                        <select id="location_id" class="form-select" name="location_id" required>
+                        <label for="location_id" class="form-label fw-semibold text-dark small">Location (Optional)</label>
+                        <select id="location_id" class="form-select" name="location_id">
+                            <option value="">None</option>
                             @foreach($locations as $location)
                                 <option value="{{ $location->id }}" {{ old('location_id', $ticket->location_id) == $location->id ? 'selected' : '' }}>{{ $location->name }}</option>
                             @endforeach

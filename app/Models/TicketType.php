@@ -17,6 +17,12 @@ class TicketType extends Model
         'prototype',
         'description',
         'threshold_days',
+        'template_json',
+    ];
+
+    /** @var array<string, string> */
+    protected $casts = [
+        'template_json' => 'array',
     ];
 
     /**

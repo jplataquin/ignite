@@ -77,20 +77,18 @@ class ApprovalPrototypeTest extends TestCase
     }
 
     /**
-     * Test creating an Approval/Clearance ticket with sequential approvers.
+     * Test creating an Approval/Clearance ticket with sequential approvers without division, department, and location.
      */
     public function test_can_create_approval_clearance_ticket_with_approvers(): void
     {
         $d = $this->createDependencies();
 
+        // Approval clearance prototype does not require division, department, or location
         $response = $this->actingAs($d['creator'])->post('/tickets', [
             'title' => 'Year-end Clearance',
             'description' => 'Please review and sign off on clearance.',
             'ticket_type_id' => $d['approvalType']->id,
             'priority_option_id' => $d['priority']->id,
-            'division_id' => $d['division']->id,
-            'department_id' => $d['department']->id,
-            'location_id' => $d['location']->id,
             'category_1_id' => $d['category']->id,
             'approval_mode' => 'sequential',
             'approver_ids' => [$d['approver1']->id, $d['approver2']->id],
@@ -102,6 +100,9 @@ class ApprovalPrototypeTest extends TestCase
         $this->assertNotNull($ticket);
         $this->assertEquals('sequential', $ticket->approval_mode);
         $this->assertEquals('pending-approval', $ticket->stage->slug);
+        $this->assertNull($ticket->division_id);
+        $this->assertNull($ticket->department_id);
+        $this->assertNull($ticket->location_id);
         $this->assertEquals(2, $ticket->approvals()->count());
 
         $firstApproval = $ticket->approvals()->where('sequence_order', 1)->first();
@@ -111,6 +112,18 @@ class ApprovalPrototypeTest extends TestCase
         $secondApproval = $ticket->approvals()->where('sequence_order', 2)->first();
         $this->assertEquals($d['approver2']->id, $secondApproval->user_id);
         $this->assertEquals('pending', $secondApproval->status);
+    }
+
+    /**
+     * Test ticket create view contains division-department-location section for prototype toggling.
+     */
+    public function test_ticket_create_view_contains_division_department_location_section(): void
+    {
+        $d = $this->createDependencies();
+
+        $response = $this->actingAs($d['creator'])->get('/tickets/create');
+        $response->assertStatus(200);
+        $response->assertSee('id="division-department-location-section"', false);
     }
 
     /**

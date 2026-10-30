@@ -284,20 +284,26 @@
                 <span class="fw-semibold text-dark">{{ $ticket->creator->name ?? 'Unknown' }}</span>
             </div>
 
-            <div class="mb-3">
-                <span class="text-muted small d-block">Division</span>
-                <span class="fw-semibold text-dark">{{ $ticket->division->name ?? 'N/A' }}</span>
-            </div>
+            @if($ticket->division)
+                <div class="mb-3">
+                    <span class="text-muted small d-block">Division</span>
+                    <span class="fw-semibold text-dark">{{ $ticket->division->name }}</span>
+                </div>
+            @endif
 
-            <div class="mb-3">
-                <span class="text-muted small d-block">Department</span>
-                <span class="fw-semibold text-dark">{{ $ticket->department->name ?? 'N/A' }}</span>
-            </div>
+            @if($ticket->department)
+                <div class="mb-3">
+                    <span class="text-muted small d-block">Department</span>
+                    <span class="fw-semibold text-dark">{{ $ticket->department->name }}</span>
+                </div>
+            @endif
 
-            <div class="mb-3">
-                <span class="text-muted small d-block">Location</span>
-                <span class="fw-semibold text-dark">{{ $ticket->location->name ?? 'N/A' }}</span>
-            </div>
+            @if($ticket->location)
+                <div class="mb-3">
+                    <span class="text-muted small d-block">Location</span>
+                    <span class="fw-semibold text-dark">{{ $ticket->location->name }}</span>
+                </div>
+            @endif
 
             <div class="mb-3">
                 <span class="text-muted small d-block">Category 1</span>

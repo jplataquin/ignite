@@ -135,6 +135,88 @@ class TicketManagementTest extends TestCase
     }
 
     /**
+     * Test that standard ticket creation requires division and location.
+     */
+    public function test_standard_ticket_creation_requires_division_and_location(): void
+    {
+        $user = User::factory()->create();
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $user->roles()->attach($role->id);
+
+        $priorityOption = Priority::create(['name' => 'High', 'level' => 2]);
+        $type = TicketType::create(['name' => 'Incident', 'prototype' => 'request_response']);
+        $role->ticketTypes()->attach($type->id);
+        $category = Category::create(['name' => 'Hardware', 'ticket_type_id' => $type->id]);
+
+        $response = $this->actingAs($user)->post(route('tickets.store'), [
+            'title' => 'Missing Division and Location',
+            'description' => 'Incident description.',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response->assertSessionHasErrors(['division_id', 'location_id']);
+    }
+
+    /**
+     * Test that ticket types with locked template fields enforce locked values on ticket creation.
+     */
+    public function test_locked_template_fields_are_enforced_on_ticket_creation(): void
+    {
+        TicketStage::create(['name' => 'Open', 'slug' => 'open', 'color_code' => '#1']);
+
+        $user = User::factory()->create();
+        $role = Role::create(['name' => 'Support Agent', 'slug' => 'support-agent']);
+        $user->roles()->attach($role->id);
+
+        $template = [
+            'fields' => [
+                'title' => ['value' => 'Mandatory Template Title', 'locked' => true],
+                'description' => ['value' => 'Mandatory Instructions', 'locked' => true],
+            ],
+        ];
+
+        $priorityOption = Priority::create(['name' => 'Normal', 'level' => 1]);
+        $type = TicketType::create([
+            'name' => 'Standard Request',
+            'prototype' => 'request_response',
+            'template_json' => $template,
+        ]);
+        $role->ticketTypes()->attach($type->id);
+
+        $division = Division::create(['name' => 'Operations']);
+        $department = Department::create(['name' => 'Logistics', 'division_id' => $division->id]);
+        $location = Location::create(['name' => 'Warehouse']);
+        $category = Category::create(['name' => 'Inventory', 'ticket_type_id' => $type->id]);
+
+        // 1. Verify create view outputs data-template
+        $viewResponse = $this->actingAs($user)->get('/tickets/create');
+        $viewResponse->assertStatus(200);
+        $viewResponse->assertSee('data-template="', false);
+        $viewResponse->assertSee('Mandatory Template Title');
+
+        // 2. Submit tampered values and verify locked values overwrite them
+        $response = $this->actingAs($user)->post(route('tickets.store'), [
+            'title' => 'Tampered User Title',
+            'description' => 'Tampered User Description',
+            'ticket_type_id' => $type->id,
+            'priority_option_id' => $priorityOption->id,
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $location->id,
+            'category_1_id' => $category->id,
+        ]);
+
+        $response->assertRedirect();
+
+        $ticket = Ticket::where('ticket_type_id', $type->id)->first();
+        $this->assertNotNull($ticket);
+        $this->assertEquals('Mandatory Template Title', $ticket->title);
+        $this->assertEquals('Mandatory Instructions', $ticket->description);
+    }
+
+    /**
      * Test that creating a ticket without providing a status defaults to 'Open'.
      */
     public function test_creating_a_ticket_without_status_defaults_to_open(): void
