@@ -1,13 +1,60 @@
-<div class="border rounded p-3 mb-4 bg-light">
+<input type="hidden" name="template_json" id="template_json" value="{{ old('template_json', isset($ticketType) && $ticketType->template_json ? (is_array($ticketType->template_json) ? json_encode($ticketType->template_json) : $ticketType->template_json) : '') }}">
+
+<!-- Custom Stage Route Dedicated Card -->
+<div id="tpl-stage-route-section" class="card fd-card p-4 shadow-sm mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <h5 class="fw-bold text-dark mb-0">Custom Stage Route</h5>
+                <span class="badge bg-secondary text-white">Sequential Workflow</span>
+            </div>
+            <p class="text-muted small mb-0">Define an ordered progression of stages for tickets of this type. Newly created tickets will start at the first stage and advance sequentially.</p>
+        </div>
+        <div class="form-check form-switch ps-5">
+            <input class="form-check-input" type="checkbox" id="tpl_enable_stage_route" style="width: 2.5em; height: 1.25em;">
+            <label class="form-check-label fw-semibold text-dark small ms-1" for="tpl_enable_stage_route">Enable Route</label>
+        </div>
+    </div>
+
+    <div id="tpl-stage-route-controls" class="p-3 bg-light rounded border" style="display: none;">
+        <div class="row g-2 mb-3 align-items-end">
+            <div class="col-md-9">
+                <label for="tpl_stage_selector" class="form-label fw-semibold text-dark small mb-1">Select Stage to Add</label>
+                <select id="tpl_stage_selector" class="form-select form-select-sm" disabled>
+                    <option value="">Choose a stage to append to route...</option>
+                    @if(isset($ticketStages))
+                        @foreach($ticketStages as $stg)
+                            <option value="{{ $stg->id }}" data-name="{{ $stg->name }}" data-color="{{ $stg->color_code }}">{{ $stg->name }}</option>
+                        @endforeach
+                    @endif
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="button" id="tpl_btn_add_stage" class="btn btn-sm btn-primary w-100 text-nowrap d-flex align-items-center justify-content-center" style="min-height: 31px;" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-plus-lg me-1" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/>
+                    </svg>
+                    Add to Route
+                </button>
+            </div>
+        </div>
+
+        <label class="form-label fw-semibold text-dark small mb-2">Stage Route Sequence</label>
+        <ul id="tpl-stage-route-list" class="list-group list-group-flush border rounded bg-white">
+            <li id="tpl-no-stages-placeholder" class="list-group-item text-muted small py-3 text-center">No stages added to the route yet. Choose a stage above to add.</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Ticket Form Template (Visual Builder) Card -->
+<div class="card fd-card p-4 shadow-sm mb-4">
     <div class="d-flex align-items-center justify-content-between mb-2">
         <div>
-            <h6 class="fw-bold text-dark mb-0">Ticket Form Template (Visual Builder)</h6>
+            <h5 class="fw-bold text-dark mb-0">Ticket Form Template (Visual Builder)</h5>
             <small class="text-muted">Define prefilled values for new tickets of this type. Locked fields cannot be changed by users.</small>
         </div>
         <span class="badge bg-secondary text-white">Optional Template</span>
     </div>
-
-    <input type="hidden" name="template_json" id="template_json" value="{{ old('template_json', isset($ticketType) && $ticketType->template_json ? (is_array($ticketType->template_json) ? json_encode($ticketType->template_json) : $ticketType->template_json) : '') }}">
 
     <div class="table-responsive mt-3">
         <table class="table table-bordered table-sm align-middle bg-white mb-0" id="template-builder-table">
@@ -278,44 +325,6 @@
                         <li id="tpl-no-approvers-placeholder" class="list-group-item text-muted small py-3 text-center">No approvers added to template yet.</li>
                     </ul>
                 </div>
-            </div>
-        </div>
-
-        <!-- Custom Stage Route Configuration -->
-        <div id="tpl-stage-route-section" class="mt-4 border-top pt-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <div>
-                    <h6 class="fw-bold text-dark mb-0">Custom Stage Route</h6>
-                    <small class="text-muted">Define a custom sequence of stages for tickets of this type.</small>
-                </div>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="tpl_enable_stage_route">
-                    <label class="form-check-label fw-semibold text-dark small" for="tpl_enable_stage_route">Enable Custom Route</label>
-                </div>
-            </div>
-
-            <div id="tpl-stage-route-controls" class="p-3 bg-light rounded border mb-2" style="display: none;">
-                <div class="row g-2 mb-3 align-items-start">
-                    <div class="col-md-9">
-                        <label for="tpl_stage_selector" class="form-label fw-semibold text-dark small mb-1">Select Stage to Add</label>
-                        <select id="tpl_stage_selector" class="form-select form-select-sm" disabled>
-                            <option value="">Choose a stage...</option>
-                            @if(isset($ticketStages))
-                                @foreach($ticketStages as $stg)
-                                    <option value="{{ $stg->id }}" data-name="{{ $stg->name }}" data-color="{{ $stg->color_code }}">{{ $stg->name }}</option>
-                                @endforeach
-                            @endif
-                        </select>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button type="button" id="tpl_btn_add_stage" class="btn btn-sm btn-primary w-100 text-nowrap" style="margin-top: 24px;" disabled>Add to Route</button>
-                    </div>
-                </div>
-
-                <label class="form-label fw-semibold text-dark small">Stage Route Sequence</label>
-                <ul id="tpl-stage-route-list" class="list-group list-group-flush border rounded bg-white">
-                    <li id="tpl-no-stages-placeholder" class="list-group-item text-muted small py-3 text-center">No stages added to the route yet.</li>
-                </ul>
             </div>
         </div>
     </div>

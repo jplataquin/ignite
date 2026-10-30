@@ -15,12 +15,12 @@
 
 <div class="row">
     <div class="col-12 col-xl-8">
-        <div class="card fd-card p-4 shadow-sm">
-            <h5 class="fw-bold mb-3 text-dark">Ticket Type Properties</h5>
-            <p class="text-muted small mb-4">Define a new category of issues or requests that can be handled within the service desk.</p>
+        <form method="POST" action="{{ route('admin.ticket-types.store') }}">
+            @csrf
 
-            <form method="POST" action="{{ route('admin.ticket-types.store') }}">
-                @csrf
+            <div class="card fd-card p-4 shadow-sm mb-4">
+                <h5 class="fw-bold mb-3 text-dark">Ticket Type Properties</h5>
+                <p class="text-muted small mb-4">Define a new category of issues or requests that can be handled within the service desk.</p>
 
                 <!-- Name -->
                 <div class="mb-3">
@@ -72,7 +72,7 @@
                 </div>
 
                 <!-- SLA Threshold Days -->
-                <div class="mb-4">
+                <div class="mb-0">
                     <label for="threshold_days" class="form-label fw-semibold text-dark small">SLA Resolution Threshold (Days)</label>
                     <input id="threshold_days" type="number" class="form-control @error('threshold_days') is-invalid @enderror" name="threshold_days" value="{{ old('threshold_days') }}" min="1" placeholder="e.g. 3 (Leave empty for no SLA threshold)">
                     @error('threshold_days')
@@ -81,16 +81,16 @@
                         </span>
                     @enderror
                 </div>
+            </div>
 
-                @include('admin.ticket-types._template_builder')
+            @include('admin.ticket-types._template_builder')
 
-                <!-- Actions -->
-                <div class="d-flex justify-content-end gap-2">
-                    <a href="{{ route('admin.ticket-types.index') }}" class="btn btn-outline-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-primary px-4">Create Ticket Type</button>
-                </div>
-            </form>
-        </div>
+            <!-- Actions -->
+            <div class="d-flex justify-content-end gap-2 mb-4">
+                <a href="{{ route('admin.ticket-types.index') }}" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary px-4">Create Ticket Type</button>
+            </div>
+        </form>
     </div>
 </div>
 @endsection
