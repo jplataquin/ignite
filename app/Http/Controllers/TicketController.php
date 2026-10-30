@@ -244,6 +244,8 @@ class TicketController extends Controller
             $rules['approval_mode'] = 'required|in:sequential,parallel';
             $rules['approver_ids'] = 'required|array|min:1';
             $rules['approver_ids.*'] = 'required|exists:users,id';
+            $rules['signoff_descriptions'] = 'nullable|array';
+            $rules['signoff_descriptions.*'] = 'nullable|string|max:255';
         }
 
         $validated = $request->validate($rules);
@@ -266,6 +268,9 @@ class TicketController extends Controller
             if (! empty($tplApproval['has_approvers']) && ! empty($tplApproval['approvers_locked']) && ! empty($tplApproval['approvers'])) {
                 $validated['approver_ids'] = array_map(function ($a) {
                     return is_array($a) ? $a['id'] : $a;
+                }, $tplApproval['approvers']);
+                $validated['signoff_descriptions'] = array_map(function ($a) {
+                    return is_array($a) ? ($a['signoff_description'] ?? null) : null;
                 }, $tplApproval['approvers']);
             }
         }
@@ -342,6 +347,7 @@ class TicketController extends Controller
                         'ticket_id' => $ticket->id,
                         'user_id' => $approverId,
                         'sequence_order' => $idx + 1,
+                        'signoff_description' => $validated['signoff_descriptions'][$idx] ?? null,
                         'status' => 'pending',
                     ]);
                 }

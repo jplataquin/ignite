@@ -271,14 +271,15 @@
 
                         <div class="col-md-6">
                             <label class="form-label fw-semibold text-dark small">Add Approver</label>
-                            <div class="input-group">
-                                <select id="approver_selector" class="form-select form-select-sm">
-                                    <option value="">Select User to Add as Approver...</option>
+                            <div class="d-flex flex-column flex-sm-row gap-2">
+                                <select id="approver_selector" class="form-select form-select-sm" style="flex: 1 1 50%;">
+                                    <option value="">Select Approver User...</option>
                                     @foreach($users as $userOption)
                                         <option value="{{ $userOption->id }}" data-name="{{ $userOption->name }}">{{ $userOption->name }} ({{ ucfirst($userOption->user_type) }})</option>
                                     @endforeach
                                 </select>
-                                <button type="button" id="btn-add-approver" class="btn btn-sm btn-primary">Add</button>
+                                <input type="text" id="approver_signoff_desc" class="form-control form-control-sm" placeholder="Sign-off description (e.g. IT Equipment, Finance)..." style="flex: 1 1 40%;">
+                                <button type="button" id="btn-add-approver" class="btn btn-sm btn-primary text-nowrap">Add</button>
                             </div>
                         </div>
                     </div>
@@ -385,16 +386,28 @@
 
             selectedApprovers.forEach((appr, index) => {
                 const li = document.createElement('li');
-                li.className = 'list-group-item d-flex align-items-center justify-content-between py-2 approver-item';
+                li.className = 'list-group-item d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 approver-item';
                 li.innerHTML = `
-                    <div class="d-flex align-items-center">
-                        <span class="badge bg-secondary me-2">#${index + 1}</span>
-                        <span class="fw-semibold text-dark small">${escapeHtml(appr.name)}</span>
+                    <div class="d-flex align-items-center flex-grow-1 gap-2 flex-wrap">
+                        <span class="badge bg-secondary">#${index + 1}</span>
+                        <span class="fw-semibold text-dark small" style="min-width: 140px;">${escapeHtml(appr.name)}</span>
                         <input type="hidden" name="approver_ids[]" value="${appr.id}">
+                        <div class="input-group input-group-sm" style="max-width: 360px;">
+                            <span class="input-group-text bg-light text-muted small py-0">Sign-off For</span>
+                            <input type="text" name="signoff_descriptions[]" class="form-control form-control-sm signoff-desc-input" value="${escapeHtml(appr.signoff_description || '')}" placeholder="e.g. IT Equipment, Finance, HR...">
+                        </div>
                     </div>
                     <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 btn-remove-approver" data-index="${index}">&times;</button>
                 `;
                 approversList.appendChild(li);
+            });
+
+            approversList.querySelectorAll('.signoff-desc-input').forEach((input, idx) => {
+                input.addEventListener('input', function () {
+                    if (selectedApprovers[idx]) {
+                        selectedApprovers[idx].signoff_description = this.value;
+                    }
+                });
             });
 
             approversList.querySelectorAll('.btn-remove-approver').forEach(btn => {
@@ -406,6 +419,7 @@
             });
         }
 
+        const approverSignoffDesc = document.getElementById('approver_signoff_desc');
         if (btnAddApprover) {
             btnAddApprover.addEventListener('click', function () {
                 const userId = approverSelector.value;
@@ -417,15 +431,37 @@
                     return;
                 }
 
+                const signoffDesc = approverSignoffDesc ? approverSignoffDesc.value.trim() : '';
+
                 selectedApprovers.push({
                     id: userId,
                     name: selectedOpt.getAttribute('data-name') || selectedOpt.text,
+                    signoff_description: signoffDesc,
                 });
 
                 approverSelector.value = '';
+                if (approverSignoffDesc) approverSignoffDesc.value = '';
                 renderApproversList();
             });
         }
+
+        @if(old('approver_ids'))
+            @php
+                $oldApproverIds = old('approver_ids');
+                $oldSignoffDescs = old('signoff_descriptions', []);
+            @endphp
+            @foreach($oldApproverIds as $idx => $aId)
+                @php $matchingUser = $users->firstWhere('id', $aId); @endphp
+                @if($matchingUser)
+                    selectedApprovers.push({
+                        id: '{{ $matchingUser->id }}',
+                        name: '{{ addslashes($matchingUser->name) }}',
+                        signoff_description: '{{ addslashes($oldSignoffDescs[$idx] ?? '') }}'
+                    });
+                @endif
+            @endforeach
+            renderApproversList();
+        @endif
 
         // Initial setup/load if values exist (e.g. on validation error)
         if (ticketTypeSelect.value) {
@@ -504,8 +540,14 @@
 
             document.querySelectorAll('input[name="approval_mode"]').forEach(r => r.disabled = false);
             if (approverSelector) approverSelector.disabled = false;
+            const appSignoffDesc = document.getElementById('approver_signoff_desc');
+            if (appSignoffDesc) appSignoffDesc.disabled = false;
             if (btnAddApprover) btnAddApprover.disabled = false;
             approversList.querySelectorAll('.btn-remove-approver').forEach(b => b.style.display = '');
+            approversList.querySelectorAll('.signoff-desc-input').forEach(i => {
+                i.readOnly = false;
+                i.classList.remove('bg-light');
+            });
         }
 
         function lockField(element, name, value) {
@@ -644,14 +686,21 @@
                 if (approval.has_approvers && Array.isArray(approval.approvers) && approval.approvers.length > 0) {
                     selectedApprovers = approval.approvers.map(a => ({
                         id: a.id,
-                        name: a.name
+                        name: a.name,
+                        signoff_description: a.signoff_description || ''
                     }));
                     renderApproversList();
 
                     if (approval.approvers_locked) {
                         if (approverSelector) approverSelector.disabled = true;
+                        const appSignoffDesc = document.getElementById('approver_signoff_desc');
+                        if (appSignoffDesc) appSignoffDesc.disabled = true;
                         if (btnAddApprover) btnAddApprover.disabled = true;
                         approversList.querySelectorAll('.btn-remove-approver').forEach(b => b.style.display = 'none');
+                        approversList.querySelectorAll('.signoff-desc-input').forEach(i => {
+                            i.readOnly = true;
+                            i.classList.add('bg-light');
+                        });
 
                         const badge = document.createElement('span');
                         badge.className = 'badge bg-secondary ms-2 template-locked-hidden';

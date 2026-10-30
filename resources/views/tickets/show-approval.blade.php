@@ -109,7 +109,14 @@
                             #{{ $approval->sequence_order }}
                         </div>
                         <div>
-                            <div class="fw-bold text-dark">{{ $approval->user->name ?? 'Unknown Approver' }}</div>
+                            <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                                <span>{{ $approval->user->name ?? 'Unknown Approver' }}</span>
+                                @if($approval->signoff_description)
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-normal" style="font-size: 0.75rem;">
+                                        {{ $approval->signoff_description }}
+                                    </span>
+                                @endif
+                            </div>
                             <small class="text-muted">{{ $approval->user->department->name ?? ($approval->user->division->name ?? 'General') }}</small>
                             @if($approval->actioned_at)
                                 <div class="text-muted" style="font-size: 0.75rem;">Actioned: {{ $approval->actioned_at->format('M d, Y H:i') }}</div>

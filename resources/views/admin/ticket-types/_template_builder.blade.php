@@ -243,8 +243,8 @@
 
                 <div id="tpl-approver-controls" class="p-3 bg-light rounded border mb-2" style="display: none;">
                     <label class="form-label fw-semibold text-dark small">Add Approver to Checklist</label>
-                    <div class="input-group mb-3">
-                        <select id="tpl_approver_selector" class="form-select form-select-sm" disabled>
+                    <div class="d-flex flex-column flex-sm-row gap-2 mb-3">
+                        <select id="tpl_approver_selector" class="form-select form-select-sm" style="flex: 1 1 50%;" disabled>
                             <option value="">Select User to Add as Approver...</option>
                             @if(isset($users))
                                 @foreach($users as $userOption)
@@ -252,7 +252,8 @@
                                 @endforeach
                             @endif
                         </select>
-                        <button type="button" id="tpl_btn_add_approver" class="btn btn-sm btn-primary" disabled>Add to Checklist</button>
+                        <input type="text" id="tpl_approver_desc" class="form-control form-control-sm" placeholder="Sign-off description (e.g. IT Equipment, Finance)..." style="flex: 1 1 40%;" disabled>
+                        <button type="button" id="tpl_btn_add_approver" class="btn btn-sm btn-primary text-nowrap" disabled>Add to Checklist</button>
                     </div>
 
                     <label class="form-label fw-semibold text-dark small">Checklist Sequence</label>
@@ -358,11 +359,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         tplApprovers.forEach((appr, index) => {
             const li = document.createElement('li');
-            li.className = 'list-group-item d-flex align-items-center justify-content-between py-2 tpl-approver-item';
+            li.className = 'list-group-item d-flex flex-wrap align-items-center justify-content-between gap-2 py-2 tpl-approver-item';
             li.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-secondary me-2">#${index + 1}</span>
-                    <span class="fw-semibold text-dark small">${escapeHtml(appr.name)}</span>
+                <div class="d-flex align-items-center flex-grow-1 gap-2 flex-wrap">
+                    <span class="badge bg-secondary">#${index + 1}</span>
+                    <span class="fw-semibold text-dark small" style="min-width: 140px;">${escapeHtml(appr.name)}</span>
+                    <div class="input-group input-group-sm" style="max-width: 320px;">
+                        <span class="input-group-text bg-light text-muted small py-0">Sign-off For</span>
+                        <input type="text" class="form-control form-control-sm tpl-signoff-desc" data-index="${index}" value="${escapeHtml(appr.signoff_description || '')}" placeholder="e.g. IT Equipment, Finance...">
+                    </div>
                 </div>
                 <div class="btn-group btn-group-sm">
                     <button type="button" class="btn btn-outline-secondary py-0 px-2 btn-move-up" data-index="${index}" title="Move Up" ${index === 0 ? 'disabled' : ''}>&uarr;</button>
@@ -371,6 +376,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
             `;
             list.appendChild(li);
+        });
+
+        list.querySelectorAll('.tpl-signoff-desc').forEach(input => {
+            input.addEventListener('input', function () {
+                const idx = parseInt(this.getAttribute('data-index'));
+                if (tplApprovers[idx]) {
+                    tplApprovers[idx].signoff_description = this.value;
+                }
+                serializeTemplate();
+            });
         });
 
         list.querySelectorAll('.btn-move-up').forEach(btn => {
@@ -410,6 +425,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const tplApproverSelector = document.getElementById('tpl_approver_selector');
+    const tplApproverDesc = document.getElementById('tpl_approver_desc');
     const tplBtnAddApprover = document.getElementById('tpl_btn_add_approver');
 
     if (tplBtnAddApprover && tplApproverSelector) {
@@ -423,12 +439,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            const signoffDesc = tplApproverDesc ? tplApproverDesc.value.trim() : '';
+
             tplApprovers.push({
                 id: userId,
-                name: opt.getAttribute('data-name') || opt.text
+                name: opt.getAttribute('data-name') || opt.text,
+                signoff_description: signoffDesc,
             });
 
             tplApproverSelector.value = '';
+            if (tplApproverDesc) tplApproverDesc.value = '';
             renderTplApproversList();
             serializeTemplate();
         });
@@ -467,6 +487,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const isEnabled = this.checked;
             if (approverControls) approverControls.style.display = isEnabled ? 'block' : 'none';
             if (tplApproverSelector) tplApproverSelector.disabled = !isEnabled;
+            if (tplApproverDesc) tplApproverDesc.disabled = !isEnabled;
             if (tplBtnAddApprover) tplBtnAddApprover.disabled = !isEnabled;
             if (lockApprovers) {
                 lockApprovers.disabled = !isEnabled;
@@ -501,13 +522,18 @@ document.addEventListener('DOMContentLoaded', function () {
             enableApprovers.checked = true;
             if (approverControls) approverControls.style.display = 'block';
             if (tplApproverSelector) tplApproverSelector.disabled = false;
+            if (tplApproverDesc) tplApproverDesc.disabled = false;
             if (tplBtnAddApprover) tplBtnAddApprover.disabled = false;
             if (lockApprovers) {
                 lockApprovers.disabled = false;
                 lockApprovers.checked = !!approvalData.approvers_locked;
             }
             if (Array.isArray(approvalData.approvers)) {
-                tplApprovers = approvalData.approvers.map(a => ({ id: a.id, name: a.name }));
+                tplApprovers = approvalData.approvers.map(a => ({
+                    id: a.id,
+                    name: a.name,
+                    signoff_description: a.signoff_description || ''
+                }));
                 renderTplApproversList();
             }
         }
@@ -550,7 +576,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 approvalObj.approvers = tplApprovers.map((a, idx) => ({
                     id: a.id,
                     name: a.name,
-                    sequence_order: idx + 1
+                    sequence_order: idx + 1,
+                    signoff_description: a.signoff_description || ''
                 }));
                 approvalObj.approvers_locked = lockApprovers ? lockApprovers.checked : false;
             }

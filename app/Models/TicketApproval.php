@@ -15,6 +15,7 @@ class TicketApproval extends Model
         'ticket_id',
         'user_id',
         'sequence_order',
+        'signoff_description',
         'status',
         'comment',
         'actioned_at',

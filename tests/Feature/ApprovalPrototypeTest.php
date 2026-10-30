@@ -379,14 +379,14 @@ class ApprovalPrototypeTest extends TestCase
                     'mode_locked' => true,
                     'has_approvers' => true,
                     'approvers' => [
-                        ['id' => $enforcedApprover->id, 'name' => $enforcedApprover->name, 'sequence_order' => 1],
+                        ['id' => $enforcedApprover->id, 'name' => $enforcedApprover->name, 'sequence_order' => 1, 'signoff_description' => 'Mandatory Audit Sign-off'],
                     ],
                     'approvers_locked' => true,
                 ],
             ],
         ]);
 
-        // Submit form with tampered mode and tampered approvers
+        // Submit form with tampered mode, approvers, and signoff descriptions
         $response = $this->actingAs($d['creator'])->post('/tickets', [
             'title' => 'Tampered Title',
             'description' => 'Clearance notes',
@@ -395,6 +395,7 @@ class ApprovalPrototypeTest extends TestCase
             'category_1_id' => $d['category']->id,
             'approval_mode' => 'sequential', // Tampered! Should be overwritten with parallel
             'approver_ids' => [$otherUser->id], // Tampered! Should be overwritten with enforcedApprover
+            'signoff_descriptions' => ['Tampered Description'],
         ]);
 
         $response->assertRedirect();
@@ -407,5 +408,54 @@ class ApprovalPrototypeTest extends TestCase
 
         $approval = $ticket->approvals()->first();
         $this->assertEquals($enforcedApprover->id, $approval->user_id);
+        $this->assertEquals('Mandatory Audit Sign-off', $approval->signoff_description);
+    }
+
+    /**
+     * Test user can create ticket with sign-off descriptions for each person in checklist sequence.
+     */
+    public function test_user_can_create_ticket_with_signoff_descriptions_for_each_approver(): void
+    {
+        $d = $this->createDependencies();
+
+        $approverA = User::factory()->create(['name' => 'IT Inspector']);
+        $approverB = User::factory()->create(['name' => 'Finance Auditor']);
+
+        $response = $this->actingAs($d['creator'])->post('/tickets', [
+            'title' => 'Employee Exit Clearance',
+            'description' => 'Offboarding checklist',
+            'ticket_type_id' => $d['approvalType']->id,
+            'priority_option_id' => $d['priority']->id,
+            'category_1_id' => $d['category']->id,
+            'approval_mode' => 'sequential',
+            'approver_ids' => [$approverA->id, $approverB->id],
+            'signoff_descriptions' => ['Laptop & Asset Return', 'Final Payroll Clearance'],
+        ]);
+
+        $response->assertRedirect();
+
+        $ticket = Ticket::where('title', 'Employee Exit Clearance')->first();
+        $this->assertNotNull($ticket);
+        $this->assertEquals(2, $ticket->approvals()->count());
+
+        $approvals = $ticket->approvals()->orderBy('sequence_order')->get();
+        $this->assertEquals($approverA->id, $approvals[0]->user_id);
+        $this->assertEquals('Laptop & Asset Return', $approvals[0]->signoff_description);
+        $this->assertEquals(1, $approvals[0]->sequence_order);
+
+        $this->assertEquals($approverB->id, $approvals[1]->user_id);
+        $this->assertEquals('Final Payroll Clearance', $approvals[1]->signoff_description);
+        $this->assertEquals(2, $approvals[1]->sequence_order);
+
+        // Verify the show and edit views render the sign-off descriptions
+        $showResponse = $this->actingAs($d['creator'])->get("/tickets/{$ticket->id}");
+        $showResponse->assertStatus(200);
+        $showResponse->assertSee('Laptop &amp; Asset Return', false);
+        $showResponse->assertSee('Final Payroll Clearance');
+
+        $editResponse = $this->actingAs($d['creator'])->get("/tickets/{$ticket->id}/edit");
+        $editResponse->assertStatus(200);
+        $editResponse->assertSee('Laptop &amp; Asset Return', false);
+        $editResponse->assertSee('Final Payroll Clearance');
     }
 }

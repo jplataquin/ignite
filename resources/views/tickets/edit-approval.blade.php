@@ -156,6 +156,11 @@
                                 <div>
                                     <span class="badge bg-secondary me-2">#{{ $approval->sequence_order }}</span>
                                     <span class="fw-semibold text-dark small">{{ $approval->user->name ?? 'User' }}</span>
+                                    @if($approval->signoff_description)
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-normal ms-2" style="font-size: 0.75rem;">
+                                            {{ $approval->signoff_description }}
+                                        </span>
+                                    @endif
                                 </div>
                                 <span class="badge {{ $approval->status === 'approved' ? 'bg-success' : ($approval->status === 'rejected' ? 'bg-danger' : 'bg-warning text-dark') }} small">
                                     {{ ucfirst($approval->status) }}
