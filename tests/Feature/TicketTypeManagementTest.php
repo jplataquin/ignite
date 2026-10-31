@@ -348,35 +348,30 @@ class TicketTypeManagementTest extends TestCase
     }
 
     /**
-     * Test that admin can store ticket type with approval template containing 3 fixed steps and approver assigned stages.
+     * Test that admin can store ticket type with approval template containing single intermediate stage route (Open -> Stage 1 -> Closed).
      */
-    public function test_admin_can_store_approval_template_with_three_steps_and_approver_stages(): void
+    public function test_admin_can_store_approval_template_with_single_intermediate_stage_and_approver_stage(): void
     {
         $admin = User::factory()->create(['user_type' => 'admin']);
         $approverUser = User::factory()->create();
 
-        $stage1 = TicketStage::create(['name' => 'Initial Review', 'slug' => 'init-rev', 'color_code' => '#112233']);
-        $stage2 = TicketStage::create(['name' => 'Department Sign-off', 'slug' => 'dept-sign', 'color_code' => '#445566']);
-        $stage3 = TicketStage::create(['name' => 'Final Clearance', 'slug' => 'fin-clear', 'color_code' => '#778899']);
+        $stage1 = TicketStage::create(['name' => 'Department Review', 'slug' => 'dept-rev', 'color_code' => '#112233']);
+        $stage2 = TicketStage::create(['name' => 'Extra Step', 'slug' => 'extra-step', 'color_code' => '#445566']);
 
+        // Even if multiple steps or stages are sent, approval_clearance enforces single intermediate stage
         $template = [
             'steps' => [
                 [
                     'step_number' => 1,
                     'stages' => [
                         ['id' => $stage1->id, 'name' => $stage1->name, 'color_code' => $stage1->color_code],
+                        ['id' => $stage2->id, 'name' => $stage2->name, 'color_code' => $stage2->color_code],
                     ],
                 ],
                 [
                     'step_number' => 2,
                     'stages' => [
                         ['id' => $stage2->id, 'name' => $stage2->name, 'color_code' => $stage2->color_code],
-                    ],
-                ],
-                [
-                    'step_number' => 3,
-                    'stages' => [
-                        ['id' => $stage3->id, 'name' => $stage3->name, 'color_code' => $stage3->color_code],
                     ],
                 ],
             ],
@@ -391,7 +386,7 @@ class TicketTypeManagementTest extends TestCase
                     [
                         'id' => $approverUser->id,
                         'name' => $approverUser->name,
-                        'stage_id' => $stage2->id,
+                        'stage_id' => $stage1->id,
                         'sequence_order' => 1,
                         'signoff_description' => 'Department review checklist',
                     ],
@@ -412,9 +407,13 @@ class TicketTypeManagementTest extends TestCase
         $this->assertNotNull($ticketType);
         $this->assertEquals('approval_clearance', $ticketType->prototype);
         $this->assertIsArray($ticketType->template_json);
-        $this->assertCount(3, $ticketType->template_json['steps']);
+        // Only 1 intermediate step and 1 stage allowed for approval clearance (Open -> Stage 1 -> Closed)
+        $this->assertCount(1, $ticketType->template_json['steps']);
+        $this->assertCount(1, $ticketType->template_json['steps'][0]['stages']);
+        $this->assertEquals($stage1->id, $ticketType->template_json['steps'][0]['stages'][0]['id']);
+        $this->assertEquals('Department Review', $ticketType->template_json['steps'][0]['stages'][0]['name']);
         $this->assertCount(1, $ticketType->template_json['approval']['approvers']);
-        $this->assertEquals($stage2->id, $ticketType->template_json['approval']['approvers'][0]['stage_id']);
+        $this->assertEquals($stage1->id, $ticketType->template_json['approval']['approvers'][0]['stage_id']);
         $this->assertEquals('Department review checklist', $ticketType->template_json['approval']['approvers'][0]['signoff_description']);
     }
 }

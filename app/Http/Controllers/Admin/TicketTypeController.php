@@ -69,6 +69,27 @@ class TicketTypeController extends Controller
             $validated['template_json'] = null;
         }
 
+        if (($validated['prototype'] ?? null) === 'approval_clearance' && is_array($validated['template_json']) && ! empty($validated['template_json']['steps'])) {
+            $firstStep = $validated['template_json']['steps'][0] ?? null;
+            if ($firstStep && ! empty($firstStep['stages'])) {
+                $firstStage = $firstStep['stages'][0];
+                $validated['template_json']['steps'] = [
+                    [
+                        'step_number' => 1,
+                        'stages' => [
+                            [
+                                'id' => (int) $firstStage['id'],
+                                'name' => $firstStage['name'],
+                                'color_code' => $firstStage['color_code'] ?? '#6b7280',
+                            ],
+                        ],
+                    ],
+                ];
+            } else {
+                unset($validated['template_json']['steps']);
+            }
+        }
+
         TicketType::create($validated);
 
         return redirect()->route('admin.ticket-types.index')
@@ -120,6 +141,28 @@ class TicketTypeController extends Controller
             }
         } else {
             $validated['template_json'] = null;
+        }
+
+        $effectivePrototype = $validated['prototype'] ?? $ticketType->prototype ?? 'request_response';
+        if ($effectivePrototype === 'approval_clearance' && is_array($validated['template_json']) && ! empty($validated['template_json']['steps'])) {
+            $firstStep = $validated['template_json']['steps'][0] ?? null;
+            if ($firstStep && ! empty($firstStep['stages'])) {
+                $firstStage = $firstStep['stages'][0];
+                $validated['template_json']['steps'] = [
+                    [
+                        'step_number' => 1,
+                        'stages' => [
+                            [
+                                'id' => (int) $firstStage['id'],
+                                'name' => $firstStage['name'],
+                                'color_code' => $firstStage['color_code'] ?? '#6b7280',
+                            ],
+                        ],
+                    ],
+                ];
+            } else {
+                unset($validated['template_json']['steps']);
+            }
         }
 
         $ticketType->update($validated);

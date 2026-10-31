@@ -6,9 +6,9 @@
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
                 <h5 class="fw-bold text-dark mb-0">Custom Stage Route</h5>
-                <span class="badge bg-secondary text-white">Multi-Stage Steps Workflow</span>
+                <span class="badge bg-secondary text-white" id="tpl-stage-route-badge">Multi-Stage Steps Workflow</span>
             </div>
-            <p class="text-muted small mb-0">Define linear steps for tickets of this type. Each step can offer one or multiple stage options (e.g., Step 2 can branch into Approved or Rejected). Tickets start at <strong>Open</strong> and conclude at <strong>Closed</strong>.</p>
+            <p class="text-muted small mb-0" id="tpl-stage-route-desc">Define linear steps for tickets of this type. Each step can offer one or multiple stage options (e.g., Step 2 can branch into Approved or Rejected). Tickets start at <strong>Open</strong> and conclude at <strong>Closed</strong>.</p>
         </div>
         <div class="form-check form-switch ps-5">
             <input class="form-check-input" type="checkbox" id="tpl_enable_stage_route" style="width: 2.5em; height: 1.25em;">
@@ -29,7 +29,7 @@
 
             <!-- Steps Header & Add Step Button -->
             <div class="d-flex align-items-center justify-content-between mb-2">
-                <label class="form-label fw-semibold text-dark small mb-0">Intermediate Steps</label>
+                <label class="form-label fw-semibold text-dark small mb-0" id="tpl-steps-heading">Intermediate Steps</label>
                 <button type="button" id="tpl_btn_add_step" class="btn btn-sm btn-primary d-flex align-items-center gap-1.5 py-1 px-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-plus-lg" viewBox="0 0 16 16">
                         <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/>
@@ -422,8 +422,22 @@ document.addEventListener('DOMContentLoaded', function () {
         return prototypeSelect && prototypeSelect.value === 'approval_clearance';
     }
 
-    function enforceThreeStepsIfApproval() {
-        if (isApprovalWorkflow()) {
+    function enforceSingleStepIfApproval() {
+        const isApproval = isApprovalWorkflow();
+        const stageRouteBadge = document.getElementById('tpl-stage-route-badge');
+        const stageRouteDesc = document.getElementById('tpl-stage-route-desc');
+        const stepsHeading = document.getElementById('tpl-steps-heading');
+
+        if (isApproval) {
+            if (stageRouteBadge) {
+                stageRouteBadge.textContent = '3 Fixed Stages (Open \u2192 Stage 1 \u2192 Closed)';
+            }
+            if (stageRouteDesc) {
+                stageRouteDesc.innerHTML = 'Approval / Clearance workflows follow 3 fixed stages: Start at <strong>Open</strong>, process through a single intermediate <strong>Stage 1</strong> (e.g. In Review / Sign-off), and finish at <strong>Closed</strong>.';
+            }
+            if (stepsHeading) {
+                stepsHeading.textContent = 'Intermediate Stage (Stage 1)';
+            }
             if (enableStageRoute) {
                 enableStageRoute.checked = true;
                 enableStageRoute.disabled = true;
@@ -431,22 +445,33 @@ document.addEventListener('DOMContentLoaded', function () {
             if (stageRouteControls) {
                 stageRouteControls.style.display = 'block';
             }
-            while (tplSteps.length < 3) {
+            if (tplSteps.length === 0) {
                 tplSteps.push({
-                    step_number: tplSteps.length + 1,
+                    step_number: 1,
                     stages: []
                 });
+            } else if (tplSteps.length > 1) {
+                tplSteps = [tplSteps[0]];
             }
-            if (tplSteps.length > 3) {
-                tplSteps = tplSteps.slice(0, 3);
+            tplSteps[0].step_number = 1;
+
+            if (tplSteps[0].stages && tplSteps[0].stages.length > 1) {
+                tplSteps[0].stages = [tplSteps[0].stages[0]];
             }
-            tplSteps.forEach((st, idx) => {
-                st.step_number = idx + 1;
-            });
+
             if (tplBtnAddStep) {
                 tplBtnAddStep.style.display = 'none';
             }
         } else {
+            if (stageRouteBadge) {
+                stageRouteBadge.textContent = 'Multi-Stage Steps Workflow';
+            }
+            if (stageRouteDesc) {
+                stageRouteDesc.innerHTML = 'Define linear steps for tickets of this type. Each step can offer one or multiple stage options (e.g., Step 2 can branch into Approved or Rejected). Tickets start at <strong>Open</strong> and conclude at <strong>Closed</strong>.';
+            }
+            if (stepsHeading) {
+                stepsHeading.textContent = 'Intermediate Steps';
+            }
             if (enableStageRoute) {
                 enableStageRoute.disabled = false;
             }
@@ -463,7 +488,8 @@ document.addEventListener('DOMContentLoaded', function () {
         tplSteps.forEach((st, idx) => {
             if (st.stages && st.stages.length > 0) {
                 hasAnyStages = true;
-                html += `<optgroup label="Step ${idx + 1}">`;
+                const optGroupLabel = isApprovalWorkflow() ? 'Intermediate Stage' : `Step ${idx + 1}`;
+                html += `<optgroup label="${optGroupLabel}">`;
                 st.stages.forEach(s => {
                     const isSel = String(selectedStageId) === String(s.id) ? 'selected' : '';
                     html += `<option value="${s.id}" ${isSel}>${escapeHtml(s.name)}</option>`;
@@ -479,11 +505,19 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function syncAllApproverStageDropdowns() {
+        const isApproval = isApprovalWorkflow();
+        const singleStage = (isApproval && tplSteps[0]?.stages?.[0]) ? tplSteps[0].stages[0] : null;
+
         const tplApproverStage = document.getElementById('tpl_approver_stage');
         if (tplApproverStage) {
             const currVal = tplApproverStage.value;
             tplApproverStage.innerHTML = renderStageOptionsForApprover(currVal);
-            if (currVal) tplApproverStage.value = currVal;
+            if (currVal) {
+                tplApproverStage.value = currVal;
+            }
+            if (!tplApproverStage.value && singleStage) {
+                tplApproverStage.value = singleStage.id;
+            }
         }
         const list = document.getElementById('tpl-approvers-list');
         if (list) {
@@ -491,7 +525,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 const idx = parseInt(sel.getAttribute('data-index'));
                 const currVal = tplApprovers[idx]?.stage_id || '';
                 sel.innerHTML = renderStageOptionsForApprover(currVal);
-                if (currVal) sel.value = currVal;
+                if (currVal) {
+                    sel.value = currVal;
+                    if (sel.value !== String(currVal) && singleStage) {
+                        sel.value = singleStage.id;
+                        tplApprovers[idx].stage_id = singleStage.id;
+                    }
+                } else if (singleStage) {
+                    sel.value = singleStage.id;
+                    tplApprovers[idx].stage_id = singleStage.id;
+                }
             });
         }
     }
@@ -501,7 +544,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (approvalSection) {
             approvalSection.style.display = isApproval ? 'block' : 'none';
         }
-        enforceThreeStepsIfApproval();
+        enforceSingleStepIfApproval();
         renderTplStepsList();
         syncAllApproverStageDropdowns();
     }
@@ -844,13 +887,18 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!tplStepsContainer) return;
         tplStepsContainer.innerHTML = '';
 
+        const isApproval = isApprovalWorkflow();
+
         if (tplSteps.length === 0) {
-            if (tplNoStepsPlaceholder) tplNoStepsPlaceholder.style.display = 'block';
+            if (tplNoStepsPlaceholder) {
+                tplNoStepsPlaceholder.innerHTML = isApproval
+                    ? 'No intermediate stage selected yet. Select a stage below to define <strong>Stage 1</strong>.'
+                    : 'No intermediate steps added yet. Click <strong>"Add Step"</strong> to add a step with one or more selectable stages.';
+                tplNoStepsPlaceholder.style.display = 'block';
+            }
             return;
         }
         if (tplNoStepsPlaceholder) tplNoStepsPlaceholder.style.display = 'none';
-
-        const isApproval = isApprovalWorkflow();
 
         tplSteps.forEach((step, stepIndex) => {
             const stepCard = document.createElement('div');
@@ -878,28 +926,38 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
             `;
 
+            const stepBadgeText = isApproval ? 'Stage 1 (Intermediate Stage)' : `Step ${stepIndex + 1}`;
+            const stepOptionsText = isApproval
+                ? (step.stages && step.stages.length > 0 ? 'Single stage configured' : 'No stage configured')
+                : `${step.stages.length} option${step.stages.length === 1 ? '' : 's'}`;
+
+            const addStageBtnText = isApproval && step.stages && step.stages.length > 0 ? 'Change Stage' : '+ Add Stage';
+            const selectPlaceholder = isApproval
+                ? 'Select intermediate stage (Open \u2192 Stage 1 \u2192 Closed)...'
+                : `Select stage to add to Step ${stepIndex + 1}...`;
+
             stepCard.innerHTML = `
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-primary px-2.5 py-1">Step ${stepIndex + 1}${isApproval ? ' (Fixed)' : ''}</span>
-                        <span class="small text-muted fw-semibold">(${step.stages.length} option${step.stages.length === 1 ? '' : 's'})</span>
+                        <span class="badge bg-primary px-2.5 py-1">${stepBadgeText}</span>
+                        <span class="small text-muted fw-semibold">(${stepOptionsText})</span>
                     </div>
                     ${stepHeaderActions}
                 </div>
 
                 <div class="d-flex flex-wrap gap-2 mb-2 align-items-center min-vh-20">
-                    ${stagesBadgesHtml || '<small class="text-muted fst-italic py-1">No stages in this step yet. Add at least one stage below.</small>'}
+                    ${stagesBadgesHtml || (isApproval ? '<small class="text-muted fst-italic py-1">No intermediate stage selected yet. Select a stage below.</small>' : '<small class="text-muted fst-italic py-1">No stages in this step yet. Add at least one stage below.</small>')}
                 </div>
 
                 <div class="row g-2 align-items-center mt-1">
                     <div class="col-sm-8 col-md-9">
                         <select class="form-select form-select-sm tpl-add-stage-select" data-step-index="${stepIndex}">
-                            <option value="">Select stage to add to Step ${stepIndex + 1}...</option>
+                            <option value="">${selectPlaceholder}</option>
                             ${availableOptionsHtml}
                         </select>
                     </div>
                     <div class="col-sm-4 col-md-3">
-                        <button type="button" class="btn btn-sm btn-outline-primary w-100 btn-add-stage-to-step" data-step-index="${stepIndex}">+ Add Stage</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary w-100 btn-add-stage-to-step" data-step-index="${stepIndex}">${addStageBtnText}</button>
                     </div>
                 </div>
             `;
@@ -957,14 +1015,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 const targetStep = tplSteps[stepIdx];
                 if (!targetStep) return;
 
-                if (targetStep.stages.some(s => String(s.id) === String(stageId))) {
-                    alert('This stage is already added to this step.');
-                    return;
+                if (isApprovalWorkflow()) {
+                    targetStep.stages = [{
+                        id: parseInt(stageId),
+                        name: stageName,
+                        color_code: stageColor
+                    }];
+                } else {
+                    if (targetStep.stages.some(s => String(s.id) === String(stageId))) {
+                        alert('This stage is already added to this step.');
+                        return;
+                    }
+
+                    targetStep.stages.push({
+                        id: parseInt(stageId),
+                        name: stageName,
+                        color_code: stageColor
+                    });
                 }
 
-                targetStep.stages.push({
-                    id: parseInt(stageId),
-                    name: stageName,
+                renderTplStepsList();
+                syncAllApproverStageDropdowns();
+                serializeTemplate();
+            });
+        });
                     color_code: stageColor
                 });
 
@@ -1098,14 +1172,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (enableStageRoute && enableStageRoute.checked) {
             const validSteps = isApproval
-                ? tplSteps.slice(0, 3).map((st, idx) => ({
-                    step_number: idx + 1,
-                    stages: (st.stages || []).map(s => ({
-                        id: parseInt(s.id),
-                        name: s.name,
-                        color_code: s.color_code
+                ? tplSteps.slice(0, 1)
+                    .map((st) => ({
+                        step_number: 1,
+                        stages: (st.stages || []).slice(0, 1).map(s => ({
+                            id: parseInt(s.id),
+                            name: s.name,
+                            color_code: s.color_code
+                        }))
                     }))
-                }))
+                    .filter(st => st.stages.length > 0)
                 : tplSteps
                     .filter(st => Array.isArray(st.stages) && st.stages.length > 0)
                     .map((st, idx) => ({

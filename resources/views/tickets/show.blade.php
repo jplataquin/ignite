@@ -91,7 +91,7 @@
                 }
             }
 
-            $stepLabel = $matchedStage ? $matchedStage['name'] : ('Step ' . ($idx + 1));
+            $stepLabel = $matchedStage ? $matchedStage['name'] : (! empty($st['stages']) && count($st['stages']) === 1 ? $st['stages'][0]['name'] : ('Step ' . ($idx + 1)));
             $displaySteps[] = [
                 'type' => 'step',
                 'name' => $stepLabel,

@@ -549,7 +549,7 @@ class ApprovalPrototypeTest extends TestCase
     }
 
     /**
-     * Test approval clearance ticket can have and advance through custom stage route.
+     * Test approval clearance ticket can have and advance through custom stage route (Open -> Stage 1 -> Closed).
      */
     public function test_approval_clearance_ticket_can_use_custom_stage_route_and_advance_stages(): void
     {
@@ -558,8 +558,7 @@ class ApprovalPrototypeTest extends TestCase
         $openStage = TicketStage::firstOrCreate(['slug' => 'open'], ['name' => 'Open', 'color_code' => '#F59E0B']);
         $closedStage = TicketStage::firstOrCreate(['slug' => 'closed'], ['name' => 'Closed', 'color_code' => '#6B7280']);
 
-        $stage1 = TicketStage::create(['name' => 'Initial Review', 'slug' => 'initial-review', 'color_code' => '#111111']);
-        $stage2 = TicketStage::create(['name' => 'Clearance In Progress', 'slug' => 'clearance-in-progress', 'color_code' => '#222222']);
+        $stage1 = TicketStage::create(['name' => 'Clearance In Progress', 'slug' => 'clearance-in-progress', 'color_code' => '#222222']);
 
         $d['approvalType']->update([
             'template_json' => [
@@ -568,12 +567,6 @@ class ApprovalPrototypeTest extends TestCase
                         'step_number' => 1,
                         'stages' => [
                             ['id' => $stage1->id, 'name' => $stage1->name, 'color_code' => $stage1->color_code],
-                        ],
-                    ],
-                    [
-                        'step_number' => 2,
-                        'stages' => [
-                            ['id' => $stage2->id, 'name' => $stage2->name, 'color_code' => $stage2->color_code],
                         ],
                     ],
                 ],
@@ -604,14 +597,14 @@ class ApprovalPrototypeTest extends TestCase
         $viewResponse = $this->actingAs($d['approver1'])->get("/tickets/{$ticket->id}");
         $viewResponse->assertStatus(200);
         $viewResponse->assertSee('Open');
-        $viewResponse->assertSee('Advance to Initial Review');
+        $viewResponse->assertSee('Advance to Clearance In Progress');
         $viewResponse->assertDontSee('Close Ticket');
 
         // Creator should see 'Close Ticket'
         $creatorViewResponse = $this->actingAs($d['creator'])->get("/tickets/{$ticket->id}");
         $creatorViewResponse->assertSee('Close Ticket');
 
-        // 3. Approver advances stage to Initial Review
+        // 3. Approver advances stage to Clearance In Progress (Stage 1)
         $advanceResponse = $this->actingAs($d['approver1'])->post("/tickets/{$ticket->id}/advance-stage", [
             'target_stage_id' => $stage1->id,
         ]);
@@ -619,19 +612,12 @@ class ApprovalPrototypeTest extends TestCase
         $advanceResponse->assertSessionHas('success');
         $this->assertEquals($stage1->id, $ticket->fresh()->stage_id);
 
-        // 4. Approver advances to Clearance In Progress
-        $advanceResponse2 = $this->actingAs($d['approver1'])->post("/tickets/{$ticket->id}/advance-stage", [
-            'target_stage_id' => $stage2->id,
-        ]);
-        $advanceResponse2->assertRedirect();
-        $this->assertEquals($stage2->id, $ticket->fresh()->stage_id);
-
-        // 5. Admin advances to Closed -> Status transitions to Done
+        // 4. Admin advances to Closed -> Status transitions to Done
         $admin = User::factory()->create(['user_type' => 'admin', 'is_approved' => true]);
-        $advanceResponse3 = $this->actingAs($admin)->post("/tickets/{$ticket->id}/advance-stage", [
+        $advanceResponse2 = $this->actingAs($admin)->post("/tickets/{$ticket->id}/advance-stage", [
             'target_stage_id' => $closedStage->id,
         ]);
-        $advanceResponse3->assertRedirect();
+        $advanceResponse2->assertRedirect();
         $this->assertEquals($closedStage->id, $ticket->fresh()->stage_id);
         $this->assertEquals('Done', $ticket->fresh()->status);
     }
