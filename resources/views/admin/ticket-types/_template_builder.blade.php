@@ -308,7 +308,7 @@
 
                 <div id="tpl-approver-controls" class="p-3 bg-light rounded border mb-2" style="display: none;">
                     <div class="row g-2 mb-3 align-items-start">
-                        <div class="col-md-5">
+                        <div class="col-md-4">
                             <label for="tpl_approver_search" class="form-label fw-semibold text-dark small mb-1">Add Approver</label>
                             <div class="position-relative">
                                 <div class="input-group input-group-sm">
@@ -323,9 +323,15 @@
                                 <ul id="tpl-approver-autocomplete" class="dropdown-menu w-100 shadow border-0 py-0" style="max-height: 220px; overflow-y: auto; z-index: 1050; font-size: 0.85rem; position: absolute; top: 100%; left: 0; display: none;"></ul>
                             </div>
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-md-3">
+                            <label for="tpl_approver_stage" class="form-label fw-semibold text-dark small mb-1">Assigned Stage</label>
+                            <select id="tpl_approver_stage" class="form-select form-select-sm" disabled>
+                                <option value="">Select Stage...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
                             <label for="tpl_approver_desc" class="form-label fw-semibold text-dark small mb-1">Checklist Description</label>
-                            <textarea id="tpl_approver_desc" class="form-control form-control-sm" rows="2" placeholder="Sign-off description / requirements (e.g. IT Equipment, Finance clearance)..." disabled></textarea>
+                            <textarea id="tpl_approver_desc" class="form-control form-control-sm" rows="1" placeholder="Sign-off description / requirements..." disabled></textarea>
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
                             <button type="button" id="tpl_btn_add_approver" class="btn btn-sm btn-primary w-100 text-nowrap" style="margin-top: 24px;" disabled>Add to Checklist</button>
@@ -392,8 +398,15 @@ document.addEventListener('DOMContentLoaded', function () {
         lockCheckbox.addEventListener('change', serializeTemplate);
     });
 
-    // Approval & Clearance Checklist Logic
+    // Approval & Clearance Checklist & Stage Route State
     let tplApprovers = [];
+    let tplSteps = [];
+
+    const enableStageRoute = document.getElementById('tpl_enable_stage_route');
+    const stageRouteControls = document.getElementById('tpl-stage-route-controls');
+    const tplBtnAddStep = document.getElementById('tpl_btn_add_step');
+    const tplStepsContainer = document.getElementById('tpl-steps-container');
+    const tplNoStepsPlaceholder = document.getElementById('tpl-no-steps-placeholder');
 
     function escapeHtml(str) {
         if (!str) return '';
@@ -405,11 +418,92 @@ document.addEventListener('DOMContentLoaded', function () {
             .replace(/'/g, '&#039;');
     }
 
+    function isApprovalWorkflow() {
+        return prototypeSelect && prototypeSelect.value === 'approval_clearance';
+    }
+
+    function enforceThreeStepsIfApproval() {
+        if (isApprovalWorkflow()) {
+            if (enableStageRoute) {
+                enableStageRoute.checked = true;
+                enableStageRoute.disabled = true;
+            }
+            if (stageRouteControls) {
+                stageRouteControls.style.display = 'block';
+            }
+            while (tplSteps.length < 3) {
+                tplSteps.push({
+                    step_number: tplSteps.length + 1,
+                    stages: []
+                });
+            }
+            if (tplSteps.length > 3) {
+                tplSteps = tplSteps.slice(0, 3);
+            }
+            tplSteps.forEach((st, idx) => {
+                st.step_number = idx + 1;
+            });
+            if (tplBtnAddStep) {
+                tplBtnAddStep.style.display = 'none';
+            }
+        } else {
+            if (enableStageRoute) {
+                enableStageRoute.disabled = false;
+            }
+            if (tplBtnAddStep) {
+                tplBtnAddStep.style.display = '';
+            }
+        }
+    }
+
+    function renderStageOptionsForApprover(selectedStageId) {
+        let html = '<option value="">Select Stage...</option>';
+        let hasAnyStages = false;
+
+        tplSteps.forEach((st, idx) => {
+            if (st.stages && st.stages.length > 0) {
+                hasAnyStages = true;
+                html += `<optgroup label="Step ${idx + 1}">`;
+                st.stages.forEach(s => {
+                    const isSel = String(selectedStageId) === String(s.id) ? 'selected' : '';
+                    html += `<option value="${s.id}" ${isSel}>${escapeHtml(s.name)}</option>`;
+                });
+                html += `</optgroup>`;
+            }
+        });
+
+        if (!hasAnyStages) {
+            html += '<option value="" disabled>No stages defined in steps yet</option>';
+        }
+        return html;
+    }
+
+    function syncAllApproverStageDropdowns() {
+        const tplApproverStage = document.getElementById('tpl_approver_stage');
+        if (tplApproverStage) {
+            const currVal = tplApproverStage.value;
+            tplApproverStage.innerHTML = renderStageOptionsForApprover(currVal);
+            if (currVal) tplApproverStage.value = currVal;
+        }
+        const list = document.getElementById('tpl-approvers-list');
+        if (list) {
+            list.querySelectorAll('.tpl-signoff-stage').forEach(sel => {
+                const idx = parseInt(sel.getAttribute('data-index'));
+                const currVal = tplApprovers[idx]?.stage_id || '';
+                sel.innerHTML = renderStageOptionsForApprover(currVal);
+                if (currVal) sel.value = currVal;
+            });
+        }
+    }
+
     function syncPrototype() {
-        const isApproval = prototypeSelect && prototypeSelect.value === 'approval_clearance';
+        const isApproval = isApprovalWorkflow();
         if (approvalSection) {
             approvalSection.style.display = isApproval ? 'block' : 'none';
         }
+        enforceThreeStepsIfApproval();
+        renderTplStepsList();
+        syncAllApproverStageDropdowns();
     }
 
     if (prototypeSelect) {
@@ -417,7 +511,6 @@ document.addEventListener('DOMContentLoaded', function () {
             syncPrototype();
             serializeTemplate();
         });
-        syncPrototype();
     }
 
     function renderTplApproversList() {
@@ -440,8 +533,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="d-flex align-items-start flex-grow-1 gap-2 flex-wrap">
                     <span class="badge bg-secondary mt-1">#${index + 1}</span>
                     <span class="fw-semibold text-dark small mt-1" style="min-width: 140px;">${escapeHtml(appr.name)}</span>
-                    <div class="flex-grow-1" style="min-width: 260px; max-width: 450px;">
-                        <textarea class="form-control form-control-sm tpl-signoff-desc" rows="2" data-index="${index}" placeholder="Sign-off description / instructions...">${escapeHtml(appr.signoff_description || '')}</textarea>
+                    <div style="min-width: 170px;">
+                        <select class="form-select form-select-sm tpl-signoff-stage" data-index="${index}" title="Select Assigned Stage">
+                            ${renderStageOptionsForApprover(appr.stage_id)}
+                        </select>
+                    </div>
+                    <div class="flex-grow-1" style="min-width: 220px; max-width: 380px;">
+                        <textarea class="form-control form-control-sm tpl-signoff-desc" rows="1" data-index="${index}" placeholder="Sign-off description / instructions...">${escapeHtml(appr.signoff_description || '')}</textarea>
                     </div>
                 </div>
                 <div class="btn-group btn-group-sm mt-1">
@@ -451,6 +549,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
             `;
             list.appendChild(li);
+        });
+
+        list.querySelectorAll('.tpl-signoff-stage').forEach(sel => {
+            sel.addEventListener('change', function () {
+                const idx = parseInt(this.getAttribute('data-index'));
+                if (tplApprovers[idx]) {
+                    tplApprovers[idx].stage_id = this.value ? parseInt(this.value) : null;
+                }
+                serializeTemplate();
+            });
         });
 
         list.querySelectorAll('.tpl-signoff-desc').forEach(input => {
@@ -511,6 +619,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const tplApproverSearch = document.getElementById('tpl_approver_search');
     const tplApproverId = document.getElementById('tpl_approver_id');
     const tplApproverAutocomplete = document.getElementById('tpl-approver-autocomplete');
+    const tplApproverStage = document.getElementById('tpl_approver_stage');
     const tplApproverDesc = document.getElementById('tpl_approver_desc');
     const tplBtnAddApprover = document.getElementById('tpl_btn_add_approver');
 
@@ -584,17 +693,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            const selectedStage = tplApproverStage && tplApproverStage.value ? parseInt(tplApproverStage.value) : null;
             const signoffDesc = tplApproverDesc ? tplApproverDesc.value.trim() : '';
 
             tplApprovers.push({
                 id: userId,
                 name: userName,
+                stage_id: selectedStage,
                 signoff_description: signoffDesc,
             });
 
             if (tplApproverId) tplApproverId.value = '';
             if (tplApproverSearch) tplApproverSearch.value = '';
             if (tplApproverDesc) tplApproverDesc.value = '';
+            if (tplApproverStage) tplApproverStage.value = '';
             renderTplApproversList();
             serializeTemplate();
         });
@@ -634,6 +746,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const isEnabled = this.checked;
             if (approverControls) approverControls.style.display = isEnabled ? 'block' : 'none';
             if (tplApproverSearch) tplApproverSearch.disabled = !isEnabled;
+            if (tplApproverStage) tplApproverStage.disabled = !isEnabled;
             if (tplApproverDesc) tplApproverDesc.disabled = !isEnabled;
             if (tplBtnAddApprover) tplBtnAddApprover.disabled = !isEnabled;
             if (!isEnabled && tplApproverAutocomplete) tplApproverAutocomplete.style.display = 'none';
@@ -690,6 +803,7 @@ document.addEventListener('DOMContentLoaded', function () {
             enableApprovers.checked = true;
             if (approverControls) approverControls.style.display = 'block';
             if (tplApproverSearch) tplApproverSearch.disabled = false;
+            if (tplApproverStage) tplApproverStage.disabled = false;
             if (tplApproverDesc) tplApproverDesc.disabled = false;
             if (tplBtnAddApprover) tplBtnAddApprover.disabled = false;
             if (lockAddApprovers) {
@@ -707,6 +821,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 tplApprovers = approvalData.approvers.map(a => ({
                     id: a.id,
                     name: a.name,
+                    stage_id: a.stage_id ? parseInt(a.stage_id) : null,
                     signoff_description: a.signoff_description || ''
                 }));
                 renderTplApproversList();
@@ -715,13 +830,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- STAGE ROUTE MANAGEMENT (MULTI-STAGE STEPS) ---
-    let tplSteps = [];
-    const enableStageRoute = document.getElementById('tpl_enable_stage_route');
-    const stageRouteControls = document.getElementById('tpl-stage-route-controls');
-    const tplBtnAddStep = document.getElementById('tpl_btn_add_step');
-    const tplStepsContainer = document.getElementById('tpl-steps-container');
-    const tplNoStepsPlaceholder = document.getElementById('tpl-no-steps-placeholder');
-
     const allAvailableStages = [
         @if(isset($ticketStages))
             @foreach($ticketStages as $stg)
@@ -742,6 +850,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         if (tplNoStepsPlaceholder) tplNoStepsPlaceholder.style.display = 'none';
 
+        const isApproval = isApprovalWorkflow();
+
         tplSteps.forEach((step, stepIndex) => {
             const stepCard = document.createElement('div');
             stepCard.className = 'card p-3 mb-2 bg-white border tpl-step-item shadow-none';
@@ -760,17 +870,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 </span>
             `).join('');
 
-            stepCard.innerHTML = `
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-primary px-2.5 py-1">Step ${stepIndex + 1}</span>
-                        <span class="small text-muted fw-semibold">(${step.stages.length} option${step.stages.length === 1 ? '' : 's'})</span>
-                    </div>
+            const stepHeaderActions = isApproval ? '' : `
                     <div class="btn-group btn-group-sm">
                         <button type="button" class="btn btn-outline-secondary py-0 px-2 btn-step-up" data-step-index="${stepIndex}" ${stepIndex === 0 ? 'disabled' : ''} title="Move Step Up">&uarr;</button>
                         <button type="button" class="btn btn-outline-secondary py-0 px-2 btn-step-down" data-step-index="${stepIndex}" ${stepIndex === tplSteps.length - 1 ? 'disabled' : ''} title="Move Step Down">&darr;</button>
                         <button type="button" class="btn btn-outline-danger py-0 px-2 btn-remove-step" data-step-index="${stepIndex}" title="Delete Step">&times; Delete Step</button>
                     </div>
+            `;
+
+            stepCard.innerHTML = `
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary px-2.5 py-1">Step ${stepIndex + 1}${isApproval ? ' (Fixed)' : ''}</span>
+                        <span class="small text-muted fw-semibold">(${step.stages.length} option${step.stages.length === 1 ? '' : 's'})</span>
+                    </div>
+                    ${stepHeaderActions}
                 </div>
 
                 <div class="d-flex flex-wrap gap-2 mb-2 align-items-center min-vh-20">
@@ -855,6 +969,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 renderTplStepsList();
+                syncAllApproverStageDropdowns();
                 serializeTemplate();
             });
         });
@@ -866,10 +981,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (tplSteps[stepIdx] && tplSteps[stepIdx].stages) {
                     tplSteps[stepIdx].stages.splice(stgIdx, 1);
                     renderTplStepsList();
+                    syncAllApproverStageDropdowns();
                     serializeTemplate();
                 }
             });
         });
+
+        syncAllApproverStageDropdowns();
     }
 
     if (enableStageRoute) {
@@ -905,7 +1023,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 color_code: s.color_code || '#6b7280'
             })) : []
         }));
-        renderTplStepsList();
     } else if (Array.isArray(initialTemplate.stages) && initialTemplate.stages.length > 0) {
         // Backwards compatibility with flat stages format
         if (enableStageRoute) {
@@ -920,8 +1037,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 color_code: s.color_code || '#6b7280'
             }]
         }));
-        renderTplStepsList();
     }
+
+    syncPrototype();
 
     function serializeTemplate() {
         const result = { fields: {} };
@@ -942,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        const isApproval = prototypeSelect && prototypeSelect.value === 'approval_clearance';
+        const isApproval = isApprovalWorkflow();
         if (isApproval) {
             const approvalObj = {};
 
@@ -964,6 +1082,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     approvalObj.approvers = tplApprovers.map((a, idx) => ({
                         id: a.id,
                         name: a.name,
+                        stage_id: a.stage_id ? parseInt(a.stage_id) : null,
                         sequence_order: idx + 1,
                         signoff_description: a.signoff_description || ''
                     }));
@@ -978,16 +1097,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (enableStageRoute && enableStageRoute.checked) {
-            const validSteps = tplSteps
-                .filter(st => Array.isArray(st.stages) && st.stages.length > 0)
-                .map((st, idx) => ({
+            const validSteps = isApproval
+                ? tplSteps.slice(0, 3).map((st, idx) => ({
                     step_number: idx + 1,
-                    stages: st.stages.map(s => ({
+                    stages: (st.stages || []).map(s => ({
                         id: parseInt(s.id),
                         name: s.name,
                         color_code: s.color_code
                     }))
-                }));
+                }))
+                : tplSteps
+                    .filter(st => Array.isArray(st.stages) && st.stages.length > 0)
+                    .map((st, idx) => ({
+                        step_number: idx + 1,
+                        stages: st.stages.map(s => ({
+                            id: parseInt(s.id),
+                            name: s.name,
+                            color_code: s.color_code
+                        }))
+                    }));
 
             if (validSteps.length > 0) {
                 hasActive = true;
