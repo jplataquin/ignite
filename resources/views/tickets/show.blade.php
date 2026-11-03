@@ -20,6 +20,15 @@
         </button>
 
         @if(Auth::id() === $ticket->created_by || (Auth::user() && Auth::user()->user_type === 'admin'))
+            @if($ticket->status !== 'Done' && !in_array($ticket->stage?->slug, ['closed', 'canceled']))
+                <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-2" style="min-height: 38px;" data-bs-toggle="modal" data-bs-target="#setSlaModal">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calendar-event" viewBox="0 0 16 16">
+                        <path d="M11 6.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5z"/>
+                        <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/>
+                    </svg>
+                    <span>Set SLA Date</span>
+                </button>
+            @endif
             <a href="{{ route('tickets.edit', $ticket) }}" class="btn btn-primary d-flex align-items-center gap-2" style="min-height: 38px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
                     <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
@@ -436,7 +445,14 @@
                 </div>
                 @endif
                 <div>
-                    <span class="text-muted small d-block">Deadline SLA</span>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="text-muted small d-block">Deadline SLA</span>
+                        @if((Auth::id() === $ticket->created_by || (Auth::user() && Auth::user()->user_type === 'admin')) && $ticket->status !== 'Done' && !in_array($ticket->stage?->slug, ['closed', 'canceled']))
+                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none small" data-bs-toggle="modal" data-bs-target="#setSlaModal" style="font-size: 0.8rem;">
+                                Edit SLA
+                            </button>
+                        @endif
+                    </div>
                     @if($ticket->deadline_date)
                         <span class="fw-semibold text-dark">{{ $ticket->deadline_date->format('M d, Y H:i') }}</span>
                     @elseif($ticket->calculated_deadline)
@@ -738,6 +754,24 @@
                 @endif
             @endif
 
+            @php
+                $canSetSla = (Auth::id() === $ticket->created_by || (Auth::user() && Auth::user()->user_type === 'admin'))
+                    && $ticket->status !== 'Done'
+                    && !in_array($ticket->stage?->slug, ['closed', 'canceled']);
+            @endphp
+
+            @if($canSetSla)
+                <div class="mt-3 pt-3 border-top">
+                    <button type="button" class="btn btn-sm btn-outline-primary w-100 d-flex align-items-center justify-content-center" style="min-height: 36px;" data-bs-toggle="modal" data-bs-target="#setSlaModal">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-calendar-event me-1.5" viewBox="0 0 16 16">
+                            <path d="M11 6.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5z"/>
+                            <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/>
+                        </svg>
+                        Set SLA Date
+                    </button>
+                </div>
+            @endif
+
             <hr class="my-3 text-muted">
 
             <div>
@@ -891,6 +925,58 @@
                 <div class="modal-footer border-top-0 pt-1">
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary btn-sm px-3">Reassign Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
+@if((Auth::id() === $ticket->created_by || (Auth::user() && Auth::user()->user_type === 'admin')) && $ticket->status !== 'Done' && !in_array($ticket->stage?->slug, ['closed', 'canceled']))
+<!-- Set SLA Date Modal -->
+<div class="modal fade" id="setSlaModal" tabindex="-1" aria-labelledby="setSlaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header bg-light border-bottom-0 pb-1" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h5 class="modal-title fw-bold text-dark" id="setSlaModalLabel">Set Ticket SLA Date</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ route('tickets.set-sla', $ticket) }}" method="POST">
+                @csrf
+                <div class="modal-body py-3">
+                    <p class="text-muted small mb-3">Set or update the manual SLA deadline date and time for this ticket.</p>
+                    
+                    <div class="mb-3">
+                        <label for="modal_deadline_date" class="form-label fw-semibold text-dark small">Deadline SLA Date & Time</label>
+                        <input type="datetime-local" id="modal_deadline_date" name="deadline_date" class="form-control @error('deadline_date') is-invalid @enderror" value="{{ old('deadline_date', $ticket->deadline_date ? $ticket->deadline_date->format('Y-m-d\TH:i') : ($ticket->calculated_deadline ? $ticket->calculated_deadline->format('Y-m-d\TH:i') : '')) }}" required>
+                        @error('deadline_date')
+                            <span class="invalid-feedback" role="alert">
+                                <strong>{{ $message }}</strong>
+                            </span>
+                        @enderror
+                        <div class="form-text small text-muted mt-2">
+                            @if($ticket->deadline_date)
+                                Current manual SLA: <strong>{{ $ticket->deadline_date->format('M d, Y H:i') }}</strong>
+                            @elseif($ticket->calculated_deadline)
+                                Calculated priority SLA: <strong>{{ $ticket->calculated_deadline->format('M d, Y H:i') }}</strong>
+                            @else
+                                No SLA deadline currently set.
+                            @endif
+                        </div>
+                    </div>
+
+                    @if($ticket->deadline_date)
+                    <div class="form-check mt-3 pt-2 border-top">
+                        <input class="form-check-input" type="checkbox" name="clear_sla" id="modal_clear_sla" value="1" onchange="const input = document.getElementById('modal_deadline_date'); input.disabled = this.checked; if(this.checked) { input.removeAttribute('required'); } else { input.setAttribute('required', 'required'); }">
+                        <label class="form-check-label small text-muted" for="modal_clear_sla">
+                            Clear manual SLA (revert to priority-calculated SLA)
+                        </label>
+                    </div>
+                    @endif
+                </div>
+                <div class="modal-footer border-top-0 pt-1">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-3">Save SLA Date</button>
                 </div>
             </form>
         </div>

@@ -1325,4 +1325,52 @@ class TicketController extends Controller
             return redirect()->back()->with('success', 'Ticket closed successfully.');
         });
     }
+
+    /**
+     * Manually set or clear the SLA deadline date for a ticket by its author/creator or administrator.
+     */
+    public function setSla(Request $request, Ticket $ticket)
+    {
+        $user = Auth::user();
+        if (! $user) {
+            abort(403);
+        }
+
+        // Only the ticket author/creator or an administrator can manually set the SLA date
+        if ($ticket->created_by !== $user->id && $user->user_type !== 'admin') {
+            abort(403, 'Only the author or creator of the ticket can set the SLA date.');
+        }
+
+        // Cannot update SLA on closed or canceled tickets
+        if ($ticket->status === 'Done' || in_array($ticket->stage?->slug, ['closed', 'canceled'])) {
+            return redirect()->back()->with('error', 'Cannot update SLA date on a closed or canceled ticket.');
+        }
+
+        if ($request->boolean('clear_sla')) {
+            DB::transaction(function () use ($ticket) {
+                $ticket->deadline_date = null;
+                if ($ticket->status === 'Lapsed' && $ticket->calculated_deadline && $ticket->calculated_deadline->isFuture()) {
+                    $ticket->status = 'Valid';
+                }
+                $ticket->save();
+            });
+
+            return redirect()->route('tickets.show', $ticket)->with('success', 'Ticket SLA deadline reset to priority default.');
+        }
+
+        $validated = $request->validate([
+            'deadline_date' => 'required|date',
+        ]);
+
+        DB::transaction(function () use ($ticket, $validated) {
+            $newDeadline = Carbon::parse($validated['deadline_date']);
+            $ticket->deadline_date = $newDeadline;
+            if ($ticket->status === 'Lapsed' && $newDeadline->isFuture()) {
+                $ticket->status = 'Valid';
+            }
+            $ticket->save();
+        });
+
+        return redirect()->route('tickets.show', $ticket)->with('success', 'Ticket SLA deadline updated successfully.');
+    }
 }

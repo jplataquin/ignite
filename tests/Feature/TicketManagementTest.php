@@ -3787,4 +3787,358 @@ class TicketManagementTest extends TestCase
             'content' => 'No longer needed.',
         ]);
     }
+
+    /**
+     * Test that ticket creator can view dedicated Set SLA Date button and modal, and set manual SLA date.
+     */
+    public function test_ticket_creator_can_manually_set_sla_date_via_modal_action(): void
+    {
+        $division = Division::create(['name' => 'IT Div']);
+        $department = Department::create(['name' => 'Support Dept', 'division_id' => $division->id]);
+
+        $creator = User::factory()->create([
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'user_type' => 'regular',
+        ]);
+
+        $stageOpen = TicketStage::firstOrCreate(['slug' => 'open'], ['name' => 'Open', 'color_code' => '#1']);
+        $priority = Priority::create(['name' => 'Medium', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'General Inquiry']);
+        $category = Category::create(['name' => 'Inquiry Cat', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-SLA-MODAL-1',
+            'title' => 'Manual SLA Test Ticket',
+            'description' => 'Testing manual SLA modal action',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priority->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'created_by' => $creator->id,
+            'deadline_date' => null,
+        ]);
+
+        // 1. Creator visits show page -> should see Set SLA Date button and modal
+        $viewResponse = $this->actingAs($creator)->get(route('tickets.show', $ticket));
+        $viewResponse->assertOk();
+        $viewResponse->assertSee('Set SLA Date');
+        $viewResponse->assertSee('id="setSlaModal"', false);
+        $viewResponse->assertSee(route('tickets.set-sla', $ticket));
+
+        // 2. Creator submits modal form to set SLA deadline
+        $targetDeadline = now()->addDays(7)->startOfMinute();
+        $response = $this->actingAs($creator)->post(route('tickets.set-sla', $ticket), [
+            'deadline_date' => $targetDeadline->format('Y-m-d\TH:i'),
+        ]);
+
+        $response->assertRedirect(route('tickets.show', $ticket));
+        $response->assertSessionHas('success', 'Ticket SLA deadline updated successfully.');
+
+        $ticket->refresh();
+        $this->assertNotNull($ticket->deadline_date);
+        $this->assertEquals($targetDeadline->format('Y-m-d H:i'), $ticket->deadline_date->format('Y-m-d H:i'));
+
+        // Assert audit trail system comment was generated
+        $this->assertDatabaseHas('ticket_comments', [
+            'ticket_id' => $ticket->id,
+            'type' => 'system_event',
+        ]);
+
+        $comment = TicketComment::where('ticket_id', $ticket->id)->where('type', 'system_event')->latest('id')->first();
+        $this->assertStringContainsString('Deadline SLA updated from \'None\' to', $comment->content);
+    }
+
+    /**
+     * Test that an administrator can also manually set the SLA date.
+     */
+    public function test_admin_can_manually_set_sla_date_for_any_ticket(): void
+    {
+        $division = Division::create(['name' => 'Admin Test Div']);
+        $department = Department::create(['name' => 'Admin Test Dept', 'division_id' => $division->id]);
+
+        $creator = User::factory()->create([
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'user_type' => 'regular',
+        ]);
+        $admin = User::factory()->create(['user_type' => 'admin']);
+
+        $stageOpen = TicketStage::firstOrCreate(['slug' => 'open'], ['name' => 'Open', 'color_code' => '#1']);
+        $priority = Priority::create(['name' => 'Low', 'level' => 1]);
+        $ticketType = TicketType::create(['name' => 'Service Request']);
+        $category = Category::create(['name' => 'Request Cat', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-SLA-ADMIN-1',
+            'title' => 'Admin Manual SLA Ticket',
+            'description' => 'Admin sets SLA',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priority->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'created_by' => $creator->id,
+            'deadline_date' => null,
+        ]);
+
+        $targetDeadline = now()->addDays(4)->startOfMinute();
+        $response = $this->actingAs($admin)->post(route('tickets.set-sla', $ticket), [
+            'deadline_date' => $targetDeadline->format('Y-m-d\TH:i'),
+        ]);
+
+        $response->assertRedirect(route('tickets.show', $ticket));
+        $ticket->refresh();
+        $this->assertEquals($targetDeadline->format('Y-m-d H:i'), $ticket->deadline_date->format('Y-m-d H:i'));
+    }
+
+    /**
+     * Test that an unauthorized regular user cannot set the SLA date and cannot see the modal.
+     */
+    public function test_unauthorized_regular_user_cannot_set_sla_date(): void
+    {
+        $division = Division::create(['name' => 'Unauth Test Div']);
+        $department = Department::create(['name' => 'Unauth Test Dept', 'division_id' => $division->id]);
+
+        $creator = User::factory()->create([
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'user_type' => 'regular',
+        ]);
+        $otherUser = User::factory()->create([
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'user_type' => 'regular',
+        ]);
+
+        $stageOpen = TicketStage::firstOrCreate(['slug' => 'open'], ['name' => 'Open', 'color_code' => '#1']);
+        $priority = Priority::create(['name' => 'Low', 'level' => 1]);
+        $ticketType = TicketType::create(['name' => 'Support']);
+        $category = Category::create(['name' => 'Cat 1', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-SLA-UNAUTH-1',
+            'title' => 'Unauthorized SLA Test',
+            'description' => 'Desc',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priority->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'created_by' => $creator->id,
+            'deadline_date' => null,
+        ]);
+
+        // Unauthorized user should not see the modal
+        $viewResponse = $this->actingAs($otherUser)->get(route('tickets.show', $ticket));
+        $viewResponse->assertDontSee('id="setSlaModal"', false);
+
+        // Attempting to post directly gives 403 Forbidden
+        $response = $this->actingAs($otherUser)->post(route('tickets.set-sla', $ticket), [
+            'deadline_date' => now()->addDays(3)->format('Y-m-d\TH:i'),
+        ]);
+
+        $response->assertForbidden();
+        $this->assertNull($ticket->fresh()->deadline_date);
+    }
+
+    /**
+     * Test that the ticket creator can clear manual SLA date and revert to priority-calculated SLA.
+     */
+    public function test_creator_can_clear_manual_sla_date_and_revert_to_default(): void
+    {
+        $division = Division::create(['name' => 'Clear Test Div']);
+        $department = Department::create(['name' => 'Clear Test Dept', 'division_id' => $division->id]);
+
+        $creator = User::factory()->create([
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'user_type' => 'regular',
+        ]);
+
+        Setting::updateOrCreate(['key' => 'sla_days_high'], ['value' => '3']);
+
+        $stageOpen = TicketStage::firstOrCreate(['slug' => 'open'], ['name' => 'Open', 'color_code' => '#1']);
+        $priorityHigh = Priority::create(['name' => 'High', 'level' => 3]);
+        $ticketType = TicketType::create(['name' => 'General']);
+        $category = Category::create(['name' => 'General Cat', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-SLA-CLEAR-1',
+            'title' => 'Clear SLA Test Ticket',
+            'description' => 'Testing clearing manual SLA',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priorityHigh->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'created_by' => $creator->id,
+            'deadline_date' => now()->addDays(10),
+        ]);
+
+        // Clear manual SLA
+        $response = $this->actingAs($creator)->post(route('tickets.set-sla', $ticket), [
+            'clear_sla' => 1,
+        ]);
+
+        $response->assertRedirect(route('tickets.show', $ticket));
+        $response->assertSessionHas('success', 'Ticket SLA deadline reset to priority default.');
+
+        $ticket->refresh();
+        $this->assertNull($ticket->deadline_date);
+        // Calculated deadline should fallback to priority SLA
+        $this->assertNotNull($ticket->calculated_deadline);
+    }
+
+    /**
+     * Test that setting a future SLA deadline on a lapsed ticket resets status to Valid.
+     */
+    public function test_setting_future_sla_on_lapsed_ticket_resets_status_to_valid(): void
+    {
+        $division = Division::create(['name' => 'Lapsed Reset Div']);
+        $department = Department::create(['name' => 'Lapsed Reset Dept', 'division_id' => $division->id]);
+
+        $creator = User::factory()->create([
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'user_type' => 'regular',
+        ]);
+
+        $stageOpen = TicketStage::firstOrCreate(['slug' => 'open'], ['name' => 'Open', 'color_code' => '#1']);
+        $priority = Priority::create(['name' => 'Critical', 'level' => 4]);
+        $ticketType = TicketType::create(['name' => 'Urgent']);
+        $category = Category::create(['name' => 'Urgent Cat', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-SLA-LAPSED-RESET',
+            'title' => 'Lapsed Reset Ticket',
+            'description' => 'Testing lapsed to valid transition',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priority->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Lapsed',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'created_by' => $creator->id,
+            'deadline_date' => now()->subDay(),
+        ]);
+
+        $futureDeadline = now()->addDays(5)->startOfMinute();
+        $response = $this->actingAs($creator)->post(route('tickets.set-sla', $ticket), [
+            'deadline_date' => $futureDeadline->format('Y-m-d\TH:i'),
+        ]);
+
+        $response->assertRedirect(route('tickets.show', $ticket));
+        $ticket->refresh();
+        $this->assertEquals('Valid', $ticket->status);
+        $this->assertEquals($futureDeadline->format('Y-m-d H:i'), $ticket->deadline_date->format('Y-m-d H:i'));
+    }
+
+    /**
+     * Test that SLA date cannot be set on closed or canceled tickets.
+     */
+    public function test_cannot_set_sla_date_on_closed_or_canceled_ticket(): void
+    {
+        $division = Division::create(['name' => 'Closed Div']);
+        $department = Department::create(['name' => 'Closed Dept', 'division_id' => $division->id]);
+
+        $creator = User::factory()->create([
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'user_type' => 'regular',
+        ]);
+
+        $stageClosed = TicketStage::firstOrCreate(['slug' => 'closed'], ['name' => 'Closed', 'color_code' => '#2']);
+        $priority = Priority::create(['name' => 'Low', 'level' => 1]);
+        $ticketType = TicketType::create(['name' => 'Closed Request']);
+        $category = Category::create(['name' => 'Closed Cat', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-SLA-CLOSED-1',
+            'title' => 'Closed Ticket SLA',
+            'description' => 'Closed ticket test',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priority->id,
+            'stage_id' => $stageClosed->id,
+            'status' => 'Done',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'created_by' => $creator->id,
+            'deadline_date' => null,
+        ]);
+
+        // Show view should not render the modal for closed ticket
+        $viewResponse = $this->actingAs($creator)->get(route('tickets.show', $ticket));
+        $viewResponse->assertDontSee('id="setSlaModal"', false);
+
+        // POST should redirect back with error
+        $response = $this->actingAs($creator)->post(route('tickets.set-sla', $ticket), [
+            'deadline_date' => now()->addDays(2)->format('Y-m-d\TH:i'),
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error', 'Cannot update SLA date on a closed or canceled ticket.');
+        $this->assertNull($ticket->fresh()->deadline_date);
+    }
+
+    /**
+     * Test that setting SLA date requires a valid date format.
+     */
+    public function test_setting_sla_date_requires_valid_date_format(): void
+    {
+        $division = Division::create(['name' => 'Validation Div']);
+        $department = Department::create(['name' => 'Validation Dept', 'division_id' => $division->id]);
+
+        $creator = User::factory()->create([
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'user_type' => 'regular',
+        ]);
+
+        $stageOpen = TicketStage::firstOrCreate(['slug' => 'open'], ['name' => 'Open', 'color_code' => '#1']);
+        $priority = Priority::create(['name' => 'Normal', 'level' => 2]);
+        $ticketType = TicketType::create(['name' => 'Validation Test']);
+        $category = Category::create(['name' => 'Validation Cat', 'ticket_type_id' => $ticketType->id]);
+
+        $ticket = Ticket::create([
+            'ticket_number' => 'FLR-SLA-INVALID-1',
+            'title' => 'Validation Test Ticket',
+            'description' => 'Testing invalid date input',
+            'ticket_type_id' => $ticketType->id,
+            'priority_option_id' => $priority->id,
+            'stage_id' => $stageOpen->id,
+            'status' => 'Valid',
+            'division_id' => $division->id,
+            'department_id' => $department->id,
+            'location_id' => $this->location->id,
+            'category_1_id' => $category->id,
+            'created_by' => $creator->id,
+            'deadline_date' => null,
+        ]);
+
+        // Submit non-date string
+        $response = $this->actingAs($creator)->post(route('tickets.set-sla', $ticket), [
+            'deadline_date' => 'invalid-date-string',
+        ]);
+
+        $response->assertSessionHasErrors(['deadline_date']);
+        $this->assertNull($ticket->fresh()->deadline_date);
+    }
 }
