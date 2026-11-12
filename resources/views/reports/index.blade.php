@@ -117,6 +117,46 @@
             {{ $division['name'] }}
         </div>
 
+        <!-- Division Status Summary Card -->
+        <div class="card mb-4 border shadow-xs">
+            <div class="card-header bg-white py-2 px-3 border-bottom d-flex justify-content-between align-items-center">
+                <span class="small fw-bold text-uppercase text-muted">Status Summary</span>
+                <span class="small text-muted fw-semibold">{{ $division['total_tickets'] }} Total {{ Str::plural('Ticket', $division['total_tickets']) }}</span>
+            </div>
+            <div class="card-body p-3">
+                <div class="row row-cols-1 row-cols-sm-3 g-3">
+                    @foreach($division['breakdown']['statuses'] as $st)
+                        @php
+                            $textColor = match($st['status']) {
+                                'Valid' => 'text-success',
+                                'Done' => 'text-secondary',
+                                'Lapsed' => 'text-dark',
+                                default => 'text-dark',
+                            };
+                            $badgeClass = match($st['status']) {
+                                'Valid' => 'bg-success',
+                                'Done' => 'bg-secondary',
+                                'Lapsed' => 'badge-lapsed',
+                                default => 'bg-dark',
+                            };
+                        @endphp
+                        <div class="col">
+                            <div class="p-3 bg-light rounded border h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge {{ $badgeClass }} rounded-pill">{{ $st['status'] }}</span>
+                                    <span class="small text-muted fw-semibold">{{ $st['count'] }} {{ Str::plural('ticket', $st['count']) }}</span>
+                                </div>
+                                <div class="h3 fw-bold mb-1 {{ $textColor }}">{{ $st['percentage'] }}%</div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar {{ $badgeClass }}" role="progressbar" style="width: {{ $st['percentage'] }}%;" aria-valuenow="{{ $st['percentage'] }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
         @forelse($division['departments'] as $dept)
             <div class="department-block mb-4 p-3 bg-light rounded border">
                 <div class="department-title h5 fw-semibold text-dark mb-3">

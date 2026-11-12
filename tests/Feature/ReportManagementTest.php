@@ -243,6 +243,7 @@ class ReportManagementTest extends TestCase
         // Verify HTML renders division and department names and table headers
         $response->assertSee('Information Technology');
         $response->assertSee('Finance & Accounting');
+        $response->assertSee('Status Summary');
         $response->assertSee('IT Support');
         $response->assertSee('Infrastructure');
         $response->assertSee('Payroll');
@@ -251,6 +252,7 @@ class ReportManagementTest extends TestCase
         $response->assertSee('Priority');
         $response->assertSee('Status');
         $response->assertSee('Count');
+        $response->assertSee('33.3%');
 
         // Check Dept A1 rows contain 2 distinct combinations
         $this->assertCount(2, $deptA1Data['rows']);
