@@ -89,52 +89,24 @@ class ReportController extends Controller
             fputcsv($handle, [
                 'Division',
                 'Department',
-                'Dimension',
-                'Item / Value',
-                'Ticket Count',
-                'Percentage (%)',
+                'Ticket Type',
+                'Location',
+                'Priority',
+                'Status',
+                'Count',
             ]);
 
             foreach ($reportData['divisions'] as $division) {
                 foreach ($division['departments'] as $dept) {
-                    foreach ($dept['breakdown']['ticket_types'] as $item) {
+                    foreach ($dept['rows'] as $row) {
                         fputcsv($handle, [
                             $division['name'],
                             $dept['name'],
-                            'Ticket Type',
-                            $item['name'],
-                            $item['count'],
-                            $item['percentage'],
-                        ]);
-                    }
-                    foreach ($dept['breakdown']['locations'] as $item) {
-                        fputcsv($handle, [
-                            $division['name'],
-                            $dept['name'],
-                            'Location',
-                            $item['name'],
-                            $item['count'],
-                            $item['percentage'],
-                        ]);
-                    }
-                    foreach ($dept['breakdown']['priorities'] as $item) {
-                        fputcsv($handle, [
-                            $division['name'],
-                            $dept['name'],
-                            'Priority',
-                            $item['name'],
-                            $item['count'],
-                            $item['percentage'],
-                        ]);
-                    }
-                    foreach ($dept['breakdown']['statuses'] as $item) {
-                        fputcsv($handle, [
-                            $division['name'],
-                            $dept['name'],
-                            'Status',
-                            $item['status'],
-                            $item['count'],
-                            $item['percentage'],
+                            $row['ticket_type'],
+                            $row['location'],
+                            $row['priority'],
+                            $row['status'],
+                            $row['count'],
                         ]);
                     }
                 }
@@ -290,6 +262,7 @@ class ReportController extends Controller
                     'id' => $department->id,
                     'name' => $department->name,
                     'total_tickets' => $deptTickets->count(),
+                    'rows' => $this->computeDepartmentRows($deptTickets, $ticketTypes, $locations, $priorities),
                     'breakdown' => $deptBreakdown,
                 ];
             }
@@ -311,6 +284,7 @@ class ReportController extends Controller
                         'id' => null,
                         'name' => 'General / Unassigned Department',
                         'total_tickets' => $unassignedDeptTickets->count(),
+                        'rows' => $this->computeDepartmentRows($unassignedDeptTickets, $ticketTypes, $locations, $priorities),
                         'breakdown' => $unassignedDeptBreakdown,
                     ];
                 }
@@ -354,6 +328,7 @@ class ReportController extends Controller
                         'id' => $deptId > 0 ? $deptId : null,
                         'name' => $deptName,
                         'total_tickets' => $deptTickets->count(),
+                        'rows' => $this->computeDepartmentRows($deptTickets, $ticketTypes, $locations, $priorities),
                         'breakdown' => $this->computeBreakdown(
                             $deptTickets,
                             $ticketTypes,
@@ -380,6 +355,44 @@ class ReportController extends Controller
             'total_divisions_count' => count($divisionsData),
             'total_departments_count' => array_sum(array_map(fn ($d) => count($d['departments']), $divisionsData)),
         ];
+    }
+
+    /**
+     * Compute multi-dimensional table rows (Ticket Type, Location, Priority, Status, Count).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function computeDepartmentRows(
+        Collection $tickets,
+        Collection $ticketTypes,
+        Collection $locations,
+        Collection $priorities
+    ): array {
+        $ticketTypeMap = $ticketTypes->keyBy('id');
+        $locationMap = $locations->keyBy('id');
+        $priorityMap = $priorities->keyBy('id');
+
+        return $tickets->groupBy(function ($ticket) {
+            return implode('__', [
+                $ticket->ticket_type_id ?? 0,
+                $ticket->location_id ?? 0,
+                $ticket->priority_option_id ?? 0,
+                $ticket->status ?? 'Valid',
+            ]);
+        })->map(function ($group) use ($ticketTypeMap, $locationMap, $priorityMap) {
+            $first = $group->first();
+            $type = $ticketTypeMap->get($first->ticket_type_id);
+            $location = $locationMap->get($first->location_id);
+            $priority = $priorityMap->get($first->priority_option_id);
+
+            return [
+                'ticket_type' => $type?->name ?? 'Unassigned',
+                'location' => $location?->name ?? 'Unassigned',
+                'priority' => $priority?->name ?? 'Unassigned',
+                'status' => $first->status ?? 'Valid',
+                'count' => $group->count(),
+            ];
+        })->values()->all();
     }
 
     /**

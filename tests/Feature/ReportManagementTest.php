@@ -240,12 +240,25 @@ class ReportManagementTest extends TestCase
         $lapsedStatusInDeptA1 = collect($deptA1Data['breakdown']['statuses'])->firstWhere('status', 'Lapsed');
         $this->assertEquals(0, $lapsedStatusInDeptA1['count']);
 
-        // Verify HTML renders division and department names
+        // Verify HTML renders division and department names and table headers
         $response->assertSee('Information Technology');
         $response->assertSee('Finance & Accounting');
         $response->assertSee('IT Support');
         $response->assertSee('Infrastructure');
         $response->assertSee('Payroll');
+        $response->assertSee('Ticket Type');
+        $response->assertSee('Location');
+        $response->assertSee('Priority');
+        $response->assertSee('Status');
+        $response->assertSee('Count');
+
+        // Check Dept A1 rows contain 2 distinct combinations
+        $this->assertCount(2, $deptA1Data['rows']);
+        $incidentRow = collect($deptA1Data['rows'])->firstWhere('ticket_type', 'Incident');
+        $this->assertEquals('Main Headquarters', $incidentRow['location']);
+        $this->assertEquals('Low', $incidentRow['priority']);
+        $this->assertEquals('Valid', $incidentRow['status']);
+        $this->assertEquals(1, $incidentRow['count']);
     }
 
     public function test_reports_filtering_by_division_and_department(): void
