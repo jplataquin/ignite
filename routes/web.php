@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\ChunkUploadController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketApprovalController;
 use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
@@ -65,6 +66,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets/{ticket}/set-sla', [TicketController::class, 'setSla'])->name('tickets.set-sla');
     Route::get('/api/categories', [TicketController::class, 'getCategories'])->name('api.categories');
     Route::get('/api/users', [TicketController::class, 'getUsers'])->name('api.users');
+
+    // Report Routes (Admin and Moderator only)
+    Route::middleware('reports.access')->group(function () {
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/export', [ReportController::class, 'exportCsv'])->name('reports.export');
+    });
 
     // Admin-only Routes
     Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {

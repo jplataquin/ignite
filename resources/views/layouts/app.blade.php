@@ -64,6 +64,8 @@
                 @auth
                     @if(Auth::user()->user_type === 'admin')
                         <span class="navbar-text text-white fw-semibold small px-2.5 py-1 rounded" style="font-size: 0.8rem; background-color: rgba(220, 53, 69, 0.2); color: #ff8585 !important; border: 1px solid rgba(220, 53, 69, 0.4);">System Admin</span>
+                    @elseif(Auth::user()->user_type === 'moderator')
+                        <span class="navbar-text text-white fw-semibold small px-2.5 py-1 rounded" style="font-size: 0.8rem; background-color: rgba(13, 110, 253, 0.2); color: #8bb9fe !important; border: 1px solid rgba(13, 110, 253, 0.4);">Moderator</span>
                     @else
                         <span class="navbar-text text-white-50 fw-semibold small px-2.5 py-1 rounded" style="font-size: 0.8rem; border: 1px solid rgba(255, 255, 255, 0.25); color: rgba(255, 255, 255, 0.75) !important;">
                             {{ Auth::user()->division?->name ?? 'No Division' }} &gt; {{ Auth::user()->department?->name ?? 'No Department' }}
@@ -115,6 +117,13 @@
                                 Tickets
                             </a>
                         </li>
+                        @if(Auth::user() && in_array(Auth::user()->user_type, ['admin', 'moderator'], true))
+                            <li class="nav-item">
+                                <a class="nav-link text-dark {{ Request::routeIs('reports.*') ? 'active fw-bold' : '' }}" href="{{ route('reports.index') }}">
+                                    Reports
+                                </a>
+                            </li>
+                        @endif
                         @if(Auth::user() && Auth::user()->user_type === 'admin')
                             <li class="nav-item">
                                 <a class="nav-link text-dark d-flex align-items-center justify-content-between {{ Request::routeIs('admin.users.*', 'admin.roles.*', 'admin.divisions.*', 'admin.departments.*', 'admin.locations.*', 'admin.ticket-types.*', 'admin.ticket-stages.*') ? 'active fw-bold' : '' }}" 

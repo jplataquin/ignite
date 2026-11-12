@@ -100,4 +100,28 @@ class User extends Authenticatable
     {
         return $this->hasMany(TicketComment::class)->orderBy('created_at', 'desc')->orderBy('id', 'desc');
     }
+
+    /**
+     * Determine if the user has admin privileges.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->user_type === 'admin';
+    }
+
+    /**
+     * Determine if the user has moderator privileges.
+     */
+    public function isModerator(): bool
+    {
+        return $this->user_type === 'moderator';
+    }
+
+    /**
+     * Determine if the user can access reports.
+     */
+    public function canAccessReports(): bool
+    {
+        return in_array($this->user_type, ['admin', 'moderator'], true);
+    }
 }
